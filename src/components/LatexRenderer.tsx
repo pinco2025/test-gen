@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
+import katex from 'katex';
 import 'katex/dist/katex.min.css';
-import { InlineMath, BlockMath } from 'react-katex';
 
 interface LatexRendererProps {
   content: string;
@@ -27,17 +27,9 @@ export const LatexRenderer: React.FC<LatexRendererProps> = ({
       <span className={className}>
         {parts.map((part, index) => {
           if (part.type === 'latex-block') {
-            return (
-              <span key={index} className="latex-block">
-                <BlockMath math={part.content} />
-              </span>
-            );
+            return <LatexBlock key={index} content={part.content} />;
           } else if (part.type === 'latex-inline') {
-            return (
-              <span key={index} className="latex-inline">
-                <InlineMath math={part.content} />
-              </span>
-            );
+            return <LatexInline key={index} content={part.content} />;
           } else {
             return <span key={index}>{part.content}</span>;
           }
@@ -48,6 +40,62 @@ export const LatexRenderer: React.FC<LatexRendererProps> = ({
     console.error('Error rendering LaTeX:', error);
     return <span className={`${className} latex-error`}>{content}</span>;
   }
+};
+
+/**
+ * Inline LaTeX rendering component
+ */
+const LatexInline: React.FC<{ content: string }> = ({ content }) => {
+  const containerRef = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    if (containerRef.current) {
+      try {
+        katex.render(content, containerRef.current, {
+          displayMode: false,
+          throwOnError: false,
+          errorColor: '#cc0000',
+          strict: false,
+          trust: false
+        });
+      } catch (error) {
+        console.error('Error rendering inline LaTeX:', error);
+        if (containerRef.current) {
+          containerRef.current.textContent = content;
+        }
+      }
+    }
+  }, [content]);
+
+  return <span ref={containerRef} className="latex-inline" />;
+};
+
+/**
+ * Block LaTeX rendering component
+ */
+const LatexBlock: React.FC<{ content: string }> = ({ content }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (containerRef.current) {
+      try {
+        katex.render(content, containerRef.current, {
+          displayMode: true,
+          throwOnError: false,
+          errorColor: '#cc0000',
+          strict: false,
+          trust: false
+        });
+      } catch (error) {
+        console.error('Error rendering block LaTeX:', error);
+        if (containerRef.current) {
+          containerRef.current.textContent = content;
+        }
+      }
+    }
+  }, [content]);
+
+  return <div ref={containerRef} className="latex-block" />;
 };
 
 interface ContentPart {
@@ -76,7 +124,12 @@ function parseLatexContent(content: string): ContentPart[] {
   ];
 
   // Find all matches
-  const matches: Array<{ index: number; length: number; content: string; type: 'latex-inline' | 'latex-block' }> = [];
+  const matches: Array<{
+    index: number;
+    length: number;
+    content: string;
+    type: 'latex-inline' | 'latex-block'
+  }> = [];
 
   for (const pattern of patterns) {
     let match;
