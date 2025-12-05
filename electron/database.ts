@@ -218,6 +218,40 @@ export class DatabaseService {
     const result = stmt.get(...params) as { count: number };
     return result.count;
   }
+
+  /**
+   * Get all available chapter codes from database (tag_2 field) grouped by type
+   * Returns actual codes from your database
+   */
+  getChaptersByType(): { [type: string]: string[] } {
+    if (!this.db) throw new Error('Database not connected');
+
+    console.log('[DB] Loading chapters from database...');
+
+    const query = `
+      SELECT DISTINCT type, tag_2
+      FROM questions
+      WHERE tag_2 IS NOT NULL AND tag_2 != ''
+      ORDER BY type, tag_2
+    `;
+
+    const rows = this.db.prepare(query).all() as { type: string; tag_2: string }[];
+
+    console.log('[DB] Found', rows.length, 'unique chapter codes in database');
+
+    const chaptersByType: { [type: string]: string[] } = {};
+
+    rows.forEach(row => {
+      if (!chaptersByType[row.type]) {
+        chaptersByType[row.type] = [];
+      }
+      chaptersByType[row.type].push(row.tag_2);
+    });
+
+    console.log('[DB] Chapters by type:', JSON.stringify(chaptersByType, null, 2));
+
+    return chaptersByType;
+  }
 }
 
 // Singleton instance

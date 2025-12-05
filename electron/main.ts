@@ -129,6 +129,10 @@ ipcMain.handle('db:getTags', async (): Promise<string[]> => {
   return dbService.getTags();
 });
 
+ipcMain.handle('db:getChaptersByType', async (): Promise<{ [type: string]: string[] }> => {
+  return dbService.getChaptersByType();
+});
+
 // Test export
 ipcMain.handle('test:export', async (_, test: Test) => {
   const result = await dialog.showSaveDialog({

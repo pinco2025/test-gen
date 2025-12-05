@@ -11,7 +11,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     isConnected: () => ipcRenderer.invoke('db:isConnected'),
     getTypes: () => ipcRenderer.invoke('db:getTypes'),
     getYears: () => ipcRenderer.invoke('db:getYears'),
-    getTags: () => ipcRenderer.invoke('db:getTags')
+    getTags: () => ipcRenderer.invoke('db:getTags'),
+    getChaptersByType: () => ipcRenderer.invoke('db:getChaptersByType')
   },
 
   // Question operations
@@ -40,6 +41,7 @@ declare global {
         getTypes: () => Promise<string[]>;
         getYears: () => Promise<string[]>;
         getTags: () => Promise<string[]>;
+        getChaptersByType: () => Promise<{ [type: string]: string[] }>;
       };
       questions: {
         getAll: (filter?: QuestionFilter) => Promise<Question[]>;

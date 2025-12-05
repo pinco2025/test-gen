@@ -17,9 +17,9 @@ import { Chapter, ChapterDistribution, ConstraintConfig } from '../types';
  */
 
 // Base difficulty ratios
-const E0 = 0.3; // 3/10 for Easy
 const M0 = 0.5; // 5/10 for Medium
 const H0 = 0.2; // 2/10 for Hard
+// Easy is calculated as the remainder: E = Total - (M + H)
 
 /**
  * Generate alpha constraint (A and B distribution) for selected chapters
