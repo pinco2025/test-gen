@@ -6,6 +6,10 @@ import fs from 'fs';
 
 let mainWindow: BrowserWindow | null = null;
 
+// Detect if running in development mode
+const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
+const DEV_SERVER_URL = 'http://localhost:5173';
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1400,
@@ -18,9 +22,16 @@ function createWindow() {
   });
 
   // Load the app
-  if (process.env.VITE_DEV_SERVER_URL) {
-    mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
+  if (isDev) {
+    mainWindow.loadURL(DEV_SERVER_URL);
     mainWindow.webContents.openDevTools();
+
+    // Wait for dev server and reload if needed
+    mainWindow.webContents.on('did-fail-load', () => {
+      setTimeout(() => {
+        mainWindow?.reload();
+      }, 1000);
+    });
   } else {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   }
