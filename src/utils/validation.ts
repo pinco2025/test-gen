@@ -31,28 +31,28 @@ export function validateSelection(
   const chapterCounts: { [key: string]: { a: number; b: number } } = {};
 
   selectedQuestions.forEach(sq => {
-    if (!chapterCounts[sq.chapter]) {
-      chapterCounts[sq.chapter] = { a: 0, b: 0 };
+    if (!chapterCounts[sq.chapterCode]) {
+      chapterCounts[sq.chapterCode] = { a: 0, b: 0 };
     }
     if (sq.division === 1) {
-      chapterCounts[sq.chapter].a++;
+      chapterCounts[sq.chapterCode].a++;
     } else {
-      chapterCounts[sq.chapter].b++;
+      chapterCounts[sq.chapterCode].b++;
     }
   });
 
   alphaConstraint.chapters.forEach(ch => {
-    const actual = chapterCounts[ch.chapterName] || { a: 0, b: 0 };
+    const actual = chapterCounts[ch.chapterCode] || { a: 0, b: 0 };
 
     if (actual.a !== ch.a) {
       errors.push(
-        `Chapter "${ch.chapterName}" Division 1: expected ${ch.a}, got ${actual.a}`
+        `Chapter "${ch.chapterCode} - ${ch.chapterName}" Division 1: expected ${ch.a}, got ${actual.a}`
       );
     }
 
     if (actual.b !== ch.b) {
       errors.push(
-        `Chapter "${ch.chapterName}" Division 2: expected ${ch.b}, got ${actual.b}`
+        `Chapter "${ch.chapterCode} - ${ch.chapterName}" Division 2: expected ${ch.b}, got ${actual.b}`
       );
     }
   });
@@ -115,7 +115,8 @@ export function generateSummary(
 
   // Initialize
   alphaConstraint.chapters.forEach(ch => {
-    byChapter[ch.chapterName] = {
+    byChapter[ch.chapterCode] = {
+      chapterName: ch.chapterName,
       a: 0,
       b: 0,
       required_a: ch.a,
@@ -128,11 +129,11 @@ export function generateSummary(
 
   // Count
   selectedQuestions.forEach(sq => {
-    if (byChapter[sq.chapter]) {
+    if (byChapter[sq.chapterCode]) {
       if (sq.division === 1) {
-        byChapter[sq.chapter].a++;
+        byChapter[sq.chapterCode].a++;
       } else {
-        byChapter[sq.chapter].b++;
+        byChapter[sq.chapterCode].b++;
       }
     }
 
