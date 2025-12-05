@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { TestMetadata, TestType, Chapter, ChaptersData } from '../types';
+import { TestMetadata, TestType, Chapter } from '../types';
 import chaptersData from '../data/chapters.json';
 
 interface TestCreationFormProps {
@@ -16,12 +16,8 @@ export const TestCreationForm: React.FC<TestCreationFormProps> = ({
   const [description, setDescription] = useState('');
   const [testType, setTestType] = useState<TestType>('Full');
 
-  // Available chapters from database (dynamically loaded)
-  const [availableChapters, setAvailableChapters] = useState<ChaptersData>({
-    Physics: [],
-    Chemistry: [],
-    Mathematics: []
-  });
+  // Track which chapter codes are available in the database
+  const [availableCodesInDb, setAvailableCodesInDb] = useState<Set<string>>(new Set());
   const [chaptersLoading, setChaptersLoading] = useState(true);
 
   // Chapters for each section
@@ -34,71 +30,35 @@ export const TestCreationForm: React.FC<TestCreationFormProps> = ({
   const [chemistrySearch, setChemistrySearch] = useState('');
   const [mathSearch, setMathSearch] = useState('');
 
-  // Load available chapters from database on mount
+  // Load available chapter codes from database on mount
   useEffect(() => {
-    const loadChapters = async () => {
+    const loadAvailableCodes = async () => {
       setChaptersLoading(true);
       try {
-        console.log('[TestCreationForm] Loading chapters from database...');
+        console.log('[TestCreationForm] Loading available chapter codes from database...');
         const dbChapters = await window.electronAPI.db.getChaptersByType();
         console.log('[TestCreationForm] Database chapters:', dbChapters);
 
-        // Convert database chapter codes to Chapter objects
-        // Try to match with chapters.json for names/levels, otherwise use code as name
-        const staticChapters = chaptersData as ChaptersData;
-
-        const buildChapterList = (
-          sectionName: 'Physics' | 'Chemistry' | 'Mathematics',
-          dbCodes: string[]
-        ): Chapter[] => {
-          return dbCodes.map(code => {
-            // Try to find in static data
-            const existing = staticChapters[sectionName]?.find(ch => ch.code === code);
-            if (existing) {
-              return existing;
-            }
-            // Not found in static data, create basic entry
-            return {
-              code,
-              name: code, // Use code as name
-              level: 2 // Default medium importance
-            };
-          });
-        };
-
-        // Map database types to our section names
-        const typeMap: { [key: string]: 'Physics' | 'Chemistry' | 'Mathematics' } = {
-          'physics': 'Physics',
-          'chemistry': 'Chemistry',
-          'mathematics': 'Mathematics'
-        };
-
-        const newChapters: ChaptersData = {
-          Physics: [],
-          Chemistry: [],
-          Mathematics: []
-        };
-
-        Object.entries(dbChapters).forEach(([dbType, codes]) => {
-          const sectionName = typeMap[dbType];
-          if (sectionName && Array.isArray(codes)) {
-            newChapters[sectionName] = buildChapterList(sectionName, codes as string[]);
+        // Collect all unique codes from the database
+        const codesSet = new Set<string>();
+        Object.values(dbChapters).forEach((codes) => {
+          if (Array.isArray(codes)) {
+            codes.forEach(code => codesSet.add(code));
           }
         });
 
-        console.log('[TestCreationForm] Processed chapters:', newChapters);
-        setAvailableChapters(newChapters);
+        console.log('[TestCreationForm] Available codes in database:', Array.from(codesSet));
+        setAvailableCodesInDb(codesSet);
       } catch (error) {
-        console.error('[TestCreationForm] Failed to load chapters:', error);
-        // Fallback to static data
-        console.log('[TestCreationForm] Using fallback static chapters');
-        setAvailableChapters(chaptersData as ChaptersData);
+        console.error('[TestCreationForm] Failed to load chapter codes:', error);
+        // On error, mark all chapters as unavailable (empty set)
+        setAvailableCodesInDb(new Set());
       } finally {
         setChaptersLoading(false);
       }
     };
 
-    loadChapters();
+    loadAvailableCodes();
   }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -153,6 +113,10 @@ export const TestCreationForm: React.FC<TestCreationFormProps> = ({
       math: mathChapters
     };
     return getters[section].some(ch => ch.code === chapterCode);
+  };
+
+  const isChapterAvailable = (chapterCode: string): boolean => {
+    return availableCodesInDb.has(chapterCode);
   };
 
   const getFilteredChapters = (
@@ -241,22 +205,26 @@ export const TestCreationForm: React.FC<TestCreationFormProps> = ({
                 {chaptersLoading ? (
                   <div className="loading-chapters">Loading chapters from database...</div>
                 ) : (
-                  getFilteredChapters(availableChapters.Physics, physicsSearch).map(
-                    (chapter) => (
-                    <label
-                      key={chapter.code}
-                      className="checkbox-label"
-                      title={chapter.code}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isChapterSelected('physics', chapter.code)}
-                        onChange={() => handleChapterToggle('physics', chapter)}
-                      />
-                      <span className="chapter-code">{chapter.code}</span>
-                      <span className="chapter-name">{chapter.name}</span>
-                    </label>
-                    )
+                  getFilteredChapters(chaptersData.Physics, physicsSearch).map(
+                    (chapter) => {
+                      const available = isChapterAvailable(chapter.code);
+                      return (
+                        <label
+                          key={chapter.code}
+                          className={`checkbox-label ${!available ? 'chapter-unavailable' : ''}`}
+                          title={available ? chapter.code : `${chapter.code} (No questions in database)`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChapterSelected('physics', chapter.code)}
+                            onChange={() => handleChapterToggle('physics', chapter)}
+                            disabled={!available}
+                          />
+                          <span className="chapter-code">{chapter.code}</span>
+                          <span className="chapter-name">{chapter.name}</span>
+                        </label>
+                      );
+                    }
                   )
                 )}
               </div>
@@ -276,24 +244,26 @@ export const TestCreationForm: React.FC<TestCreationFormProps> = ({
                 {chaptersLoading ? (
                   <div className="loading-chapters">Loading chapters from database...</div>
                 ) : (
-                  getFilteredChapters(availableChapters.Chemistry, chemistrySearch).map(
-                    (chapter) => (
-                      <label
-                        key={chapter.code}
-                        className="checkbox-label"
-                        title={chapter.code}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isChapterSelected('chemistry', chapter.code)}
-                          onChange={() =>
-                            handleChapterToggle('chemistry', chapter)
-                          }
-                        />
-                        <span className="chapter-code">{chapter.code}</span>
-                        <span className="chapter-name">{chapter.name}</span>
-                      </label>
-                    )
+                  getFilteredChapters(chaptersData.Chemistry, chemistrySearch).map(
+                    (chapter) => {
+                      const available = isChapterAvailable(chapter.code);
+                      return (
+                        <label
+                          key={chapter.code}
+                          className={`checkbox-label ${!available ? 'chapter-unavailable' : ''}`}
+                          title={available ? chapter.code : `${chapter.code} (No questions in database)`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChapterSelected('chemistry', chapter.code)}
+                            onChange={() => handleChapterToggle('chemistry', chapter)}
+                            disabled={!available}
+                          />
+                          <span className="chapter-code">{chapter.code}</span>
+                          <span className="chapter-name">{chapter.name}</span>
+                        </label>
+                      );
+                    }
                   )
                 )}
               </div>
@@ -313,22 +283,26 @@ export const TestCreationForm: React.FC<TestCreationFormProps> = ({
                 {chaptersLoading ? (
                   <div className="loading-chapters">Loading chapters from database...</div>
                 ) : (
-                  getFilteredChapters(availableChapters.Mathematics, mathSearch).map(
-                    (chapter) => (
-                      <label
-                        key={chapter.code}
-                        className="checkbox-label"
-                        title={chapter.code}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isChapterSelected('math', chapter.code)}
-                          onChange={() => handleChapterToggle('math', chapter)}
-                        />
-                        <span className="chapter-code">{chapter.code}</span>
-                        <span className="chapter-name">{chapter.name}</span>
-                      </label>
-                    )
+                  getFilteredChapters(chaptersData.Mathematics, mathSearch).map(
+                    (chapter) => {
+                      const available = isChapterAvailable(chapter.code);
+                      return (
+                        <label
+                          key={chapter.code}
+                          className={`checkbox-label ${!available ? 'chapter-unavailable' : ''}`}
+                          title={available ? chapter.code : `${chapter.code} (No questions in database)`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChapterSelected('math', chapter.code)}
+                            onChange={() => handleChapterToggle('math', chapter)}
+                            disabled={!available}
+                          />
+                          <span className="chapter-code">{chapter.code}</span>
+                          <span className="chapter-name">{chapter.name}</span>
+                        </label>
+                      );
+                    }
                   )
                 )}
               </div>

@@ -201,10 +201,32 @@
   background: #f8f9fa;
 }
 
+.checkbox-label.chapter-unavailable {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.checkbox-label.chapter-unavailable:hover {
+  background: transparent;
+}
+
+.checkbox-label.chapter-unavailable .chapter-code {
+  background: #95a5a6;
+}
+
+.checkbox-label.chapter-unavailable .chapter-name {
+  color: #95a5a6;
+  text-decoration: line-through;
+}
+
 .checkbox-label input {
   margin-right: 0.5rem;
   width: auto;
   flex-shrink: 0;
+}
+
+.checkbox-label input:disabled {
+  cursor: not-allowed;
 }
 
 .chapter-code {
