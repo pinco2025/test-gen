@@ -78,6 +78,30 @@ npm run build
 
 This creates platform-specific installers in the `release/` directory.
 
+### Troubleshooting
+
+**Native Module Errors (libnode.so.XX not found)**
+
+If you get errors like `libnode.so.72: cannot open shared object file`, rebuild native modules:
+
+```bash
+# Quick fix
+npm run rebuild
+
+# Or full reinstall
+rm -rf node_modules package-lock.json
+npm install
+```
+
+This happens when `better-sqlite3` needs to be recompiled for your Node.js/Electron version.
+
+**Dev Server Not Loading**
+
+If Electron window is blank:
+1. Check that Vite is running on port 5173
+2. Look for errors in DevTools (opens automatically)
+3. Try: `npm run electron:dev:simple`
+
 ## Database Schema
 
 The application expects a SQLite database with the following schema (see `schema.txt` for full details):
