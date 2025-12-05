@@ -38,7 +38,9 @@ Where for N chapters:
 
 ### Prerequisites
 
-- Node.js (v16 or higher)
+- **Node.js v14 or higher** (v18 LTS recommended)
+  - Check version: `node --version`
+  - If you have an older version, update Node.js first
 - npm or yarn
 
 ### Installation
