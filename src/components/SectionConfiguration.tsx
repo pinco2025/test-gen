@@ -1,9 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { AlphaConstraint, BetaConstraint, ChapterDistribution, SectionName, Chapter } from '../types';
+import {
+  AlphaConstraint,
+  BetaConstraint,
+  ChapterDistribution,
+  SectionName,
+  Chapter,
+  ConstraintConfig
+} from '../types';
+import { generateAlphaConstraint, validateGeneratedConstraints } from '../utils/constraintAlgorithm';
 
 interface SectionConfigurationProps {
   sectionName: SectionName;
   chapters: Chapter[];
+  constraintConfig: ConstraintConfig;
+  onConfigChange: (config: ConstraintConfig) => void;
   onConfigure: (alpha: AlphaConstraint, beta: BetaConstraint) => void;
   onSkip: () => void;
 }
@@ -14,6 +24,8 @@ interface SectionConfigurationProps {
 export const SectionConfiguration: React.FC<SectionConfigurationProps> = ({
   sectionName,
   chapters,
+  constraintConfig,
+  onConfigChange,
   onConfigure,
   onSkip
 }) => {
@@ -30,6 +42,7 @@ export const SectionConfiguration: React.FC<SectionConfigurationProps> = ({
   );
 
   const [betaData] = useState<BetaConstraint>({});
+  const [showConfig, setShowConfig] = useState(false);
 
   useEffect(() => {
     // Update alpha data when chapters change
@@ -78,6 +91,22 @@ export const SectionConfiguration: React.FC<SectionConfigurationProps> = ({
     }
   };
 
+  const handleAutoGenerate = () => {
+    try {
+      const generated = generateAlphaConstraint(chapters, constraintConfig);
+      const validation = validateGeneratedConstraints(generated);
+
+      if (!validation.isValid) {
+        alert('Auto-generation failed:\n' + validation.errors.join('\n'));
+        return;
+      }
+
+      setAlphaData(generated);
+    } catch (error) {
+      alert('Error during auto-generation: ' + (error as Error).message);
+    }
+  };
+
   return (
     <div className="section-configuration">
       <h2>Configure {sectionName} Section</h2>
@@ -93,8 +122,103 @@ export const SectionConfiguration: React.FC<SectionConfigurationProps> = ({
         </ul>
       </div>
 
+      {/* Auto-Generation Configuration Panel */}
+      <div className="auto-gen-panel">
+        <div className="auto-gen-header">
+          <h3>Constraint Auto-Generation</h3>
+          <button
+            type="button"
+            className="btn-toggle"
+            onClick={() => setShowConfig(!showConfig)}
+          >
+            {showConfig ? 'Hide' : 'Show'} Algorithm Settings
+          </button>
+        </div>
+
+        {showConfig && (
+          <div className="config-panel">
+            <p className="info-text">
+              Configure the algorithm parameters for auto-generating constraints based on chapter importance levels.
+            </p>
+            <div className="config-inputs">
+              <div className="config-input-group">
+                <label>
+                  <strong>Min Questions/Chapter (min_idx):</strong>
+                  <input
+                    type="number"
+                    min="0"
+                    max="5"
+                    value={constraintConfig.minIdx}
+                    onChange={(e) =>
+                      onConfigChange({
+                        ...constraintConfig,
+                        minIdx: parseInt(e.target.value) || 0
+                      })
+                    }
+                  />
+                </label>
+                <span className="hint">Minimum questions per chapter (typically 0-1)</span>
+              </div>
+
+              <div className="config-input-group">
+                <label>
+                  <strong>Medium Slope (Sm):</strong>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="-0.5"
+                    max="0.5"
+                    value={constraintConfig.Sm}
+                    onChange={(e) =>
+                      onConfigChange({
+                        ...constraintConfig,
+                        Sm: parseFloat(e.target.value) || 0
+                      })
+                    }
+                  />
+                </label>
+                <span className="hint">Effect of weight on medium difficulty (typically 0.1)</span>
+              </div>
+
+              <div className="config-input-group">
+                <label>
+                  <strong>Hard Slope (Sh):</strong>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="-0.5"
+                    max="0.5"
+                    value={constraintConfig.Sh}
+                    onChange={(e) =>
+                      onConfigChange({
+                        ...constraintConfig,
+                        Sh: parseFloat(e.target.value) || 0
+                      })
+                    }
+                  />
+                </label>
+                <span className="hint">Effect of weight on hard difficulty (typically 0.1)</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="auto-gen-actions">
+          <button
+            type="button"
+            className="btn-auto-generate"
+            onClick={handleAutoGenerate}
+          >
+            🎲 Auto-Generate Constraints
+          </button>
+          <span className="auto-gen-hint">
+            Generates constraints based on chapter importance levels and algorithm settings
+          </span>
+        </div>
+      </div>
+
       <div className="alpha-configuration">
-        <h3>Alpha Constraints</h3>
+        <h3>Alpha Constraints (Manual/Auto-Generated)</h3>
 
         <table className="alpha-table">
           <thead>

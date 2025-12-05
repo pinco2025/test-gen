@@ -8,7 +8,8 @@ import {
   AlphaConstraint,
   BetaConstraint,
   SelectedQuestion,
-  Chapter
+  Chapter,
+  ConstraintConfig
 } from './types';
 import TestCreationForm from './components/TestCreationForm';
 import SectionConfiguration from './components/SectionConfiguration';
@@ -35,6 +36,13 @@ function App() {
   const [testMetadata, setTestMetadata] = useState<TestMetadata | null>(null);
   const [sections, setSections] = useState<SectionConfig[]>([]);
   const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
+
+  // Global constraint algorithm configuration
+  const [constraintConfig, setConstraintConfig] = useState<ConstraintConfig>({
+    minIdx: 0, // Default: no minimum questions per chapter
+    Sm: 0.1, // Default slope for medium difficulty
+    Sh: 0.1  // Default slope for hard difficulty
+  });
 
   useEffect(() => {
     checkDatabaseConnection();
@@ -220,6 +228,8 @@ function App() {
           <SectionConfiguration
             sectionName={sections[currentSectionIndex].name}
             chapters={sections[currentSectionIndex].chapters}
+            constraintConfig={constraintConfig}
+            onConfigChange={setConstraintConfig}
             onConfigure={handleSectionConfiguration}
             onSkip={handleSkipConfiguration}
           />
