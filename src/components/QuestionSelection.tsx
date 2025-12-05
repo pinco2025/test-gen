@@ -49,10 +49,24 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
           'Chemistry': 'chemistry',
           'Mathematics': 'mathematics'
         };
+
+        console.log('=== QuestionSelection Debug ===');
+        console.log('Section:', sectionName);
+        console.log('Type for query:', typeMap[sectionName]);
+        console.log('Chapter codes:', chapterCodes);
+
         const questions = await window.electronAPI.questions.getByChapterCodes(
           typeMap[sectionName],
           chapterCodes
         );
+
+        console.log('Questions loaded:', questions.length);
+        if (questions.length > 0) {
+          console.log('First question type:', questions[0].type);
+          console.log('First question tag_2:', questions[0].tag_2);
+        }
+        console.log('===============================');
+
         setAvailableQuestions(questions);
       } catch (error) {
         console.error('Failed to load questions:', error);
