@@ -75,6 +75,7 @@ export class DatabaseService {
   /**
    * Get questions by chapter codes (using tag_2)
    * Chapter codes are stored in tag_2 field (e.g., PHY01, CHE01, MAT01)
+   * NOTE: Queries ONLY by tag_2, ignoring type field
    */
   getQuestionsByChapterCodes(type: string, chapterCodes: string[]): Question[] {
     if (!this.db) throw new Error('Database not connected');
@@ -85,25 +86,26 @@ export class DatabaseService {
     }
 
     const placeholders = chapterCodes.map(() => '?').join(',');
-    const query = `SELECT * FROM questions WHERE type = ? AND tag_2 IN (${placeholders})`;
-    const params = [type, ...chapterCodes];
+    // Query only by tag_2, ignore type field
+    const query = `SELECT * FROM questions WHERE tag_2 IN (${placeholders})`;
+    const params = chapterCodes;
 
     console.log('[DB] Query:', query);
     console.log('[DB] Params:', params);
+    console.log('[DB] Note: Ignoring type parameter:', type);
 
     const stmt = this.db.prepare(query);
     const results = stmt.all(...params) as Question[];
 
     console.log('[DB] Results count:', results.length);
 
-    // Debug: Show what types and tag_2 values exist in database
+    // Debug: Show what's in the database if no results
     if (results.length === 0) {
       console.log('[DB] No results found. Checking database...');
-      const allTypes = this.db.prepare('SELECT DISTINCT type FROM questions').all();
-      console.log('[DB] Available types in database:', allTypes);
-
-      const allTag2 = this.db.prepare('SELECT DISTINCT tag_2 FROM questions WHERE tag_2 IS NOT NULL LIMIT 10').all();
-      console.log('[DB] Sample tag_2 values:', allTag2);
+      const allTag2 = this.db.prepare('SELECT DISTINCT tag_2 FROM questions WHERE tag_2 IS NOT NULL LIMIT 20').all();
+      console.log('[DB] Sample tag_2 values in database:', allTag2);
+    } else {
+      console.log('[DB] Sample results:', results.slice(0, 2).map(q => ({ uuid: q.uuid, tag_2: q.tag_2, type: q.type })));
     }
 
     return results;
@@ -221,7 +223,7 @@ export class DatabaseService {
 
   /**
    * Get all available chapter codes from database (tag_2 field) grouped by type
-   * Returns actual codes from your database
+   * Returns actual codes from your database with normalized lowercase type keys
    */
   getChaptersByType(): { [type: string]: string[] } {
     if (!this.db) throw new Error('Database not connected');
@@ -238,17 +240,22 @@ export class DatabaseService {
     const rows = this.db.prepare(query).all() as { type: string; tag_2: string }[];
 
     console.log('[DB] Found', rows.length, 'unique chapter codes in database');
+    if (rows.length > 0) {
+      console.log('[DB] Sample rows:', rows.slice(0, 5));
+    }
 
     const chaptersByType: { [type: string]: string[] } = {};
 
     rows.forEach(row => {
-      if (!chaptersByType[row.type]) {
-        chaptersByType[row.type] = [];
+      // Normalize type to lowercase for consistent matching
+      const normalizedType = row.type.toLowerCase();
+      if (!chaptersByType[normalizedType]) {
+        chaptersByType[normalizedType] = [];
       }
-      chaptersByType[row.type].push(row.tag_2);
+      chaptersByType[normalizedType].push(row.tag_2);
     });
 
-    console.log('[DB] Chapters by type:', JSON.stringify(chaptersByType, null, 2));
+    console.log('[DB] Chapters by type (normalized):', JSON.stringify(chaptersByType, null, 2));
 
     return chaptersByType;
   }
