@@ -79,14 +79,34 @@ export class DatabaseService {
   getQuestionsByChapterCodes(type: string, chapterCodes: string[]): Question[] {
     if (!this.db) throw new Error('Database not connected');
 
-    if (chapterCodes.length === 0) return [];
+    if (chapterCodes.length === 0) {
+      console.log('[DB] No chapter codes provided');
+      return [];
+    }
 
     const placeholders = chapterCodes.map(() => '?').join(',');
     const query = `SELECT * FROM questions WHERE type = ? AND tag_2 IN (${placeholders})`;
     const params = [type, ...chapterCodes];
 
+    console.log('[DB] Query:', query);
+    console.log('[DB] Params:', params);
+
     const stmt = this.db.prepare(query);
-    return stmt.all(...params) as Question[];
+    const results = stmt.all(...params) as Question[];
+
+    console.log('[DB] Results count:', results.length);
+
+    // Debug: Show what types and tag_2 values exist in database
+    if (results.length === 0) {
+      console.log('[DB] No results found. Checking database...');
+      const allTypes = this.db.prepare('SELECT DISTINCT type FROM questions').all();
+      console.log('[DB] Available types in database:', allTypes);
+
+      const allTag2 = this.db.prepare('SELECT DISTINCT tag_2 FROM questions WHERE tag_2 IS NOT NULL LIMIT 10').all();
+      console.log('[DB] Sample tag_2 values:', allTag2);
+    }
+
+    return results;
   }
 
   /**
@@ -197,6 +217,40 @@ export class DatabaseService {
     const stmt = this.db.prepare(query);
     const result = stmt.get(...params) as { count: number };
     return result.count;
+  }
+
+  /**
+   * Get all available chapter codes from database (tag_2 field) grouped by type
+   * Returns actual codes from your database
+   */
+  getChaptersByType(): { [type: string]: string[] } {
+    if (!this.db) throw new Error('Database not connected');
+
+    console.log('[DB] Loading chapters from database...');
+
+    const query = `
+      SELECT DISTINCT type, tag_2
+      FROM questions
+      WHERE tag_2 IS NOT NULL AND tag_2 != ''
+      ORDER BY type, tag_2
+    `;
+
+    const rows = this.db.prepare(query).all() as { type: string; tag_2: string }[];
+
+    console.log('[DB] Found', rows.length, 'unique chapter codes in database');
+
+    const chaptersByType: { [type: string]: string[] } = {};
+
+    rows.forEach(row => {
+      if (!chaptersByType[row.type]) {
+        chaptersByType[row.type] = [];
+      }
+      chaptersByType[row.type].push(row.tag_2);
+    });
+
+    console.log('[DB] Chapters by type:', JSON.stringify(chaptersByType, null, 2));
+
+    return chaptersByType;
   }
 }
 

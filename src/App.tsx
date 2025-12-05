@@ -4,7 +4,6 @@ import {
   TestMetadata,
   SectionConfig,
   SectionName,
-  Question,
   AlphaConstraint,
   BetaConstraint,
   SelectedQuestion,
@@ -173,30 +172,6 @@ function App() {
       } else {
         alert('Failed to export test: ' + result.error);
       }
-    }
-  };
-
-  const getSectionQuestions = async (sectionName: SectionName, chapterCodes: string[]): Promise<Question[]> => {
-    // Filter questions by section type and chapter codes (using tag_2)
-    const typeMap: { [key in SectionName]: string } = {
-      'Physics': 'physics',
-      'Chemistry': 'chemistry',
-      'Mathematics': 'mathematics'
-    };
-
-    if (!window.electronAPI || chapterCodes.length === 0) {
-      return [];
-    }
-
-    try {
-      const questions = await window.electronAPI.questions.getByChapterCodes(
-        typeMap[sectionName],
-        chapterCodes
-      );
-      return questions;
-    } catch (error) {
-      console.error('Error fetching questions:', error);
-      return [];
     }
   };
 
