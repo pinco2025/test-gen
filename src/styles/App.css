@@ -165,6 +165,21 @@
   color: #2c3e50;
 }
 
+.chapter-search {
+  width: 100%;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.95rem;
+}
+
+.chapter-search:focus {
+  outline: none;
+  border-color: #3498db;
+  box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.1);
+}
+
 .chapter-list {
   max-height: 300px;
   overflow-y: auto;
@@ -174,10 +189,12 @@
 }
 
 .checkbox-label {
-  display: block;
+  display: flex;
+  align-items: center;
   padding: 0.5rem;
   cursor: pointer;
   transition: background 0.2s;
+  gap: 0.5rem;
 }
 
 .checkbox-label:hover {
@@ -187,6 +204,38 @@
 .checkbox-label input {
   margin-right: 0.5rem;
   width: auto;
+  flex-shrink: 0;
+}
+
+.chapter-code {
+  display: inline-block;
+  background: #3498db;
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 3px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: monospace;
+  min-width: 50px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.chapter-name {
+  flex: 1;
+  color: #2c3e50;
+}
+
+.chapter-code-small {
+  display: inline-block;
+  background: #34495e;
+  color: white;
+  padding: 0.2rem 0.4rem;
+  border-radius: 3px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  font-family: monospace;
+  margin-right: 0.5rem;
 }
 
 /* Alpha Configuration Table */
@@ -403,6 +452,14 @@
 .question-list {
   max-height: calc(100vh - 300px);
   overflow-y: auto;
+}
+
+.loading {
+  text-align: center;
+  padding: 2rem;
+  color: #3498db;
+  font-size: 1.1rem;
+  font-weight: 500;
 }
 
 .no-questions {

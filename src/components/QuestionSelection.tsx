@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Question,
   AlphaConstraint,
@@ -6,16 +6,16 @@ import {
   SelectedQuestion,
   SectionName,
   Difficulty,
-  SelectionSummary
+  SelectionSummary,
+  Chapter
 } from '../types';
 import QuestionDisplay from './QuestionDisplay';
 
 interface QuestionSelectionProps {
   sectionName: SectionName;
-  chapters: string[];
+  chapters: Chapter[];
   alphaConstraint: AlphaConstraint;
   betaConstraint: BetaConstraint;
-  availableQuestions: Question[];
   onComplete: (selectedQuestions: SelectedQuestion[]) => void;
   onBack: () => void;
 }
@@ -27,15 +27,43 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
   sectionName,
   chapters,
   alphaConstraint,
-  availableQuestions,
   onComplete,
   onBack
 }) => {
   const [selectedQuestions, setSelectedQuestions] = useState<SelectedQuestion[]>([]);
+  const [availableQuestions, setAvailableQuestions] = useState<Question[]>([]);
+  const [loading, setLoading] = useState(true);
   const [filterChapter, setFilterChapter] = useState<string>('all');
   const [filterDifficulty, setFilterDifficulty] = useState<string>('all');
   const [filterDivision, setFilterDivision] = useState<string>('all');
   const [searchText, setSearchText] = useState('');
+
+  // Load questions based on selected chapters
+  useEffect(() => {
+    const loadQuestions = async () => {
+      setLoading(true);
+      try {
+        const chapterCodes = chapters.map(ch => ch.code);
+        const typeMap: { [key in SectionName]: string } = {
+          'Physics': 'physics',
+          'Chemistry': 'chemistry',
+          'Mathematics': 'mathematics'
+        };
+        const questions = await window.electronAPI.questions.getByChapterCodes(
+          typeMap[sectionName],
+          chapterCodes
+        );
+        setAvailableQuestions(questions);
+      } catch (error) {
+        console.error('Failed to load questions:', error);
+        setAvailableQuestions([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadQuestions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sectionName, chapters]);
 
   const getSummary = (): SelectionSummary => {
     const byChapter: SelectionSummary['byChapter'] = {};
@@ -44,7 +72,8 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
 
     // Initialize byChapter with alpha constraints
     alphaConstraint.chapters.forEach(ch => {
-      byChapter[ch.chapterName] = {
+      byChapter[ch.chapterCode] = {
+        chapterName: ch.chapterName,
         a: 0,
         b: 0,
         required_a: ch.a,
@@ -57,11 +86,11 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
 
     // Count current selections
     selectedQuestions.forEach(sq => {
-      if (byChapter[sq.chapter]) {
+      if (byChapter[sq.chapterCode]) {
         if (sq.division === 1) {
-          byChapter[sq.chapter].a++;
+          byChapter[sq.chapterCode].a++;
         } else {
-          byChapter[sq.chapter].b++;
+          byChapter[sq.chapterCode].b++;
         }
       }
 
@@ -97,7 +126,8 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
 
   const toggleQuestion = (
     question: Question,
-    chapter: string,
+    chapterCode: string,
+    chapterName: string,
     difficulty: Difficulty,
     division: 1 | 2
   ) => {
@@ -108,7 +138,8 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
     } else {
       const newSelection: SelectedQuestion = {
         question,
-        chapter,
+        chapterCode,
+        chapterName,
         difficulty,
         division
       };
@@ -118,7 +149,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
 
   const getFilteredQuestions = (): Question[] => {
     return availableQuestions.filter(q => {
-      if (filterChapter !== 'all' && !chapters.includes(filterChapter)) {
+      if (filterChapter !== 'all' && q.tag_2 !== filterChapter) {
         return false;
       }
 
@@ -170,9 +201,12 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
                 </tr>
               </thead>
               <tbody>
-                {Object.entries(summary.byChapter).map(([chapter, counts]) => (
-                  <tr key={chapter}>
-                    <td>{chapter}</td>
+                {Object.entries(summary.byChapter).map(([chapterCode, counts]) => (
+                  <tr key={chapterCode}>
+                    <td>
+                      <span className="chapter-code-small">{chapterCode}</span>
+                      {counts.chapterName}
+                    </td>
                     <td className={counts.a === counts.required_a ? 'valid' : 'invalid'}>
                       {counts.a}/{counts.required_a}
                     </td>
@@ -218,7 +252,9 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
             >
               <option value="all">All Chapters</option>
               {chapters.map(ch => (
-                <option key={ch} value={ch}>{ch}</option>
+                <option key={ch.code} value={ch.code}>
+                  {ch.code} - {ch.name}
+                </option>
               ))}
             </select>
 
@@ -243,7 +279,9 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
           </div>
 
           <div className="question-list">
-            {filteredQuestions.length === 0 ? (
+            {loading ? (
+              <div className="loading">Loading questions...</div>
+            ) : filteredQuestions.length === 0 ? (
               <div className="no-questions">
                 No questions available. Please adjust filters or load a database.
               </div>
@@ -270,11 +308,13 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
                   onSelect={() => {
                     // For MVP: Simple selection
                     // In production: Show modal to select chapter, difficulty, division
-                    const chapter = question.tag_1 || chapters[0];
+                    const chapterCode = question.tag_2 || chapters[0].code;
+                    const chapter = chapters.find(ch => ch.code === chapterCode);
+                    const chapterName = chapter ? chapter.name : chapters[0].name;
                     const difficulty: Difficulty = 'M'; // Default
                     const division: 1 | 2 = summary.division1 < 20 ? 1 : 2;
 
-                    toggleQuestion(question, chapter, difficulty, division);
+                    toggleQuestion(question, chapterCode, chapterName, difficulty, division);
                   }}
                 />
               </div>
