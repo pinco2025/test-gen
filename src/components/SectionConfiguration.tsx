@@ -1,9 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { AlphaConstraint, BetaConstraint, ChapterDistribution, SectionName, Chapter } from '../types';
+import {
+  AlphaConstraint,
+  BetaConstraint,
+  ChapterDistribution,
+  SectionName,
+  Chapter,
+  ConstraintConfig
+} from '../types';
+import { generateAlphaConstraint, validateGeneratedConstraints } from '../utils/constraintAlgorithm';
 
 interface SectionConfigurationProps {
   sectionName: SectionName;
   chapters: Chapter[];
+  constraintConfig: ConstraintConfig;
+  onConfigChange: (config: ConstraintConfig) => void;
   onConfigure: (alpha: AlphaConstraint, beta: BetaConstraint) => void;
   onSkip: () => void;
 }
@@ -14,46 +24,94 @@ interface SectionConfigurationProps {
 export const SectionConfiguration: React.FC<SectionConfigurationProps> = ({
   sectionName,
   chapters,
+  constraintConfig,
+  onConfigChange,
   onConfigure,
   onSkip
 }) => {
-  const [alphaData, setAlphaData] = useState<ChapterDistribution[]>(
-    chapters.map(ch => ({
-      chapterCode: ch.code,
-      chapterName: ch.name,
-      a: 0,
-      b: 0,
-      e: 0,
-      m: 0,
-      h: 0
-    }))
-  );
-
+  const [alphaData, setAlphaData] = useState<ChapterDistribution[]>([]);
   const [betaData] = useState<BetaConstraint>({});
+  const [showConfig, setShowConfig] = useState(false);
 
+  // Auto-generate constraints on mount and when config or chapters change
   useEffect(() => {
-    // Update alpha data when chapters change
-    setAlphaData(chapters.map(ch => {
-      const existing = alphaData.find(a => a.chapterCode === ch.code);
-      return existing || {
-        chapterCode: ch.code,
-        chapterName: ch.name,
-        a: 0,
-        b: 0,
-        e: 0,
-        m: 0,
-        h: 0
-      };
-    }));
+    if (chapters.length > 0) {
+      autoGenerate();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chapters]);
+  }, [chapters, constraintConfig]);
+
+  const autoGenerate = () => {
+    try {
+      const generated = generateAlphaConstraint(chapters, constraintConfig);
+      const validation = validateGeneratedConstraints(generated);
+
+      if (!validation.isValid) {
+        console.error('Auto-generation validation failed:', validation.errors);
+        return;
+      }
+
+      setAlphaData(generated);
+    } catch (error) {
+      console.error('Error during auto-generation:', error);
+    }
+  };
+
+  const validateEdit = (
+    index: number,
+    field: keyof ChapterDistribution,
+    newValue: number
+  ): { isValid: boolean; error?: string } => {
+    const testData = [...alphaData];
+    testData[index] = { ...testData[index], [field]: newValue };
+
+    // Check if difficulty sum equals a + b for this chapter
+    if (field === 'e' || field === 'm' || field === 'h' || field === 'a' || field === 'b') {
+      const chapter = testData[index];
+      const difficultySum = chapter.e + chapter.m + chapter.h;
+      const totalQuestions = chapter.a + chapter.b;
+
+      if (difficultySum !== totalQuestions) {
+        return {
+          isValid: false,
+          error: `Difficulty sum (${difficultySum}) must equal A+B (${totalQuestions})`
+        };
+      }
+    }
+
+    // Check global totals
+    const totals = testData.reduce(
+      (acc, curr) => ({
+        a: acc.a + curr.a,
+        b: acc.b + curr.b
+      }),
+      { a: 0, b: 0 }
+    );
+
+    if (field === 'a' && totals.a > 20) {
+      return { isValid: false, error: 'Total A cannot exceed 20' };
+    }
+
+    if (field === 'b' && totals.b > 5) {
+      return { isValid: false, error: 'Total B cannot exceed 5' };
+    }
+
+    return { isValid: true };
+  };
 
   const updateChapter = (index: number, field: keyof ChapterDistribution, value: number) => {
-    const newData = [...alphaData];
-    if (field !== 'chapterName' && field !== 'chapterCode') {
-      newData[index] = { ...newData[index], [field]: value };
-      setAlphaData(newData);
+    if (field === 'chapterName' || field === 'chapterCode') return;
+
+    // Validate the edit
+    const validation = validateEdit(index, field, value);
+    if (!validation.isValid) {
+      alert(`Invalid edit: ${validation.error}`);
+      return;
     }
+
+    const newData = [...alphaData];
+    newData[index] = { ...newData[index], [field]: value };
+    setAlphaData(newData);
   };
 
   const getTotals = () => {
@@ -78,6 +136,12 @@ export const SectionConfiguration: React.FC<SectionConfigurationProps> = ({
     }
   };
 
+  const handleReset = () => {
+    if (confirm('Reset to auto-generated constraints? This will discard your manual edits.')) {
+      autoGenerate();
+    }
+  };
+
   return (
     <div className="section-configuration">
       <h2>Configure {sectionName} Section</h2>
@@ -91,6 +155,102 @@ export const SectionConfiguration: React.FC<SectionConfigurationProps> = ({
           <li>Total of 5 questions in Division 2 (B)</li>
           <li>Difficulty distribution: Easy (E), Medium (M), Hard (H)</li>
         </ul>
+      </div>
+
+      {/* Auto-Generation Configuration Panel */}
+      <div className="auto-gen-panel">
+        <div className="auto-gen-header">
+          <h3>Constraint Auto-Generation</h3>
+          <button
+            type="button"
+            className="btn-toggle"
+            onClick={() => setShowConfig(!showConfig)}
+          >
+            {showConfig ? 'Hide' : 'Show'} Algorithm Settings
+          </button>
+        </div>
+
+        {showConfig && (
+          <div className="config-panel">
+            <p className="info-text">
+              Configure the algorithm parameters for auto-generating constraints based on chapter importance levels.
+            </p>
+            <div className="config-inputs">
+              <div className="config-input-group">
+                <label>
+                  <strong>Min Questions/Chapter (min_idx):</strong>
+                  <input
+                    type="number"
+                    min="0"
+                    max="5"
+                    value={constraintConfig.minIdx}
+                    onChange={(e) =>
+                      onConfigChange({
+                        ...constraintConfig,
+                        minIdx: parseInt(e.target.value) || 0
+                      })
+                    }
+                  />
+                </label>
+                <span className="hint">Minimum questions per chapter (typically 0-1)</span>
+              </div>
+
+              <div className="config-input-group">
+                <label>
+                  <strong>Medium Slope (Sm):</strong>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="-0.5"
+                    max="0.5"
+                    value={constraintConfig.Sm}
+                    onChange={(e) =>
+                      onConfigChange({
+                        ...constraintConfig,
+                        Sm: parseFloat(e.target.value) || 0
+                      })
+                    }
+                  />
+                </label>
+                <span className="hint">Effect of weight on medium difficulty (typically 0.1)</span>
+              </div>
+
+              <div className="config-input-group">
+                <label>
+                  <strong>Hard Slope (Sh):</strong>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="-0.5"
+                    max="0.5"
+                    value={constraintConfig.Sh}
+                    onChange={(e) =>
+                      onConfigChange({
+                        ...constraintConfig,
+                        Sh: parseFloat(e.target.value) || 0
+                      })
+                    }
+                  />
+                </label>
+                <span className="hint">Effect of weight on hard difficulty (typically 0.1)</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="auto-gen-info">
+          <p className="auto-gen-status">
+            ✓ Constraints auto-generated based on chapter importance levels.
+            You can manually edit values below (edits must respect constraints).
+          </p>
+          <button
+            type="button"
+            className="btn-reset"
+            onClick={handleReset}
+          >
+            ↺ Reset to Auto-Generated
+          </button>
+        </div>
       </div>
 
       <div className="alpha-configuration">

@@ -9,6 +9,7 @@ export type Difficulty = 'E' | 'M' | 'H'; // Easy, Medium, Hard
 export interface Chapter {
   code: string; // e.g., "PHY01", "CHE01", "MAT01"
   name: string; // e.g., "Mechanics", "Organic Chemistry"
+  level: number; // Importance/weightage (1-4): 1=low, 2=medium, 3=high, 4=very high
 }
 
 // Chapters data structure
@@ -102,4 +103,11 @@ export interface SelectionSummary {
     required_m: number;
     required_h: number;
   };
+}
+
+// Global configuration for constraint generation algorithm
+export interface ConstraintConfig {
+  minIdx: number; // Minimum questions per chapter (e.g., 0 or 1)
+  Sm: number; // Slope for medium difficulty weight effect
+  Sh: number; // Slope for hard difficulty weight effect
 }
