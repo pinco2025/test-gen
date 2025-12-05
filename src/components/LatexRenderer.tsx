@@ -14,7 +14,6 @@ interface LatexRendererProps {
  */
 export const LatexRenderer: React.FC<LatexRendererProps> = ({
   content,
-  block = false,
   className = ''
 }) => {
   if (!content) return null;

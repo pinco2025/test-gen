@@ -28,7 +28,7 @@ export const SectionConfiguration: React.FC<SectionConfigurationProps> = ({
     }))
   );
 
-  const [betaData, setBetaData] = useState<BetaConstraint>({});
+  const [betaData] = useState<BetaConstraint>({});
 
   useEffect(() => {
     // Update alpha data when chapters change
@@ -43,6 +43,7 @@ export const SectionConfiguration: React.FC<SectionConfigurationProps> = ({
         h: 0
       };
     }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chapters]);
 
   const updateChapter = (index: number, field: keyof ChapterDistribution, value: number) => {
