@@ -73,6 +73,23 @@ export class DatabaseService {
   }
 
   /**
+   * Get questions by chapter codes (using tag_2)
+   * Chapter codes are stored in tag_2 field (e.g., PHY01, CHE01, MAT01)
+   */
+  getQuestionsByChapterCodes(type: string, chapterCodes: string[]): Question[] {
+    if (!this.db) throw new Error('Database not connected');
+
+    if (chapterCodes.length === 0) return [];
+
+    const placeholders = chapterCodes.map(() => '?').join(',');
+    const query = `SELECT * FROM questions WHERE type = ? AND tag_2 IN (${placeholders})`;
+    const params = [type, ...chapterCodes];
+
+    const stmt = this.db.prepare(query);
+    return stmt.all(...params) as Question[];
+  }
+
+  /**
    * Get all unique values for a column
    */
   getUniqueValues(column: string): string[] {

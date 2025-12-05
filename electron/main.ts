@@ -112,6 +112,10 @@ ipcMain.handle('questions:getCount', async (_, filter?: QuestionFilter): Promise
   return dbService.getQuestionCount(filter);
 });
 
+ipcMain.handle('questions:getByChapterCodes', async (_, type: string, chapterCodes: string[]): Promise<Question[]> => {
+  return dbService.getQuestionsByChapterCodes(type, chapterCodes);
+});
+
 // Metadata queries
 ipcMain.handle('db:getTypes', async (): Promise<string[]> => {
   return dbService.getTypes();
