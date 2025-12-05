@@ -1,0 +1,49 @@
+CREATE TABLE IF NOT EXISTS questions (
+    -- Primary identifier
+    uuid TEXT PRIMARY KEY,                      -- 12-character unique identifier
+    
+    -- Question content
+    question TEXT NOT NULL,                     -- The question text
+    question_schematic TEXT,                    -- LaTeX code for question schematic
+    question_schematic_type TEXT,               -- Type: chemfig, circuitikz, tikz, none
+    question_schematic_packages TEXT,           -- JSON array of required packages
+    
+    -- Option A
+    option_a TEXT,                              -- Option A text
+    option_a_schematic TEXT,                    -- LaTeX code for option A schematic
+    option_a_schematic_type TEXT,               -- Type: chemfig, circuitikz, tikz, none
+    option_a_schematic_packages TEXT,           -- JSON array of required packages
+    
+    -- Option B
+    option_b TEXT,                              -- Option B text
+    option_b_schematic TEXT,                    -- LaTeX code for option B schematic
+    option_b_schematic_type TEXT,               -- Type: chemfig, circuitikz, tikz, none
+    option_b_schematic_packages TEXT,           -- JSON array of required packages
+    
+    -- Option C
+    option_c TEXT,                              -- Option C text
+    option_c_schematic TEXT,                    -- LaTeX code for option C schematic
+    option_c_schematic_type TEXT,               -- Type: chemfig, circuitikz, tikz, none
+    option_c_schematic_packages TEXT,           -- JSON array of required packages
+    
+    -- Option D
+    option_d TEXT,                              -- Option D text
+    option_d_schematic TEXT,                    -- LaTeX code for option D schematic
+    option_d_schematic_type TEXT,               -- Type: chemfig, circuitikz, tikz, none
+    option_d_schematic_packages TEXT,           -- JSON array of required packages
+    
+    -- Answer and metadata
+    answer TEXT NOT NULL,                       -- Correct answer: A, B, C, or D
+    type TEXT NOT NULL,                         -- Question type: chemistry, physics, etc.
+    year TEXT,                                  -- Year of question (optional)
+    
+    -- Tags (configurable, default is 4)
+    tag_1 TEXT,                                 -- First tag
+    tag_2 TEXT,                                 -- Second tag
+    tag_3 TEXT,                                 -- Third tag
+    tag_4 TEXT,                                 -- Fourth tag
+    
+    -- Timestamps
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- When record was created
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP   -- When record was last updated
+);
