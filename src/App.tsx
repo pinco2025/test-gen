@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Test,
   TestMetadata,
@@ -29,7 +29,6 @@ type WorkflowStep =
 function App() {
   const [step, setStep] = useState<WorkflowStep>('database-connect');
   const [dbConnected, setDbConnected] = useState(false);
-  const [dbPath, setDbPath] = useState<string>('');
 
   // Metadata
   const [availableTags, setAvailableTags] = useState<string[]>([]);
@@ -41,7 +40,7 @@ function App() {
   const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
 
   // Temporary storage for section chapters
-  const [sectionsChapters, setSectionsChapters] = useState<string[][]>([]);
+  const [, setSectionsChapters] = useState<string[][]>([]);
 
   useEffect(() => {
     checkDatabaseConnection();
@@ -71,8 +70,7 @@ function App() {
   const handleDatabaseSelect = async () => {
     if (window.electronAPI) {
       const result = await window.electronAPI.db.selectFile();
-      if (result.success && result.path) {
-        setDbPath(result.path);
+      if (result.success) {
         setDbConnected(true);
         await loadMetadata();
         setStep('test-creation');

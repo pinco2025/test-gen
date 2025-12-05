@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Question,
   AlphaConstraint,
@@ -27,7 +27,6 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
   sectionName,
   chapters,
   alphaConstraint,
-  betaConstraint,
   availableQuestions,
   onComplete,
   onBack
