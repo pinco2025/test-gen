@@ -29,44 +29,89 @@ export const SectionConfiguration: React.FC<SectionConfigurationProps> = ({
   onConfigure,
   onSkip
 }) => {
-  const [alphaData, setAlphaData] = useState<ChapterDistribution[]>(
-    chapters.map(ch => ({
-      chapterCode: ch.code,
-      chapterName: ch.name,
-      a: 0,
-      b: 0,
-      e: 0,
-      m: 0,
-      h: 0
-    }))
-  );
-
+  const [alphaData, setAlphaData] = useState<ChapterDistribution[]>([]);
   const [betaData] = useState<BetaConstraint>({});
   const [showConfig, setShowConfig] = useState(false);
 
+  // Auto-generate constraints on mount and when config or chapters change
   useEffect(() => {
-    // Update alpha data when chapters change
-    setAlphaData(chapters.map(ch => {
-      const existing = alphaData.find(a => a.chapterCode === ch.code);
-      return existing || {
-        chapterCode: ch.code,
-        chapterName: ch.name,
-        a: 0,
-        b: 0,
-        e: 0,
-        m: 0,
-        h: 0
-      };
-    }));
+    if (chapters.length > 0) {
+      autoGenerate();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chapters]);
+  }, [chapters, constraintConfig]);
+
+  const autoGenerate = () => {
+    try {
+      const generated = generateAlphaConstraint(chapters, constraintConfig);
+      const validation = validateGeneratedConstraints(generated);
+
+      if (!validation.isValid) {
+        console.error('Auto-generation validation failed:', validation.errors);
+        return;
+      }
+
+      setAlphaData(generated);
+    } catch (error) {
+      console.error('Error during auto-generation:', error);
+    }
+  };
+
+  const validateEdit = (
+    index: number,
+    field: keyof ChapterDistribution,
+    newValue: number
+  ): { isValid: boolean; error?: string } => {
+    const testData = [...alphaData];
+    testData[index] = { ...testData[index], [field]: newValue };
+
+    // Check if difficulty sum equals a + b for this chapter
+    if (field === 'e' || field === 'm' || field === 'h' || field === 'a' || field === 'b') {
+      const chapter = testData[index];
+      const difficultySum = chapter.e + chapter.m + chapter.h;
+      const totalQuestions = chapter.a + chapter.b;
+
+      if (difficultySum !== totalQuestions) {
+        return {
+          isValid: false,
+          error: `Difficulty sum (${difficultySum}) must equal A+B (${totalQuestions})`
+        };
+      }
+    }
+
+    // Check global totals
+    const totals = testData.reduce(
+      (acc, curr) => ({
+        a: acc.a + curr.a,
+        b: acc.b + curr.b
+      }),
+      { a: 0, b: 0 }
+    );
+
+    if (field === 'a' && totals.a > 20) {
+      return { isValid: false, error: 'Total A cannot exceed 20' };
+    }
+
+    if (field === 'b' && totals.b > 5) {
+      return { isValid: false, error: 'Total B cannot exceed 5' };
+    }
+
+    return { isValid: true };
+  };
 
   const updateChapter = (index: number, field: keyof ChapterDistribution, value: number) => {
-    const newData = [...alphaData];
-    if (field !== 'chapterName' && field !== 'chapterCode') {
-      newData[index] = { ...newData[index], [field]: value };
-      setAlphaData(newData);
+    if (field === 'chapterName' || field === 'chapterCode') return;
+
+    // Validate the edit
+    const validation = validateEdit(index, field, value);
+    if (!validation.isValid) {
+      alert(`Invalid edit: ${validation.error}`);
+      return;
     }
+
+    const newData = [...alphaData];
+    newData[index] = { ...newData[index], [field]: value };
+    setAlphaData(newData);
   };
 
   const getTotals = () => {
@@ -91,19 +136,9 @@ export const SectionConfiguration: React.FC<SectionConfigurationProps> = ({
     }
   };
 
-  const handleAutoGenerate = () => {
-    try {
-      const generated = generateAlphaConstraint(chapters, constraintConfig);
-      const validation = validateGeneratedConstraints(generated);
-
-      if (!validation.isValid) {
-        alert('Auto-generation failed:\n' + validation.errors.join('\n'));
-        return;
-      }
-
-      setAlphaData(generated);
-    } catch (error) {
-      alert('Error during auto-generation: ' + (error as Error).message);
+  const handleReset = () => {
+    if (confirm('Reset to auto-generated constraints? This will discard your manual edits.')) {
+      autoGenerate();
     }
   };
 
@@ -203,22 +238,23 @@ export const SectionConfiguration: React.FC<SectionConfigurationProps> = ({
           </div>
         )}
 
-        <div className="auto-gen-actions">
+        <div className="auto-gen-info">
+          <p className="auto-gen-status">
+            ✓ Constraints auto-generated based on chapter importance levels.
+            You can manually edit values below (edits must respect constraints).
+          </p>
           <button
             type="button"
-            className="btn-auto-generate"
-            onClick={handleAutoGenerate}
+            className="btn-reset"
+            onClick={handleReset}
           >
-            🎲 Auto-Generate Constraints
+            ↺ Reset to Auto-Generated
           </button>
-          <span className="auto-gen-hint">
-            Generates constraints based on chapter importance levels and algorithm settings
-          </span>
         </div>
       </div>
 
       <div className="alpha-configuration">
-        <h3>Alpha Constraints (Manual/Auto-Generated)</h3>
+        <h3>Alpha Constraints</h3>
 
         <table className="alpha-table">
           <thead>
