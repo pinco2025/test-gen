@@ -7,7 +7,8 @@ import {
   Question,
   AlphaConstraint,
   BetaConstraint,
-  SelectedQuestion
+  SelectedQuestion,
+  Chapter
 } from './types';
 import TestCreationForm from './components/TestCreationForm';
 import SectionConfiguration from './components/SectionConfiguration';
@@ -30,17 +31,10 @@ function App() {
   const [step, setStep] = useState<WorkflowStep>('database-connect');
   const [dbConnected, setDbConnected] = useState(false);
 
-  // Metadata
-  const [availableTags, setAvailableTags] = useState<string[]>([]);
-  const [availableQuestions, setAvailableQuestions] = useState<Question[]>([]);
-
   // Test data
   const [testMetadata, setTestMetadata] = useState<TestMetadata | null>(null);
   const [sections, setSections] = useState<SectionConfig[]>([]);
   const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
-
-  // Temporary storage for section chapters
-  const [, setSectionsChapters] = useState<string[][]>([]);
 
   useEffect(() => {
     checkDatabaseConnection();
@@ -51,19 +45,8 @@ function App() {
       const connected = await window.electronAPI.db.isConnected();
       setDbConnected(connected);
       if (connected) {
-        loadMetadata();
         setStep('test-creation');
       }
-    }
-  };
-
-  const loadMetadata = async () => {
-    if (window.electronAPI) {
-      const tags = await window.electronAPI.db.getTags();
-      setAvailableTags(tags);
-
-      const questions = await window.electronAPI.questions.getAll();
-      setAvailableQuestions(questions);
     }
   };
 
@@ -72,7 +55,6 @@ function App() {
       const result = await window.electronAPI.db.selectFile();
       if (result.success) {
         setDbConnected(true);
-        await loadMetadata();
         setStep('test-creation');
       } else {
         alert('Failed to connect to database: ' + result.error);
@@ -80,9 +62,8 @@ function App() {
     }
   };
 
-  const handleTestCreation = (metadata: TestMetadata, chapters: string[][]) => {
+  const handleTestCreation = (metadata: TestMetadata, chapters: Chapter[][]) => {
     setTestMetadata(metadata);
-    setSectionsChapters(chapters);
 
     // Initialize sections
     const sectionNames: SectionName[] = ['Physics', 'Chemistry', 'Mathematics'];
@@ -125,7 +106,8 @@ function App() {
     const section = sections[currentSectionIndex];
     const defaultAlpha: AlphaConstraint = {
       chapters: section.chapters.map(ch => ({
-        chapterName: ch,
+        chapterCode: ch.code,
+        chapterName: ch.name,
         a: 0,
         b: 0,
         e: 0,
@@ -186,17 +168,28 @@ function App() {
     }
   };
 
-  const getSectionQuestions = (sectionName: SectionName): Question[] => {
-    // Filter questions by section type
+  const getSectionQuestions = async (sectionName: SectionName, chapterCodes: string[]): Promise<Question[]> => {
+    // Filter questions by section type and chapter codes (using tag_2)
     const typeMap: { [key in SectionName]: string } = {
       'Physics': 'physics',
       'Chemistry': 'chemistry',
       'Mathematics': 'mathematics'
     };
 
-    return availableQuestions.filter(
-      q => q.type.toLowerCase() === typeMap[sectionName]
-    );
+    if (!window.electronAPI || chapterCodes.length === 0) {
+      return [];
+    }
+
+    try {
+      const questions = await window.electronAPI.questions.getByChapterCodes(
+        typeMap[sectionName],
+        chapterCodes
+      );
+      return questions;
+    } catch (error) {
+      console.error('Error fetching questions:', error);
+      return [];
+    }
   };
 
   // Render different steps
@@ -217,7 +210,6 @@ function App() {
         return (
           <TestCreationForm
             onSubmit={handleTestCreation}
-            availableTags={availableTags}
           />
         );
 
@@ -243,7 +235,6 @@ function App() {
             chapters={currentSection.chapters}
             alphaConstraint={currentSection.alphaConstraint}
             betaConstraint={currentSection.betaConstraint}
-            availableQuestions={getSectionQuestions(currentSection.name)}
             onComplete={handleQuestionSelection}
             onBack={handleBackFromSelection}
           />

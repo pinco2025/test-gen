@@ -19,7 +19,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getAll: (filter?: QuestionFilter) => ipcRenderer.invoke('questions:getAll', filter),
     getByUUID: (uuid: string) => ipcRenderer.invoke('questions:getByUUID', uuid),
     search: (criteria: any) => ipcRenderer.invoke('questions:search', criteria),
-    getCount: (filter?: QuestionFilter) => ipcRenderer.invoke('questions:getCount', filter)
+    getCount: (filter?: QuestionFilter) => ipcRenderer.invoke('questions:getCount', filter),
+    getByChapterCodes: (type: string, chapterCodes: string[]) => ipcRenderer.invoke('questions:getByChapterCodes', type, chapterCodes)
   },
 
   // Test operations
@@ -45,6 +46,7 @@ declare global {
         getByUUID: (uuid: string) => Promise<Question | null>;
         search: (criteria: any) => Promise<Question[]>;
         getCount: (filter?: QuestionFilter) => Promise<number>;
+        getByChapterCodes: (type: string, chapterCodes: string[]) => Promise<Question[]>;
       };
       test: {
         export: (test: Test) => Promise<{ success: boolean; path?: string; error?: string }>;

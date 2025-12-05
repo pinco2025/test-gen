@@ -5,6 +5,19 @@ export type TestType = 'Part' | 'Full';
 export type SectionName = 'Physics' | 'Chemistry' | 'Mathematics';
 export type Difficulty = 'E' | 'M' | 'H'; // Easy, Medium, Hard
 
+// Chapter definition
+export interface Chapter {
+  code: string; // e.g., "PHY01", "CHE01", "MAT01"
+  name: string; // e.g., "Mechanics", "Organic Chemistry"
+}
+
+// Chapters data structure
+export interface ChaptersData {
+  Physics: Chapter[];
+  Chemistry: Chapter[];
+  Mathematics: Chapter[];
+}
+
 // Alpha constraints for a section
 export interface AlphaConstraint {
   // Chapter-wise distribution
@@ -12,7 +25,8 @@ export interface AlphaConstraint {
 }
 
 export interface ChapterDistribution {
-  chapterName: string;
+  chapterCode: string; // Changed from chapterName to chapterCode
+  chapterName: string; // Added for display purposes
   a: number; // Questions for division 1 (out of 20)
   b: number; // Questions for division 2 (out of 5)
   e: number; // Easy difficulty count
@@ -30,7 +44,7 @@ export interface BetaConstraint {
 // Section configuration
 export interface SectionConfig {
   name: SectionName;
-  chapters: string[]; // List of chapter names
+  chapters: Chapter[]; // List of chapters with code and name
   alphaConstraint: AlphaConstraint;
   betaConstraint: BetaConstraint;
   selectedQuestions: SelectedQuestion[];
@@ -39,7 +53,8 @@ export interface SectionConfig {
 // Selected question with metadata
 export interface SelectedQuestion {
   question: Question;
-  chapter: string;
+  chapterCode: string; // Changed from chapter to chapterCode
+  chapterName: string; // Added for display
   difficulty: Difficulty;
   division: 1 | 2; // 1 for first 20, 2 for last 5
 }
@@ -71,7 +86,8 @@ export interface SelectionSummary {
   division1: number; // Should be 20
   division2: number; // Should be 5
   byChapter: {
-    [chapterName: string]: {
+    [chapterCode: string]: {
+      chapterName: string; // Added for display
       a: number; // Current count
       b: number;
       required_a: number; // From alpha

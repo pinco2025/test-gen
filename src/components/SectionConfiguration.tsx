@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { AlphaConstraint, BetaConstraint, ChapterDistribution, SectionName } from '../types';
+import { AlphaConstraint, BetaConstraint, ChapterDistribution, SectionName, Chapter } from '../types';
 
 interface SectionConfigurationProps {
   sectionName: SectionName;
-  chapters: string[];
+  chapters: Chapter[];
   onConfigure: (alpha: AlphaConstraint, beta: BetaConstraint) => void;
   onSkip: () => void;
 }
@@ -19,7 +19,8 @@ export const SectionConfiguration: React.FC<SectionConfigurationProps> = ({
 }) => {
   const [alphaData, setAlphaData] = useState<ChapterDistribution[]>(
     chapters.map(ch => ({
-      chapterName: ch,
+      chapterCode: ch.code,
+      chapterName: ch.name,
       a: 0,
       b: 0,
       e: 0,
@@ -33,9 +34,10 @@ export const SectionConfiguration: React.FC<SectionConfigurationProps> = ({
   useEffect(() => {
     // Update alpha data when chapters change
     setAlphaData(chapters.map(ch => {
-      const existing = alphaData.find(a => a.chapterName === ch);
+      const existing = alphaData.find(a => a.chapterCode === ch.code);
       return existing || {
-        chapterName: ch,
+        chapterCode: ch.code,
+        chapterName: ch.name,
         a: 0,
         b: 0,
         e: 0,
@@ -48,7 +50,7 @@ export const SectionConfiguration: React.FC<SectionConfigurationProps> = ({
 
   const updateChapter = (index: number, field: keyof ChapterDistribution, value: number) => {
     const newData = [...alphaData];
-    if (field !== 'chapterName') {
+    if (field !== 'chapterName' && field !== 'chapterCode') {
       newData[index] = { ...newData[index], [field]: value };
       setAlphaData(newData);
     }
@@ -110,8 +112,11 @@ export const SectionConfiguration: React.FC<SectionConfigurationProps> = ({
             {alphaData.map((chapter, index) => {
               const rowTotal = chapter.a + chapter.b;
               return (
-                <tr key={chapter.chapterName}>
-                  <td className="chapter-name">{chapter.chapterName}</td>
+                <tr key={chapter.chapterCode}>
+                  <td className="chapter-name">
+                    <span className="chapter-code-small">{chapter.chapterCode}</span>
+                    {chapter.chapterName}
+                  </td>
                   <td>
                     <input
                       type="number"

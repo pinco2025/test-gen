@@ -1,26 +1,30 @@
-import React, { useState } from 'react';
-import { TestMetadata, TestType } from '../types';
+import { useState } from 'react';
+import { TestMetadata, TestType, Chapter } from '../types';
+import chaptersData from '../data/chapters.json';
 
 interface TestCreationFormProps {
-  onSubmit: (metadata: TestMetadata, sectionsChapters: string[][]) => void;
-  availableTags: string[];
+  onSubmit: (metadata: TestMetadata, sectionsChapters: Chapter[][]) => void;
 }
 
 /**
  * Form to collect initial test details
  */
 export const TestCreationForm: React.FC<TestCreationFormProps> = ({
-  onSubmit,
-  availableTags
+  onSubmit
 }) => {
   const [code, setCode] = useState('');
   const [description, setDescription] = useState('');
   const [testType, setTestType] = useState<TestType>('Full');
 
-  // Chapters for each section (Physics, Chemistry, Mathematics)
-  const [physicsChapters, setPhysicsChapters] = useState<string[]>([]);
-  const [chemistryChapters, setChemistryChapters] = useState<string[]>([]);
-  const [mathChapters, setMathChapters] = useState<string[]>([]);
+  // Chapters for each section
+  const [physicsChapters, setPhysicsChapters] = useState<Chapter[]>([]);
+  const [chemistryChapters, setChemistryChapters] = useState<Chapter[]>([]);
+  const [mathChapters, setMathChapters] = useState<Chapter[]>([]);
+
+  // Search terms for each section
+  const [physicsSearch, setPhysicsSearch] = useState('');
+  const [chemistrySearch, setChemistrySearch] = useState('');
+  const [mathSearch, setMathSearch] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,7 +43,7 @@ export const TestCreationForm: React.FC<TestCreationFormProps> = ({
 
   const handleChapterToggle = (
     section: 'physics' | 'chemistry' | 'math',
-    chapter: string
+    chapter: Chapter
   ) => {
     const setters = {
       physics: setPhysicsChapters,
@@ -56,11 +60,37 @@ export const TestCreationForm: React.FC<TestCreationFormProps> = ({
     const current = getters[section];
     const setter = setters[section];
 
-    if (current.includes(chapter)) {
-      setter(current.filter(c => c !== chapter));
+    const isSelected = current.some(ch => ch.code === chapter.code);
+    if (isSelected) {
+      setter(current.filter(c => c.code !== chapter.code));
     } else {
       setter([...current, chapter]);
     }
+  };
+
+  const isChapterSelected = (
+    section: 'physics' | 'chemistry' | 'math',
+    chapterCode: string
+  ): boolean => {
+    const getters = {
+      physics: physicsChapters,
+      chemistry: chemistryChapters,
+      math: mathChapters
+    };
+    return getters[section].some(ch => ch.code === chapterCode);
+  };
+
+  const getFilteredChapters = (
+    sectionChapters: Chapter[],
+    searchTerm: string
+  ): Chapter[] => {
+    if (!searchTerm.trim()) return sectionChapters;
+    const lower = searchTerm.toLowerCase();
+    return sectionChapters.filter(
+      ch =>
+        ch.name.toLowerCase().includes(lower) ||
+        ch.code.toLowerCase().includes(lower)
+    );
   };
 
   const isFormValid = () => {
@@ -122,51 +152,98 @@ export const TestCreationForm: React.FC<TestCreationFormProps> = ({
           <h3>Select Chapters for Each Section</h3>
 
           <div className="section-chapters">
+            {/* Section 1: Physics */}
             <div className="chapter-group">
-              <h4>Physics ({physicsChapters.length} selected)</h4>
+              <h4>Section 1: Physics ({physicsChapters.length} selected)</h4>
+              <input
+                type="text"
+                className="chapter-search"
+                placeholder="Search chapters..."
+                value={physicsSearch}
+                onChange={(e) => setPhysicsSearch(e.target.value)}
+              />
               <div className="chapter-list">
-                {availableTags.map((chapter) => (
-                  <label key={`physics-${chapter}`} className="checkbox-label">
-                    <input
-                      type="checkbox"
-                      checked={physicsChapters.includes(chapter)}
-                      onChange={() => handleChapterToggle('physics', chapter)}
-                    />
-                    {chapter}
-                  </label>
-                ))}
+                {getFilteredChapters(chaptersData.Physics, physicsSearch).map(
+                  (chapter) => (
+                    <label
+                      key={chapter.code}
+                      className="checkbox-label"
+                      title={chapter.code}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChapterSelected('physics', chapter.code)}
+                        onChange={() => handleChapterToggle('physics', chapter)}
+                      />
+                      <span className="chapter-code">{chapter.code}</span>
+                      <span className="chapter-name">{chapter.name}</span>
+                    </label>
+                  )
+                )}
               </div>
             </div>
 
+            {/* Section 2: Chemistry */}
             <div className="chapter-group">
-              <h4>Chemistry ({chemistryChapters.length} selected)</h4>
+              <h4>Section 2: Chemistry ({chemistryChapters.length} selected)</h4>
+              <input
+                type="text"
+                className="chapter-search"
+                placeholder="Search chapters..."
+                value={chemistrySearch}
+                onChange={(e) => setChemistrySearch(e.target.value)}
+              />
               <div className="chapter-list">
-                {availableTags.map((chapter) => (
-                  <label key={`chemistry-${chapter}`} className="checkbox-label">
-                    <input
-                      type="checkbox"
-                      checked={chemistryChapters.includes(chapter)}
-                      onChange={() => handleChapterToggle('chemistry', chapter)}
-                    />
-                    {chapter}
-                  </label>
-                ))}
+                {getFilteredChapters(chaptersData.Chemistry, chemistrySearch).map(
+                  (chapter) => (
+                    <label
+                      key={chapter.code}
+                      className="checkbox-label"
+                      title={chapter.code}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChapterSelected('chemistry', chapter.code)}
+                        onChange={() =>
+                          handleChapterToggle('chemistry', chapter)
+                        }
+                      />
+                      <span className="chapter-code">{chapter.code}</span>
+                      <span className="chapter-name">{chapter.name}</span>
+                    </label>
+                  )
+                )}
               </div>
             </div>
 
+            {/* Section 3: Mathematics */}
             <div className="chapter-group">
-              <h4>Mathematics ({mathChapters.length} selected)</h4>
+              <h4>Section 3: Mathematics ({mathChapters.length} selected)</h4>
+              <input
+                type="text"
+                className="chapter-search"
+                placeholder="Search chapters..."
+                value={mathSearch}
+                onChange={(e) => setMathSearch(e.target.value)}
+              />
               <div className="chapter-list">
-                {availableTags.map((chapter) => (
-                  <label key={`math-${chapter}`} className="checkbox-label">
-                    <input
-                      type="checkbox"
-                      checked={mathChapters.includes(chapter)}
-                      onChange={() => handleChapterToggle('math', chapter)}
-                    />
-                    {chapter}
-                  </label>
-                ))}
+                {getFilteredChapters(chaptersData.Mathematics, mathSearch).map(
+                  (chapter) => (
+                    <label
+                      key={chapter.code}
+                      className="checkbox-label"
+                      title={chapter.code}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isChapterSelected('math', chapter.code)}
+                        onChange={() => handleChapterToggle('math', chapter)}
+                      />
+                      <span className="chapter-code">{chapter.code}</span>
+                      <span className="chapter-name">{chapter.name}</span>
+                    </label>
+                  )
+                )}
               </div>
             </div>
           </div>
