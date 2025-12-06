@@ -34,14 +34,6 @@
   font-size: 0.9rem;
 }
 
-.save-status {
-  background: #3498db;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  font-size: 0.85rem;
-  color: white;
-}
-
 .app-content {
   flex: 1;
   overflow-y: auto;

@@ -48,7 +48,6 @@ function App() {
   });
 
   // Auto-save state
-  const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isLoadingRef = useRef(false);
 
@@ -104,7 +103,6 @@ function App() {
       };
 
       await window.electronAPI.project.save(projectState);
-      setLastSaved(new Date());
 
       // Refresh project list
       const updatedProjects = await window.electronAPI.project.list();
@@ -451,11 +449,6 @@ function App() {
         <h1>JEE Test Generator</h1>
         <div className="header-right">
           {dbConnected && <div className="db-status">Database: Connected</div>}
-          {lastSaved && (
-            <div className="save-status">
-              Auto-saved {lastSaved.toLocaleTimeString()}
-            </div>
-          )}
         </div>
       </div>
       {dbConnected && projects.length > 0 && (
