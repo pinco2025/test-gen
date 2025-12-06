@@ -73,7 +73,7 @@ export const QuestionDisplay: React.FC<QuestionDisplayProps> = ({
             <span style={{
               backgroundColor: '#f3e5f5',
               color: '#7b1fa2',
-              padding: '4px 10px',
+              padding: '2px 8px',
               borderRadius: '4px',
               fontSize: '13px',
               fontWeight: '600'
@@ -108,7 +108,7 @@ export const QuestionDisplay: React.FC<QuestionDisplayProps> = ({
             <span style={{
               backgroundColor: '#e0f2f1',
               color: '#00695c',
-              padding: '4px 10px',
+              padding: '4px 8px',
               borderRadius: '4px',
               fontSize: '13px',
               fontWeight: '600'
@@ -126,11 +126,11 @@ export const QuestionDisplay: React.FC<QuestionDisplayProps> = ({
             <span style={{
               backgroundColor: difficultyColors.bg,
               color: difficultyColors.color,
-              padding: '4px 10px',
+              padding: '4px 8px',
               borderRadius: '4px',
               fontSize: '13px',
               fontWeight: '600'
-            }}>{difficultyLabel}</span>
+            }}>{question.tag_3}</span>
           </div>
         )}
 
@@ -206,16 +206,6 @@ export const QuestionDisplay: React.FC<QuestionDisplayProps> = ({
           <strong>Answer: {question.answer}</strong>
         </div>
       )}
-
-      <div className="question-tags">
-        {[question.tag_1, question.tag_2, question.tag_3, question.tag_4]
-          .filter(Boolean)
-          .map((tag, idx) => (
-            <span key={idx} className="tag">
-              {tag}
-            </span>
-          ))}
-      </div>
     </div>
   );
 };
