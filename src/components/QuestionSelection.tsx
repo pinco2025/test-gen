@@ -79,22 +79,35 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sectionName, chapters]);
 
-  // Helper function to check if a question has nil options (numerical type)
+  // Helper function to check if a question should go to Division 2 (B)
+  // Criteria: Either nil options OR numerical answer
   const hasNilOptions = (question: Question): boolean => {
-    // Check if all options are null, undefined, empty string, or whitespace only
+    // Check 1: All options are null, undefined, empty string, or whitespace only
     const hasNoOptionA = !question.option_a || question.option_a.trim() === '';
     const hasNoOptionB = !question.option_b || question.option_b.trim() === '';
     const hasNoOptionC = !question.option_c || question.option_c.trim() === '';
     const hasNoOptionD = !question.option_d || question.option_d.trim() === '';
 
-    const isNilOptions = hasNoOptionA && hasNoOptionB && hasNoOptionC && hasNoOptionD;
+    const allOptionsNil = hasNoOptionA && hasNoOptionB && hasNoOptionC && hasNoOptionD;
+
+    // Check 2: Answer is numerical (not A, B, C, or D)
+    const answerUpper = question.answer.toUpperCase().trim();
+    const isNumericalAnswer = !['A', 'B', 'C', 'D'].includes(answerUpper);
+
+    // Division 2 if EITHER condition is true
+    const isDivision2 = allOptionsNil || isNumericalAnswer;
 
     // Debug logging
-    if (isNilOptions) {
-      console.log(`[NIL-OPTIONS] Question ${question.uuid} has nil options - will be assigned to Division 2`);
+    if (isDivision2) {
+      console.log(`[DIVISION-2] Question ${question.uuid}:`, {
+        allOptionsNil,
+        isNumericalAnswer,
+        answer: question.answer,
+        reason: allOptionsNil ? 'All options are nil' : 'Numerical answer'
+      });
     }
 
-    return isNilOptions;
+    return isDivision2;
   };
 
   // Auto-correct existing selections: move nil-options from Division 1 to Division 2
@@ -350,10 +363,13 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
             )}
 
             {filteredQuestions.map(question => {
-              const isNilOptionsQuestion = hasNilOptions(question);
+              const isDivision2Question = hasNilOptions(question);
+              const answerUpper = question.answer.toUpperCase().trim();
+              const isNumericalAnswer = !['A', 'B', 'C', 'D'].includes(answerUpper);
+
               return (
               <div key={question.uuid} className="selectable-question">
-                {isNilOptionsQuestion && (
+                {isDivision2Question && (
                   <div className="nil-options-badge" style={{
                     background: '#ff9800',
                     color: 'white',
@@ -364,7 +380,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
                     marginBottom: '8px',
                     display: 'inline-block'
                   }}>
-                    📝 NUMERICAL TYPE - Division 2 (B) Only
+                    📝 {isNumericalAnswer ? `NUMERICAL ANSWER (${question.answer})` : 'NIL OPTIONS'} - Division 2 (B) Only
                   </div>
                 )}
                 <QuestionDisplay
@@ -376,8 +392,13 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
                     // Check if question has nil options (numerical type)
                     const isNilOptions = hasNilOptions(question);
 
+                    const answerUpper = question.answer.toUpperCase().trim();
+                    const isNumericalAnswer = !['A', 'B', 'C', 'D'].includes(answerUpper);
+
                     console.log(`[SELECTION] Question ${question.uuid}:`, {
                       isNilOptions,
+                      answer: question.answer,
+                      isNumericalAnswer,
                       option_a: question.option_a,
                       option_b: question.option_b,
                       option_c: question.option_c,
@@ -386,9 +407,12 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
                       currentDiv2: summary.division2
                     });
 
-                    // If nil options question and Division 2 is full, prevent selection
+                    // If Division 2 question and Division 2 is full, prevent selection
                     if (isNilOptions && summary.division2 >= 5) {
-                      alert('Questions with no options (numerical type) can only be placed in Division 2 (B), which is already full (5/5).');
+                      const reason = isNumericalAnswer
+                        ? `numerical answer (${question.answer})`
+                        : 'nil options';
+                      alert(`This question has ${reason} and can only be placed in Division 2 (B), which is already full (5/5).`);
                       return;
                     }
 
