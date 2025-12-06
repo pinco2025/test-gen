@@ -51,6 +51,9 @@ function App() {
   // Database state
   const [dbConnected, setDbConnected] = useState(false);
 
+  // Track when creating a new project
+  const [isCreatingNew, setIsCreatingNew] = useState(false);
+
   // Auto-save state
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isLoadingRef = useRef(false);
@@ -59,7 +62,8 @@ function App() {
   const currentProject = currentProjectId ? projectsData[currentProjectId] : null;
 
   // Current project display state (derived from projectsData)
-  const step = currentProject?.currentStep || (dbConnected ? 'dashboard' : 'database-connect');
+  const step = currentProject?.currentStep ||
+    (isCreatingNew ? 'test-creation' : (dbConnected ? 'dashboard' : 'database-connect'));
   const testMetadata = currentProject?.testMetadata || null;
   const sections = currentProject?.sections || [];
   const currentSectionIndex = currentProject?.currentSectionIndex || 0;
@@ -191,6 +195,7 @@ function App() {
 
     // Switch to this project
     setCurrentProjectId(projectId);
+    setIsCreatingNew(false);
 
     // Update config
     await window.electronAPI.config.update({ lastProjectId: projectId });
@@ -201,6 +206,7 @@ function App() {
   // Create new project
   const createNewProject = () => {
     setCurrentProjectId(null);
+    setIsCreatingNew(true);
   };
 
   // Close project (remove from memory only, keep on disk)
@@ -326,6 +332,7 @@ function App() {
 
     // Switch to new project
     setCurrentProjectId(projectId);
+    setIsCreatingNew(false);
   };
 
   const handleSectionConfiguration = (
