@@ -348,9 +348,13 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
               </div>
             )}
 
-            {filteredQuestions.map(question => {
+            {filteredQuestions.map((question, index) => {
               const isDivision2Question = isNumericalAnswer(question);
               const selected = isQuestionSelected(question.uuid);
+
+              // Get difficulty if question is already selected
+              const selectedQuestion = selectedQuestions.find(sq => sq.question.uuid === question.uuid);
+              const questionDifficulty = selectedQuestion?.difficulty;
 
               return (
               <div
@@ -417,6 +421,8 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
                   showCheckbox={false}
                   isSelected={selected}
                   hideOptions={isDivision2Question}
+                  questionNumber={index + 1}
+                  difficulty={questionDifficulty}
                 />
               </div>
               );

@@ -9,6 +9,8 @@ interface QuestionDisplayProps {
   isSelected?: boolean;
   showCheckbox?: boolean;
   hideOptions?: boolean;
+  questionNumber?: number;
+  difficulty?: 'E' | 'M' | 'H';
 }
 
 /**
@@ -20,8 +22,26 @@ export const QuestionDisplay: React.FC<QuestionDisplayProps> = ({
   onSelect,
   isSelected = false,
   showCheckbox = false,
-  hideOptions = false
+  hideOptions = false,
+  questionNumber,
+  difficulty
 }) => {
+  // Get difficulty color
+  const getDifficultyColor = (diff?: 'E' | 'M' | 'H') => {
+    switch (diff) {
+      case 'E':
+        return { bg: '#e8f5e9', color: '#2e7d32' }; // Green
+      case 'M':
+        return { bg: '#fff3e0', color: '#f57c00' }; // Orange
+      case 'H':
+        return { bg: '#ffebee', color: '#c62828' }; // Red
+      default:
+        return { bg: '#f5f5f5', color: '#666' }; // Gray
+    }
+  };
+
+  const difficultyColors = getDifficultyColor(difficulty);
+  const difficultyLabel = difficulty === 'E' ? 'Easy' : difficulty === 'M' ? 'Medium' : difficulty === 'H' ? 'Hard' : 'Unknown';
   return (
     <div className={`question-card ${isSelected ? 'selected' : ''}`}>
       {showCheckbox && (
@@ -44,6 +64,24 @@ export const QuestionDisplay: React.FC<QuestionDisplayProps> = ({
         borderRadius: '6px',
         flexWrap: 'wrap'
       }}>
+        {questionNumber !== undefined && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <strong style={{ color: '#666', fontSize: '13px' }}>Q#:</strong>
+            <span style={{
+              backgroundColor: '#f3e5f5',
+              color: '#7b1fa2',
+              padding: '6px 12px',
+              borderRadius: '4px',
+              fontSize: '14px',
+              fontWeight: '600'
+            }}>{questionNumber}</span>
+          </div>
+        )}
+
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -60,6 +98,42 @@ export const QuestionDisplay: React.FC<QuestionDisplayProps> = ({
             fontFamily: 'monospace'
           }}>{question.uuid}</span>
         </div>
+
+        {question.tag_2 && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <strong style={{ color: '#666', fontSize: '13px' }}>Chapter:</strong>
+            <span style={{
+              backgroundColor: '#e0f2f1',
+              color: '#00695c',
+              padding: '6px 12px',
+              borderRadius: '4px',
+              fontSize: '14px',
+              fontWeight: '600'
+            }}>{question.tag_2}</span>
+          </div>
+        )}
+
+        {difficulty && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <strong style={{ color: '#666', fontSize: '13px' }}>Difficulty:</strong>
+            <span style={{
+              backgroundColor: difficultyColors.bg,
+              color: difficultyColors.color,
+              padding: '6px 12px',
+              borderRadius: '4px',
+              fontSize: '14px',
+              fontWeight: '600'
+            }}>{difficultyLabel}</span>
+          </div>
+        )}
 
         <div style={{
           display: 'flex',
