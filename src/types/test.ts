@@ -111,3 +111,31 @@ export interface ConstraintConfig {
   Sm: number; // Slope for medium difficulty weight effect
   Sh: number; // Slope for hard difficulty weight effect
 }
+
+// Project state for multi-tab support
+export interface ProjectState {
+  id: string; // Project ID (based on test ID/code)
+  testMetadata: TestMetadata | null;
+  sections: SectionConfig[];
+  currentSectionIndex: number;
+  constraintConfig: ConstraintConfig;
+  currentStep: string; // WorkflowStep as string
+  createdAt: string;
+  lastModified: string;
+}
+
+// Project metadata for listing
+export interface ProjectInfo {
+  id: string;
+  testCode: string;
+  description: string;
+  createdAt: string;
+  lastModified: string;
+  progress: number; // 0-100 percentage
+}
+
+// App configuration
+export interface AppConfig {
+  databasePath: string | null;
+  lastProjectId: string | null;
+}
