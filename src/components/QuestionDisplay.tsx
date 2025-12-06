@@ -8,6 +8,7 @@ interface QuestionDisplayProps {
   onSelect?: () => void;
   isSelected?: boolean;
   showCheckbox?: boolean;
+  hideOptions?: boolean;
 }
 
 /**
@@ -18,7 +19,8 @@ export const QuestionDisplay: React.FC<QuestionDisplayProps> = ({
   showAnswer = false,
   onSelect,
   isSelected = false,
-  showCheckbox = false
+  showCheckbox = false,
+  hideOptions = false
 }) => {
   return (
     <div className={`question-card ${isSelected ? 'selected' : ''}`}>
@@ -45,28 +47,30 @@ export const QuestionDisplay: React.FC<QuestionDisplayProps> = ({
         </div>
       </div>
 
-      <div className="question-options">
-        {['a', 'b', 'c', 'd'].map((option) => {
-          const optionKey = `option_${option}` as keyof Question;
-          const optionText = question[optionKey] as string | null;
+      {!hideOptions && (
+        <div className="question-options">
+          {['a', 'b', 'c', 'd'].map((option) => {
+            const optionKey = `option_${option}` as keyof Question;
+            const optionText = question[optionKey] as string | null;
 
-          if (!optionText) return null;
+            if (!optionText) return null;
 
-          const isCorrect = showAnswer && question.answer.toLowerCase() === option;
+            const isCorrect = showAnswer && question.answer.toLowerCase() === option;
 
-          return (
-            <div
-              key={option}
-              className={`option ${isCorrect ? 'correct-answer' : ''}`}
-            >
-              <span className="option-label">{option.toUpperCase()})</span>
-              <div className="option-content">
-                <LatexRenderer content={optionText} />
+            return (
+              <div
+                key={option}
+                className={`option ${isCorrect ? 'correct-answer' : ''}`}
+              >
+                <span className="option-label">{option.toUpperCase()})</span>
+                <div className="option-content">
+                  <LatexRenderer content={optionText} />
+                </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
       {showAnswer && (
         <div className="question-answer">

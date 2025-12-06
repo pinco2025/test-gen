@@ -80,43 +80,29 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
   }, [sectionName, chapters]);
 
   // Helper function to check if a question should go to Division 2 (B)
-  // Criteria: Either nil options OR numerical answer
-  const hasNilOptions = (question: Question): boolean => {
-    // Check 1: All options are null, undefined, empty string, or whitespace only
-    const hasNoOptionA = !question.option_a || question.option_a.trim() === '';
-    const hasNoOptionB = !question.option_b || question.option_b.trim() === '';
-    const hasNoOptionC = !question.option_c || question.option_c.trim() === '';
-    const hasNoOptionD = !question.option_d || question.option_d.trim() === '';
-
-    const allOptionsNil = hasNoOptionA && hasNoOptionB && hasNoOptionC && hasNoOptionD;
-
-    // Check 2: Answer is numerical (not A, B, C, or D)
+  // Criteria: Answer is numerical (not A, B, C, or D)
+  const isNumericalAnswer = (question: Question): boolean => {
     const answerUpper = question.answer.toUpperCase().trim();
-    const isNumericalAnswer = !['A', 'B', 'C', 'D'].includes(answerUpper);
-
-    // Division 2 if EITHER condition is true
-    const isDivision2 = allOptionsNil || isNumericalAnswer;
+    const isDivision2 = !['A', 'B', 'C', 'D'].includes(answerUpper);
 
     // Debug logging
     if (isDivision2) {
       console.log(`[DIVISION-2] Question ${question.uuid}:`, {
-        allOptionsNil,
-        isNumericalAnswer,
         answer: question.answer,
-        reason: allOptionsNil ? 'All options are nil' : 'Numerical answer'
+        reason: 'Numerical answer'
       });
     }
 
     return isDivision2;
   };
 
-  // Auto-correct existing selections: move nil-options from Division 1 to Division 2
+  // Auto-correct existing selections: move numerical answers from Division 1 to Division 2
   useEffect(() => {
     let correctionsMade = false;
     const correctedSelections = selectedQuestions.map(sq => {
-      // If this question has nil options but is in Division 1, move to Division 2
-      if (hasNilOptions(sq.question) && sq.division === 1) {
-        console.log(`[AUTO-CORRECT] Moving question ${sq.question.uuid} from Division 1 to Division 2 (nil options)`);
+      // If this question has numerical answer but is in Division 1, move to Division 2
+      if (isNumericalAnswer(sq.question) && sq.division === 1) {
+        console.log(`[AUTO-CORRECT] Moving question ${sq.question.uuid} from Division 1 to Division 2 (numerical answer: ${sq.question.answer})`);
         correctionsMade = true;
         return { ...sq, division: 2 as 1 | 2 };
       }
@@ -124,7 +110,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
     });
 
     if (correctionsMade) {
-      console.log('[AUTO-CORRECT] Correcting nil-options questions assignments');
+      console.log('[AUTO-CORRECT] Correcting numerical answer questions assignments');
       setSelectedQuestions(correctedSelections);
     }
   }, [selectedQuestions]);
@@ -363,14 +349,56 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
             )}
 
             {filteredQuestions.map(question => {
-              const isDivision2Question = hasNilOptions(question);
-              const answerUpper = question.answer.toUpperCase().trim();
-              const isNumericalAnswer = !['A', 'B', 'C', 'D'].includes(answerUpper);
+              const isDivision2Question = isNumericalAnswer(question);
+              const selected = isQuestionSelected(question.uuid);
 
               return (
-              <div key={question.uuid} className="selectable-question">
+              <div
+                key={question.uuid}
+                className="selectable-question"
+                onClick={() => {
+                  // Check if question has numerical answer (Division 2 type)
+                  const isDivision2 = isNumericalAnswer(question);
+
+                  console.log(`[SELECTION] Question ${question.uuid}:`, {
+                    isDivision2,
+                    answer: question.answer,
+                    currentDiv1: summary.division1,
+                    currentDiv2: summary.division2
+                  });
+
+                  // If Division 2 question and Division 2 is full, prevent selection
+                  if (isDivision2 && summary.division2 >= 5 && !selected) {
+                    alert(`This question has numerical answer (${question.answer}) and can only be placed in Division 2 (B), which is already full (5/5).`);
+                    return;
+                  }
+
+                  // For MVP: Simple selection
+                  // In production: Show modal to select chapter, difficulty, division
+                  const chapterCode = question.tag_2 || chapters[0].code;
+                  const chapter = chapters.find(ch => ch.code === chapterCode);
+                  const chapterName = chapter ? chapter.name : chapters[0].name;
+                  const difficulty: Difficulty = 'M'; // Default
+
+                  // Division logic: numerical answers MUST go to Division 2, others fill Division 1 first
+                  const division: 1 | 2 = isDivision2 ? 2 : (summary.division1 < 20 ? 1 : 2);
+
+                  console.log(`[SELECTION] Assigning to Division ${division}`);
+
+                  toggleQuestion(question, chapterCode, chapterName, difficulty, division);
+                }}
+                style={{
+                  cursor: 'pointer',
+                  border: selected ? '3px solid #2196F3' : '1px solid #ddd',
+                  borderRadius: '8px',
+                  padding: '16px',
+                  marginBottom: '16px',
+                  transition: 'all 0.2s ease',
+                  backgroundColor: selected ? '#E3F2FD' : 'white'
+                }}
+              >
                 {isDivision2Question && (
-                  <div className="nil-options-badge" style={{
+                  <div style={{
                     background: '#ff9800',
                     color: 'white',
                     padding: '4px 8px',
@@ -380,56 +408,15 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
                     marginBottom: '8px',
                     display: 'inline-block'
                   }}>
-                    📝 {isNumericalAnswer ? `NUMERICAL ANSWER (${question.answer})` : 'NIL OPTIONS'} - Division 2 (B) Only
+                    📝 NUMERICAL ANSWER ({question.answer}) - Division 2 (B) Only
                   </div>
                 )}
                 <QuestionDisplay
                   question={question}
                   showAnswer={false}
-                  showCheckbox={true}
-                  isSelected={isQuestionSelected(question.uuid)}
-                  onSelect={() => {
-                    // Check if question has nil options (numerical type)
-                    const isNilOptions = hasNilOptions(question);
-
-                    const answerUpper = question.answer.toUpperCase().trim();
-                    const isNumericalAnswer = !['A', 'B', 'C', 'D'].includes(answerUpper);
-
-                    console.log(`[SELECTION] Question ${question.uuid}:`, {
-                      isNilOptions,
-                      answer: question.answer,
-                      isNumericalAnswer,
-                      option_a: question.option_a,
-                      option_b: question.option_b,
-                      option_c: question.option_c,
-                      option_d: question.option_d,
-                      currentDiv1: summary.division1,
-                      currentDiv2: summary.division2
-                    });
-
-                    // If Division 2 question and Division 2 is full, prevent selection
-                    if (isNilOptions && summary.division2 >= 5) {
-                      const reason = isNumericalAnswer
-                        ? `numerical answer (${question.answer})`
-                        : 'nil options';
-                      alert(`This question has ${reason} and can only be placed in Division 2 (B), which is already full (5/5).`);
-                      return;
-                    }
-
-                    // For MVP: Simple selection
-                    // In production: Show modal to select chapter, difficulty, division
-                    const chapterCode = question.tag_2 || chapters[0].code;
-                    const chapter = chapters.find(ch => ch.code === chapterCode);
-                    const chapterName = chapter ? chapter.name : chapters[0].name;
-                    const difficulty: Difficulty = 'M'; // Default
-
-                    // Division logic: nil options MUST go to Division 2, others fill Division 1 first
-                    const division: 1 | 2 = isNilOptions ? 2 : (summary.division1 < 20 ? 1 : 2);
-
-                    console.log(`[SELECTION] Assigning to Division ${division}`);
-
-                    toggleQuestion(question, chapterCode, chapterName, difficulty, division);
-                  }}
+                  showCheckbox={false}
+                  isSelected={selected}
+                  hideOptions={isDivision2Question}
                 />
               </div>
               );
