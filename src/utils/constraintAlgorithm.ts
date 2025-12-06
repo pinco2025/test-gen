@@ -122,12 +122,12 @@ function calculateDifficultyDistribution(
   // Normalized weight: s = (wk - 1) / 3
   const s = (wk - 1) / 3;
 
-  // Calculate medium and hard
-  const mk = Math.floor(Tk * (M0 + s * Sm));
-  const hk = Math.floor(Tk * (H0 + s * Sh));
+  // Calculate medium and hard, ensuring they're never negative
+  const mk = Math.max(0, Math.floor(Tk * (M0 + s * Sm)));
+  const hk = Math.max(0, Math.floor(Tk * (H0 + s * Sh)));
 
-  // Calculate easy as remainder
-  let ek = Tk - (mk + hk);
+  // Calculate easy as remainder, ensuring it's never negative
+  let ek = Math.max(0, Tk - (mk + hk));
 
   // Handle deficit due to floor operations
   const total = ek + mk + hk;

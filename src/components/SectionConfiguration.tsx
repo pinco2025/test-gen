@@ -181,18 +181,18 @@ export const SectionConfiguration: React.FC<SectionConfigurationProps> = ({
                   <strong>Min Questions/Chapter (min_idx):</strong>
                   <input
                     type="number"
-                    min="0"
+                    min="1"
                     max="5"
                     value={constraintConfig.minIdx}
                     onChange={(e) =>
                       onConfigChange({
                         ...constraintConfig,
-                        minIdx: parseInt(e.target.value) || 0
+                        minIdx: parseInt(e.target.value) || 1
                       })
                     }
                   />
                 </label>
-                <span className="hint">Minimum questions per chapter (typically 0-1)</span>
+                <span className="hint">Minimum questions per chapter (typically 1-5)</span>
               </div>
 
               <div className="config-input-group">
@@ -201,8 +201,6 @@ export const SectionConfiguration: React.FC<SectionConfigurationProps> = ({
                   <input
                     type="number"
                     step="0.01"
-                    min="-0.5"
-                    max="0.5"
                     value={constraintConfig.Sm}
                     onChange={(e) =>
                       onConfigChange({
@@ -212,7 +210,7 @@ export const SectionConfiguration: React.FC<SectionConfigurationProps> = ({
                     }
                   />
                 </label>
-                <span className="hint">Effect of weight on medium difficulty (typically 0.1)</span>
+                <span className="hint">Effect of weight on medium difficulty (no limits)</span>
               </div>
 
               <div className="config-input-group">
@@ -221,8 +219,6 @@ export const SectionConfiguration: React.FC<SectionConfigurationProps> = ({
                   <input
                     type="number"
                     step="0.01"
-                    min="-0.5"
-                    max="0.5"
                     value={constraintConfig.Sh}
                     onChange={(e) =>
                       onConfigChange({
@@ -232,7 +228,7 @@ export const SectionConfiguration: React.FC<SectionConfigurationProps> = ({
                     }
                   />
                 </label>
-                <span className="hint">Effect of weight on hard difficulty (typically 0.1)</span>
+                <span className="hint">Effect of weight on hard difficulty (no limits)</span>
               </div>
             </div>
           </div>

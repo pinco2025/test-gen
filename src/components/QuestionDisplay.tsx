@@ -43,20 +43,12 @@ export const QuestionDisplay: React.FC<QuestionDisplayProps> = ({
           <strong>Question: </strong>
           <LatexRenderer content={question.question} />
         </div>
-
-        {question.question_schematic && (
-          <div className="question-schematic">
-            <LatexRenderer content={question.question_schematic} block />
-          </div>
-        )}
       </div>
 
       <div className="question-options">
         {['a', 'b', 'c', 'd'].map((option) => {
           const optionKey = `option_${option}` as keyof Question;
-          const schematicKey = `option_${option}_schematic` as keyof Question;
           const optionText = question[optionKey] as string | null;
-          const schematic = question[schematicKey] as string | null;
 
           if (!optionText) return null;
 
@@ -70,11 +62,6 @@ export const QuestionDisplay: React.FC<QuestionDisplayProps> = ({
               <span className="option-label">{option.toUpperCase()})</span>
               <div className="option-content">
                 <LatexRenderer content={optionText} />
-                {schematic && (
-                  <div className="option-schematic">
-                    <LatexRenderer content={schematic} block />
-                  </div>
-                )}
               </div>
             </div>
           );

@@ -38,7 +38,7 @@ function App() {
 
   // Global constraint algorithm configuration
   const [constraintConfig, setConstraintConfig] = useState<ConstraintConfig>({
-    minIdx: 0, // Default: no minimum questions per chapter
+    minIdx: 1, // Default: minimum 1 question per chapter
     Sm: 0.1, // Default slope for medium difficulty
     Sh: 0.1  // Default slope for hard difficulty
   });

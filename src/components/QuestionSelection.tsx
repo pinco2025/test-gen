@@ -79,6 +79,11 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sectionName, chapters]);
 
+  // Helper function to check if a question has nil options (numerical type)
+  const hasNilOptions = (question: Question): boolean => {
+    return !question.option_a && !question.option_b && !question.option_c && !question.option_d;
+  };
+
   const getSummary = (): SelectionSummary => {
     const byChapter: SelectionSummary['byChapter'] = {};
     let totalE = 0, totalM = 0, totalH = 0;
@@ -320,13 +325,24 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
                   showCheckbox={true}
                   isSelected={isQuestionSelected(question.uuid)}
                   onSelect={() => {
+                    // Check if question has nil options (numerical type)
+                    const isNilOptions = hasNilOptions(question);
+
+                    // If nil options question and Division 2 is full, prevent selection
+                    if (isNilOptions && summary.division2 >= 5) {
+                      alert('Questions with no options (numerical type) can only be placed in Division 2 (B), which is already full (5/5).');
+                      return;
+                    }
+
                     // For MVP: Simple selection
                     // In production: Show modal to select chapter, difficulty, division
                     const chapterCode = question.tag_2 || chapters[0].code;
                     const chapter = chapters.find(ch => ch.code === chapterCode);
                     const chapterName = chapter ? chapter.name : chapters[0].name;
                     const difficulty: Difficulty = 'M'; // Default
-                    const division: 1 | 2 = summary.division1 < 20 ? 1 : 2;
+
+                    // Division logic: nil options MUST go to Division 2, others fill Division 1 first
+                    const division: 1 | 2 = isNilOptions ? 2 : (summary.division1 < 20 ? 1 : 2);
 
                     toggleQuestion(question, chapterCode, chapterName, difficulty, division);
                   }}
