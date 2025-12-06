@@ -20,6 +20,7 @@ import './styles/App.css';
 
 type WorkflowStep =
   | 'database-connect'
+  | 'dashboard'
   | 'test-creation'
   | 'section-config-physics'
   | 'section-config-chemistry'
@@ -58,7 +59,7 @@ function App() {
   const currentProject = currentProjectId ? projectsData[currentProjectId] : null;
 
   // Current project display state (derived from projectsData)
-  const step = currentProject?.currentStep || 'database-connect';
+  const step = currentProject?.currentStep || (dbConnected ? 'dashboard' : 'database-connect');
   const testMetadata = currentProject?.testMetadata || null;
   const sections = currentProject?.sections || [];
   const currentSectionIndex = currentProject?.currentSectionIndex || 0;
@@ -85,21 +86,39 @@ function App() {
   const initializeApp = async () => {
     if (!window.electronAPI) return;
 
-    // Check database connection
-    const connected = await window.electronAPI.db.isConnected();
-    setDbConnected(connected);
+    // Get saved config
+    const config = await window.electronAPI.config.get();
 
-    if (connected) {
-      // Load project list
-      const loadedProjects = await window.electronAPI.project.list();
-      setProjects(loadedProjects);
+    // Auto-connect to saved database if it exists
+    if (config.databasePath) {
+      const result = await window.electronAPI.db.connect(config.databasePath);
+      if (result.success) {
+        setDbConnected(true);
 
-      // Load last project or create new
-      const config = await window.electronAPI.config.get();
-      if (config.lastProjectId && loadedProjects.some(p => p.id === config.lastProjectId)) {
-        await loadProject(config.lastProjectId);
-      } else if (loadedProjects.length > 0) {
-        await loadProject(loadedProjects[0].id);
+        // Load project list and show dashboard
+        const loadedProjects = await window.electronAPI.project.list();
+        setProjects(loadedProjects);
+
+        // Don't auto-load any project, show dashboard
+        setCurrentProjectId(null);
+      } else {
+        // Database path invalid, check if any database is connected
+        const connected = await window.electronAPI.db.isConnected();
+        setDbConnected(connected);
+
+        if (connected) {
+          const loadedProjects = await window.electronAPI.project.list();
+          setProjects(loadedProjects);
+        }
+      }
+    } else {
+      // No saved database, check if one is already connected
+      const connected = await window.electronAPI.db.isConnected();
+      setDbConnected(connected);
+
+      if (connected) {
+        const loadedProjects = await window.electronAPI.project.list();
+        setProjects(loadedProjects);
       }
     }
   };
@@ -184,14 +203,31 @@ function App() {
     setCurrentProjectId(null);
   };
 
-  // Close project
+  // Close project (remove from memory only, keep on disk)
   const handleCloseProject = async (projectId: string) => {
+    if (!window.electronAPI) return;
+
+    // Remove from memory only
+    setProjectsData(prev => {
+      const newData = { ...prev };
+      delete newData[projectId];
+      return newData;
+    });
+
+    // If current project was closed, go to dashboard
+    if (currentProjectId === projectId) {
+      setCurrentProjectId(null);
+    }
+  };
+
+  // Delete project permanently
+  const handleDeleteProject = async (projectId: string) => {
     if (!window.electronAPI) return;
 
     const project = projects.find(p => p.id === projectId);
     if (project) {
       const confirmed = confirm(
-        `Close project "${project.testCode}"?\n\nAll progress is auto-saved.`
+        `Permanently delete project "${project.testCode}"?\n\nThis cannot be undone!`
       );
       if (!confirmed) return;
     }
@@ -210,13 +246,9 @@ function App() {
     const updatedProjects = await window.electronAPI.project.list();
     setProjects(updatedProjects);
 
-    // If current project was closed, switch to another or create new
+    // If current project was deleted, go to dashboard
     if (currentProjectId === projectId) {
-      if (updatedProjects.length > 0) {
-        await loadProject(updatedProjects[0].id);
-      } else {
-        createNewProject();
-      }
+      setCurrentProjectId(null);
     }
   };
 
@@ -398,6 +430,51 @@ function App() {
             <button className="btn-primary" onClick={handleDatabaseSelect}>
               Select Database File
             </button>
+          </div>
+        );
+
+      case 'dashboard':
+        return (
+          <div className="dashboard">
+            <div className="dashboard-header">
+              <h2>Your Projects</h2>
+            </div>
+            <div className="project-grid">
+              {projects.map((project) => (
+                <div
+                  key={project.id}
+                  className="project-tile"
+                  onClick={() => loadProject(project.id)}
+                >
+                  <div className="project-tile-header">
+                    <h3>{project.testCode}</h3>
+                    <button
+                      className="project-delete-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteProject(project.id);
+                      }}
+                      title="Delete project permanently"
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                  <p className="project-description">{project.description || 'No description'}</p>
+                  <div className="project-meta">
+                    <span className="project-date">
+                      Last modified: {new Date(project.lastModified).toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+              ))}
+              <div
+                className="project-tile project-tile-new"
+                onClick={createNewProject}
+              >
+                <div className="new-project-icon">+</div>
+                <h3>Create New Project</h3>
+              </div>
+            </div>
           </div>
         );
 
