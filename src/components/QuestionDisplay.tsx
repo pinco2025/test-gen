@@ -34,10 +34,66 @@ export const QuestionDisplay: React.FC<QuestionDisplayProps> = ({
         </div>
       )}
 
-      <div className="question-header">
-        <span className="question-id">{question.uuid}</span>
-        <span className="question-type">{question.type}</span>
-        {question.year && <span className="question-year">{question.year}</span>}
+      <div className="question-header" style={{
+        display: 'flex',
+        gap: '12px',
+        alignItems: 'center',
+        marginBottom: '16px',
+        padding: '12px',
+        backgroundColor: '#f5f5f5',
+        borderRadius: '6px',
+        flexWrap: 'wrap'
+      }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}>
+          <strong style={{ color: '#666', fontSize: '13px' }}>ID:</strong>
+          <span style={{
+            backgroundColor: '#e3f2fd',
+            color: '#1976d2',
+            padding: '6px 12px',
+            borderRadius: '4px',
+            fontSize: '14px',
+            fontWeight: '600',
+            fontFamily: 'monospace'
+          }}>{question.uuid}</span>
+        </div>
+
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px'
+        }}>
+          <strong style={{ color: '#666', fontSize: '13px' }}>Type:</strong>
+          <span style={{
+            backgroundColor: '#e8f5e9',
+            color: '#2e7d32',
+            padding: '6px 12px',
+            borderRadius: '4px',
+            fontSize: '14px',
+            fontWeight: '600'
+          }}>{question.type}</span>
+        </div>
+
+        {question.year && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <strong style={{ color: '#666', fontSize: '13px' }}>Year:</strong>
+            <span style={{
+              backgroundColor: '#fff3e0',
+              color: '#f57c00',
+              padding: '6px 12px',
+              borderRadius: '4px',
+              fontSize: '14px',
+              fontWeight: '600'
+            }}>{question.year}</span>
+          </div>
+        )}
       </div>
 
       <div className="question-content">

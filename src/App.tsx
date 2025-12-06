@@ -108,23 +108,6 @@ function App() {
     setStep(stepMap[currentSectionIndex]);
   };
 
-  const handleSkipConfiguration = () => {
-    // Create default alpha constraint
-    const section = sections[currentSectionIndex];
-    const defaultAlpha: AlphaConstraint = {
-      chapters: section.chapters.map(ch => ({
-        chapterCode: ch.code,
-        chapterName: ch.name,
-        a: 0,
-        b: 0,
-        e: 0,
-        m: 0,
-        h: 0
-      }))
-    };
-
-    handleSectionConfiguration(defaultAlpha, {});
-  };
 
   const handleQuestionSelection = (selectedQuestions: SelectedQuestion[]) => {
     const updatedSections = [...sections];
@@ -206,7 +189,6 @@ function App() {
             constraintConfig={constraintConfig}
             onConfigChange={setConstraintConfig}
             onConfigure={handleSectionConfiguration}
-            onSkip={handleSkipConfiguration}
           />
         );
 
