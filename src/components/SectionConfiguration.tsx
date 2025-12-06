@@ -15,7 +15,6 @@ interface SectionConfigurationProps {
   constraintConfig: ConstraintConfig;
   onConfigChange: (config: ConstraintConfig) => void;
   onConfigure: (alpha: AlphaConstraint, beta: BetaConstraint) => void;
-  onSkip: () => void;
 }
 
 /**
@@ -26,8 +25,7 @@ export const SectionConfiguration: React.FC<SectionConfigurationProps> = ({
   chapters,
   constraintConfig,
   onConfigChange,
-  onConfigure,
-  onSkip
+  onConfigure
 }) => {
   const [alphaData, setAlphaData] = useState<ChapterDistribution[]>([]);
   const [betaData] = useState<BetaConstraint>({});
@@ -359,13 +357,6 @@ export const SectionConfiguration: React.FC<SectionConfigurationProps> = ({
       </div>
 
       <div className="form-actions">
-        <button
-          type="button"
-          className="btn-secondary"
-          onClick={onSkip}
-        >
-          Skip Configuration
-        </button>
         <button
           type="button"
           className="btn-primary"
