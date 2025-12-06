@@ -123,7 +123,20 @@ function App() {
   const loadProject = async (projectId: string) => {
     if (!window.electronAPI) return;
 
+    // Prevent auto-save during loading
     isLoadingRef.current = true;
+
+    // Clear current state first to force re-render
+    setCurrentProjectId(null);
+    setTestMetadata(null);
+    setSections([]);
+    setCurrentSectionIndex(0);
+    setConstraintConfig({ minIdx: 1, Sm: 0.1, Sh: 0.1 });
+    setStep('database-connect');
+
+    // Small delay to ensure state is cleared
+    await new Promise(resolve => setTimeout(resolve, 50));
+
     const projectState = await window.electronAPI.project.load(projectId);
 
     if (projectState) {
@@ -156,9 +169,9 @@ function App() {
     if (!window.electronAPI) return;
 
     const project = projects.find(p => p.id === projectId);
-    if (project && project.progress < 100) {
+    if (project) {
       const confirmed = confirm(
-        `Close "${project.testCode}"? Progress: ${project.progress}%\n\nAll progress is auto-saved.`
+        `Close project "${project.testCode}"?\n\nAll progress is auto-saved.`
       );
       if (!confirmed) return;
     }
@@ -443,11 +456,6 @@ function App() {
               Auto-saved {lastSaved.toLocaleTimeString()}
             </div>
           )}
-          {dbConnected && (
-            <button className="btn-change-db" onClick={handleDatabaseSelect}>
-              Change Database
-            </button>
-          )}
         </div>
       </div>
       {dbConnected && projects.length > 0 && (
@@ -459,7 +467,7 @@ function App() {
           onNewProject={createNewProject}
         />
       )}
-      <div className="app-content">
+      <div className="app-content" key={currentProjectId || 'new'}>
         {renderStep()}
       </div>
     </div>

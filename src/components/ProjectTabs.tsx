@@ -44,7 +44,7 @@ function ProjectTabs({
             <div className="tab-content">
               <div className="tab-title">{project.testCode || 'Untitled'}</div>
               <div className="tab-info">
-                {project.progress}% • {formatDate(project.lastModified)}
+                {formatDate(project.lastModified)}
               </div>
             </div>
             <button
