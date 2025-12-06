@@ -40,8 +40,8 @@ export const QuestionDisplay: React.FC<QuestionDisplayProps> = ({
     }
   };
 
-  const difficultyColors = getDifficultyColor(difficulty);
-  const difficultyLabel = difficulty === 'E' ? 'Easy' : difficulty === 'M' ? 'Medium' : difficulty === 'H' ? 'Hard' : 'Unknown';
+  const difficultyColors = getDifficultyColor(question.tag_3);
+  const difficultyLabel = question.tag_3 === 'E' ? 'Easy' : difficulty === 'M' ? 'Medium' : difficulty === 'H' ? 'Hard' : 'Unknown';
   return (
     <div className={`question-card ${isSelected ? 'selected' : ''}`}>
       {showCheckbox && (
@@ -131,7 +131,7 @@ export const QuestionDisplay: React.FC<QuestionDisplayProps> = ({
               borderRadius: '4px',
               fontSize: '14px',
               fontWeight: '600'
-            }}>{difficultyLabel}</span>
+            }}>{question.tag_3}</span>
           </div>
         )}
 
