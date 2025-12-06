@@ -18,6 +18,7 @@ interface QuestionSelectionProps {
   betaConstraint: BetaConstraint;
   onComplete: (selectedQuestions: SelectedQuestion[]) => void;
   onBack: () => void;
+  initialSelectedQuestions?: SelectedQuestion[];
 }
 
 /**
@@ -28,9 +29,10 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
   chapters,
   alphaConstraint,
   onComplete,
-  onBack
+  onBack,
+  initialSelectedQuestions = []
 }) => {
-  const [selectedQuestions, setSelectedQuestions] = useState<SelectedQuestion[]>([]);
+  const [selectedQuestions, setSelectedQuestions] = useState<SelectedQuestion[]>(initialSelectedQuestions);
   const [availableQuestions, setAvailableQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterChapter, setFilterChapter] = useState<string>('all');
