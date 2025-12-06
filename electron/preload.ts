@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import { Question, QuestionFilter, Test } from '../src/types';
+import { Question, QuestionFilter, Test, ProjectState, ProjectInfo, AppConfig } from '../src/types';
 
 // Expose protected methods that allow the renderer process to use
 // ipcRenderer without exposing the entire object
@@ -27,32 +27,21 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Test operations
   test: {
     export: (test: Test) => ipcRenderer.invoke('test:export', test)
+  },
+
+  // Project operations
+  project: {
+    save: (projectState: ProjectState) => ipcRenderer.invoke('project:save', projectState),
+    load: (projectId: string) => ipcRenderer.invoke('project:load', projectId),
+    delete: (projectId: string) => ipcRenderer.invoke('project:delete', projectId),
+    list: () => ipcRenderer.invoke('project:list'),
+    exists: (projectId: string) => ipcRenderer.invoke('project:exists', projectId)
+  },
+
+  // Config operations
+  config: {
+    get: () => ipcRenderer.invoke('config:get'),
+    update: (updates: Partial<AppConfig>) => ipcRenderer.invoke('config:update', updates),
+    deleteAllProjects: () => ipcRenderer.invoke('config:deleteAllProjects')
   }
 });
-
-// Type declaration for TypeScript
-declare global {
-  interface Window {
-    electronAPI: {
-      db: {
-        connect: (dbPath?: string) => Promise<{ success: boolean; error?: string }>;
-        selectFile: () => Promise<{ success: boolean; path?: string; error?: string }>;
-        isConnected: () => Promise<boolean>;
-        getTypes: () => Promise<string[]>;
-        getYears: () => Promise<string[]>;
-        getTags: () => Promise<string[]>;
-        getChaptersByType: () => Promise<{ [type: string]: string[] }>;
-      };
-      questions: {
-        getAll: (filter?: QuestionFilter) => Promise<Question[]>;
-        getByUUID: (uuid: string) => Promise<Question | null>;
-        search: (criteria: any) => Promise<Question[]>;
-        getCount: (filter?: QuestionFilter) => Promise<number>;
-        getByChapterCodes: (type: string, chapterCodes: string[]) => Promise<Question[]>;
-      };
-      test: {
-        export: (test: Test) => Promise<{ success: boolean; path?: string; error?: string }>;
-      };
-    };
-  }
-}

@@ -23,8 +23,7 @@ export const QuestionDisplay: React.FC<QuestionDisplayProps> = ({
   isSelected = false,
   showCheckbox = false,
   hideOptions = false,
-  questionNumber,
-  difficulty
+  questionNumber
 }) => {
   // Get difficulty color
   const getDifficultyColor = (diff?: 'E' | 'M' | 'H') => {
@@ -41,7 +40,6 @@ export const QuestionDisplay: React.FC<QuestionDisplayProps> = ({
   };
 
   const difficultyColors = getDifficultyColor(question.tag_3 as 'E' | 'M' | 'H');
-  const difficultyLabel = question.tag_3 === 'E' ? 'Easy' : question.tag_3 === 'M' ? 'Medium' : question.tag_3 === 'H' ? 'Hard' : 'Unknown';
   return (
     <div className={`question-card ${isSelected ? 'selected' : ''}`}>
       {showCheckbox && (

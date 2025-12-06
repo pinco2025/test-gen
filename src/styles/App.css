@@ -21,11 +21,40 @@
   font-weight: 600;
 }
 
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
 .db-status {
   background: #27ae60;
   padding: 0.5rem 1rem;
   border-radius: 4px;
   font-size: 0.9rem;
+}
+
+.save-status {
+  background: #3498db;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  color: white;
+}
+
+.btn-change-db {
+  background: #95a5a6;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-change-db:hover {
+  background: #7f8c8d;
 }
 
 .app-content {

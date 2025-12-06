@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Test,
   TestMetadata,
@@ -8,11 +8,14 @@ import {
   BetaConstraint,
   SelectedQuestion,
   Chapter,
-  ConstraintConfig
+  ConstraintConfig,
+  ProjectState,
+  ProjectInfo
 } from './types';
 import TestCreationForm from './components/TestCreationForm';
 import SectionConfiguration from './components/SectionConfiguration';
 import QuestionSelection from './components/QuestionSelection';
+import ProjectTabs from './components/ProjectTabs';
 import './styles/App.css';
 
 type WorkflowStep =
@@ -28,49 +31,208 @@ type WorkflowStep =
   | 'complete';
 
 function App() {
+  // Multi-project state
+  const [projects, setProjects] = useState<ProjectInfo[]>([]);
+  const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
+
+  // Current project state
   const [step, setStep] = useState<WorkflowStep>('database-connect');
   const [dbConnected, setDbConnected] = useState(false);
-
-  // Test data
   const [testMetadata, setTestMetadata] = useState<TestMetadata | null>(null);
   const [sections, setSections] = useState<SectionConfig[]>([]);
   const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
-
-  // Global constraint algorithm configuration
   const [constraintConfig, setConstraintConfig] = useState<ConstraintConfig>({
-    minIdx: 1, // Default: minimum 1 question per chapter
-    Sm: 0.1, // Default slope for medium difficulty
-    Sh: 0.1  // Default slope for hard difficulty
+    minIdx: 1,
+    Sm: 0.1,
+    Sh: 0.1
   });
 
+  // Auto-save state
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isLoadingRef = useRef(false);
+
+  // Initialize app
   useEffect(() => {
-    checkDatabaseConnection();
+    initializeApp();
   }, []);
 
-  const checkDatabaseConnection = async () => {
-    if (window.electronAPI) {
-      const connected = await window.electronAPI.db.isConnected();
-      setDbConnected(connected);
-      if (connected) {
+  const initializeApp = async () => {
+    if (!window.electronAPI) return;
+
+    // Check database connection
+    const connected = await window.electronAPI.db.isConnected();
+    setDbConnected(connected);
+
+    if (connected) {
+      // Load projects
+      const loadedProjects = await window.electronAPI.project.list();
+      setProjects(loadedProjects);
+
+      // Load last project or create new
+      const config = await window.electronAPI.config.get();
+      if (config.lastProjectId && loadedProjects.some(p => p.id === config.lastProjectId)) {
+        loadProject(config.lastProjectId);
+      } else if (loadedProjects.length > 0) {
+        loadProject(loadedProjects[0].id);
+      } else {
         setStep('test-creation');
+      }
+    }
+  };
+
+  // Auto-save with debouncing
+  const autoSave = useCallback(() => {
+    if (!currentProjectId || !window.electronAPI || isLoadingRef.current) return;
+
+    // Clear existing timeout
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+    }
+
+    // Set new timeout for auto-save
+    saveTimeoutRef.current = setTimeout(async () => {
+      const projectState: ProjectState = {
+        id: currentProjectId,
+        testMetadata,
+        sections,
+        currentSectionIndex,
+        constraintConfig,
+        currentStep: step,
+        createdAt: new Date().toISOString(),
+        lastModified: new Date().toISOString()
+      };
+
+      await window.electronAPI.project.save(projectState);
+      setLastSaved(new Date());
+
+      // Refresh project list
+      const updatedProjects = await window.electronAPI.project.list();
+      setProjects(updatedProjects);
+    }, 1000); // 1 second debounce
+  }, [currentProjectId, testMetadata, sections, currentSectionIndex, constraintConfig, step]);
+
+  // Trigger auto-save when state changes
+  useEffect(() => {
+    if (currentProjectId && step !== 'database-connect') {
+      autoSave();
+    }
+  }, [testMetadata, sections, currentSectionIndex, constraintConfig, step, currentProjectId, autoSave]);
+
+  // Load a project
+  const loadProject = async (projectId: string) => {
+    if (!window.electronAPI) return;
+
+    isLoadingRef.current = true;
+    const projectState = await window.electronAPI.project.load(projectId);
+
+    if (projectState) {
+      setCurrentProjectId(projectState.id);
+      setTestMetadata(projectState.testMetadata);
+      setSections(projectState.sections);
+      setCurrentSectionIndex(projectState.currentSectionIndex);
+      setConstraintConfig(projectState.constraintConfig);
+      setStep(projectState.currentStep as WorkflowStep);
+
+      // Update config
+      await window.electronAPI.config.update({ lastProjectId: projectId });
+    }
+
+    isLoadingRef.current = false;
+  };
+
+  // Create new project
+  const createNewProject = () => {
+    setCurrentProjectId(null);
+    setTestMetadata(null);
+    setSections([]);
+    setCurrentSectionIndex(0);
+    setConstraintConfig({ minIdx: 1, Sm: 0.1, Sh: 0.1 });
+    setStep('test-creation');
+  };
+
+  // Close project
+  const handleCloseProject = async (projectId: string) => {
+    if (!window.electronAPI) return;
+
+    const project = projects.find(p => p.id === projectId);
+    if (project && project.progress < 100) {
+      const confirmed = confirm(
+        `Close "${project.testCode}"? Progress: ${project.progress}%\n\nAll progress is auto-saved.`
+      );
+      if (!confirmed) return;
+    }
+
+    // Delete project
+    await window.electronAPI.project.delete(projectId);
+
+    // Refresh project list
+    const updatedProjects = await window.electronAPI.project.list();
+    setProjects(updatedProjects);
+
+    // If current project was closed, load another or create new
+    if (currentProjectId === projectId) {
+      if (updatedProjects.length > 0) {
+        loadProject(updatedProjects[0].id);
+      } else {
+        createNewProject();
       }
     }
   };
 
   const handleDatabaseSelect = async () => {
-    if (window.electronAPI) {
-      const result = await window.electronAPI.db.selectFile();
-      if (result.success) {
-        setDbConnected(true);
-        setStep('test-creation');
-      } else {
-        alert('Failed to connect to database: ' + result.error);
-      }
+    if (!window.electronAPI) return;
+
+    // Warn about existing projects
+    if (projects.length > 0) {
+      const confirmed = confirm(
+        `Warning: Changing the database will close all ${projects.length} project(s).\n\n` +
+        `All progress is auto-saved, but projects are tied to the current database.\n\n` +
+        `Continue?`
+      );
+      if (!confirmed) return;
+
+      // Delete all projects
+      await window.electronAPI.config.deleteAllProjects();
+      setProjects([]);
+    }
+
+    const result = await window.electronAPI.db.selectFile();
+    if (result.success) {
+      setDbConnected(true);
+      await window.electronAPI.config.update({ databasePath: result.path || null });
+      createNewProject();
+    } else {
+      alert('Failed to connect to database: ' + result.error);
     }
   };
 
-  const handleTestCreation = (metadata: TestMetadata, chapters: Chapter[][]) => {
+  const handleTestCreation = async (metadata: TestMetadata, chapters: Chapter[][]) => {
     setTestMetadata(metadata);
+
+    // Create project ID based on test code
+    const projectId = metadata.code.replace(/[^a-zA-Z0-9]/g, '-');
+
+    // Check if project already exists
+    if (window.electronAPI) {
+      const exists = await window.electronAPI.project.exists(projectId);
+      if (exists) {
+        const confirmed = confirm(
+          `A project with test code "${metadata.code}" already exists.\n\n` +
+          `Do you want to load the existing project?`
+        );
+        if (confirmed) {
+          loadProject(projectId);
+          return;
+        } else {
+          // User wants to create a new one, append timestamp
+          const timestamp = Date.now();
+          setCurrentProjectId(`${projectId}-${timestamp}`);
+        }
+      } else {
+        setCurrentProjectId(projectId);
+      }
+    }
 
     // Initialize sections
     const sectionNames: SectionName[] = ['Physics', 'Chemistry', 'Mathematics'];
@@ -274,8 +436,29 @@ function App() {
     <div className="app">
       <div className="app-header">
         <h1>JEE Test Generator</h1>
-        {dbConnected && <div className="db-status">Database: Connected</div>}
+        <div className="header-right">
+          {dbConnected && <div className="db-status">Database: Connected</div>}
+          {lastSaved && (
+            <div className="save-status">
+              Auto-saved {lastSaved.toLocaleTimeString()}
+            </div>
+          )}
+          {dbConnected && (
+            <button className="btn-change-db" onClick={handleDatabaseSelect}>
+              Change Database
+            </button>
+          )}
+        </div>
       </div>
+      {dbConnected && projects.length > 0 && (
+        <ProjectTabs
+          projects={projects}
+          currentProjectId={currentProjectId}
+          onSelectProject={loadProject}
+          onCloseProject={handleCloseProject}
+          onNewProject={createNewProject}
+        />
+      )}
       <div className="app-content">
         {renderStep()}
       </div>

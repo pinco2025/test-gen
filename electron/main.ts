@@ -1,7 +1,8 @@
 import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import path from 'path';
 import { dbService } from './database';
-import { Question, QuestionFilter, Test } from '../src/types';
+import { projectService } from './projectService';
+import { Question, QuestionFilter, Test, ProjectState, ProjectInfo, AppConfig } from '../src/types';
 import fs from 'fs';
 
 let mainWindow: BrowserWindow | null = null;
@@ -152,4 +153,50 @@ ipcMain.handle('test:export', async (_, test: Test) => {
   }
 
   return { success: false, error: 'Export cancelled' };
+});
+
+// Project management
+ipcMain.handle('project:save', async (_, projectState: ProjectState) => {
+  try {
+    projectService.saveProject(projectState);
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('project:load', async (_, projectId: string): Promise<ProjectState | null> => {
+  return projectService.loadProject(projectId);
+});
+
+ipcMain.handle('project:delete', async (_, projectId: string) => {
+  const success = projectService.deleteProject(projectId);
+  return { success };
+});
+
+ipcMain.handle('project:list', async (): Promise<ProjectInfo[]> => {
+  return projectService.listProjects();
+});
+
+ipcMain.handle('project:exists', async (_, projectId: string): Promise<boolean> => {
+  return projectService.projectExists(projectId);
+});
+
+// App configuration
+ipcMain.handle('config:get', async (): Promise<AppConfig> => {
+  return projectService.getConfig();
+});
+
+ipcMain.handle('config:update', async (_, updates: Partial<AppConfig>) => {
+  try {
+    projectService.updateConfig(updates);
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('config:deleteAllProjects', async () => {
+  const count = projectService.deleteAllProjects();
+  return { success: true, count };
 });
