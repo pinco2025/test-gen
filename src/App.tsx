@@ -30,26 +30,52 @@ type WorkflowStep =
   | 'test-review'
   | 'complete';
 
+// In-memory project data
+interface ProjectData {
+  testMetadata: TestMetadata | null;
+  sections: SectionConfig[];
+  currentSectionIndex: number;
+  constraintConfig: ConstraintConfig;
+  currentStep: WorkflowStep;
+}
+
 function App() {
   // Multi-project state
   const [projects, setProjects] = useState<ProjectInfo[]>([]);
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
 
-  // Current project state
-  const [step, setStep] = useState<WorkflowStep>('database-connect');
+  // All loaded projects in memory
+  const [projectsData, setProjectsData] = useState<Record<string, ProjectData>>({});
+
+  // Database state
   const [dbConnected, setDbConnected] = useState(false);
-  const [testMetadata, setTestMetadata] = useState<TestMetadata | null>(null);
-  const [sections, setSections] = useState<SectionConfig[]>([]);
-  const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
-  const [constraintConfig, setConstraintConfig] = useState<ConstraintConfig>({
-    minIdx: 1,
-    Sm: 0.1,
-    Sh: 0.1
-  });
 
   // Auto-save state
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const isLoadingRef = useRef(false);
+
+  // Get current project data
+  const currentProject = currentProjectId ? projectsData[currentProjectId] : null;
+
+  // Current project display state (derived from projectsData)
+  const step = currentProject?.currentStep || 'database-connect';
+  const testMetadata = currentProject?.testMetadata || null;
+  const sections = currentProject?.sections || [];
+  const currentSectionIndex = currentProject?.currentSectionIndex || 0;
+  const constraintConfig = currentProject?.constraintConfig || { minIdx: 1, Sm: 0.1, Sh: 0.1 };
+
+  // Helper to update current project data
+  const updateCurrentProject = useCallback((updates: Partial<ProjectData>) => {
+    if (!currentProjectId) return;
+
+    setProjectsData(prev => ({
+      ...prev,
+      [currentProjectId]: {
+        ...prev[currentProjectId],
+        ...updates
+      }
+    }));
+  }, [currentProjectId]);
 
   // Initialize app
   useEffect(() => {
@@ -64,18 +90,16 @@ function App() {
     setDbConnected(connected);
 
     if (connected) {
-      // Load projects
+      // Load project list
       const loadedProjects = await window.electronAPI.project.list();
       setProjects(loadedProjects);
 
       // Load last project or create new
       const config = await window.electronAPI.config.get();
       if (config.lastProjectId && loadedProjects.some(p => p.id === config.lastProjectId)) {
-        loadProject(config.lastProjectId);
+        await loadProject(config.lastProjectId);
       } else if (loadedProjects.length > 0) {
-        loadProject(loadedProjects[0].id);
-      } else {
-        setStep('test-creation');
+        await loadProject(loadedProjects[0].id);
       }
     }
   };
@@ -83,6 +107,9 @@ function App() {
   // Auto-save with debouncing
   const autoSave = useCallback(() => {
     if (!currentProjectId || !window.electronAPI || isLoadingRef.current) return;
+
+    const currentData = projectsData[currentProjectId];
+    if (!currentData) return;
 
     // Clear existing timeout
     if (saveTimeoutRef.current) {
@@ -93,11 +120,11 @@ function App() {
     saveTimeoutRef.current = setTimeout(async () => {
       const projectState: ProjectState = {
         id: currentProjectId,
-        testMetadata,
-        sections,
-        currentSectionIndex,
-        constraintConfig,
-        currentStep: step,
+        testMetadata: currentData.testMetadata,
+        sections: currentData.sections,
+        currentSectionIndex: currentData.currentSectionIndex,
+        constraintConfig: currentData.constraintConfig,
+        currentStep: currentData.currentStep,
         createdAt: new Date().toISOString(),
         lastModified: new Date().toISOString()
       };
@@ -108,46 +135,46 @@ function App() {
       const updatedProjects = await window.electronAPI.project.list();
       setProjects(updatedProjects);
     }, 1000); // 1 second debounce
-  }, [currentProjectId, testMetadata, sections, currentSectionIndex, constraintConfig, step]);
+  }, [currentProjectId, projectsData]);
 
-  // Trigger auto-save when state changes
+  // Trigger auto-save when project data changes
   useEffect(() => {
-    if (currentProjectId && step !== 'database-connect') {
+    if (currentProjectId && projectsData[currentProjectId]) {
       autoSave();
     }
-  }, [testMetadata, sections, currentSectionIndex, constraintConfig, step, currentProjectId, autoSave]);
+  }, [currentProjectId, projectsData, autoSave]);
 
-  // Load a project
+  // Load a project (from disk if not in memory, or just switch to it)
   const loadProject = async (projectId: string) => {
     if (!window.electronAPI) return;
 
-    // Prevent auto-save during loading
     isLoadingRef.current = true;
 
-    // Clear current state first to force re-render
-    setCurrentProjectId(null);
-    setTestMetadata(null);
-    setSections([]);
-    setCurrentSectionIndex(0);
-    setConstraintConfig({ minIdx: 1, Sm: 0.1, Sh: 0.1 });
-    setStep('database-connect');
+    // Check if project is already loaded in memory
+    if (!projectsData[projectId]) {
+      // Load from disk
+      const projectState = await window.electronAPI.project.load(projectId);
 
-    // Small delay to ensure state is cleared
-    await new Promise(resolve => setTimeout(resolve, 50));
-
-    const projectState = await window.electronAPI.project.load(projectId);
-
-    if (projectState) {
-      setCurrentProjectId(projectState.id);
-      setTestMetadata(projectState.testMetadata);
-      setSections(projectState.sections);
-      setCurrentSectionIndex(projectState.currentSectionIndex);
-      setConstraintConfig(projectState.constraintConfig);
-      setStep(projectState.currentStep as WorkflowStep);
-
-      // Update config
-      await window.electronAPI.config.update({ lastProjectId: projectId });
+      if (projectState) {
+        // Add to memory
+        setProjectsData(prev => ({
+          ...prev,
+          [projectId]: {
+            testMetadata: projectState.testMetadata,
+            sections: projectState.sections,
+            currentSectionIndex: projectState.currentSectionIndex,
+            constraintConfig: projectState.constraintConfig,
+            currentStep: projectState.currentStep as WorkflowStep
+          }
+        }));
+      }
     }
+
+    // Switch to this project
+    setCurrentProjectId(projectId);
+
+    // Update config
+    await window.electronAPI.config.update({ lastProjectId: projectId });
 
     isLoadingRef.current = false;
   };
@@ -155,11 +182,6 @@ function App() {
   // Create new project
   const createNewProject = () => {
     setCurrentProjectId(null);
-    setTestMetadata(null);
-    setSections([]);
-    setCurrentSectionIndex(0);
-    setConstraintConfig({ minIdx: 1, Sm: 0.1, Sh: 0.1 });
-    setStep('test-creation');
   };
 
   // Close project
@@ -174,17 +196,24 @@ function App() {
       if (!confirmed) return;
     }
 
-    // Delete project
+    // Remove from memory
+    setProjectsData(prev => {
+      const newData = { ...prev };
+      delete newData[projectId];
+      return newData;
+    });
+
+    // Delete from disk
     await window.electronAPI.project.delete(projectId);
 
     // Refresh project list
     const updatedProjects = await window.electronAPI.project.list();
     setProjects(updatedProjects);
 
-    // If current project was closed, load another or create new
+    // If current project was closed, switch to another or create new
     if (currentProjectId === projectId) {
       if (updatedProjects.length > 0) {
-        loadProject(updatedProjects[0].id);
+        await loadProject(updatedProjects[0].id);
       } else {
         createNewProject();
       }
@@ -219,10 +248,8 @@ function App() {
   };
 
   const handleTestCreation = async (metadata: TestMetadata, chapters: Chapter[][]) => {
-    setTestMetadata(metadata);
-
     // Create project ID based on test code
-    const projectId = metadata.code.replace(/[^a-zA-Z0-9]/g, '-');
+    let projectId = metadata.code.replace(/[^a-zA-Z0-9]/g, '-');
 
     // Check if project already exists
     if (window.electronAPI) {
@@ -233,15 +260,13 @@ function App() {
           `Do you want to load the existing project?`
         );
         if (confirmed) {
-          loadProject(projectId);
+          await loadProject(projectId);
           return;
         } else {
           // User wants to create a new one, append timestamp
           const timestamp = Date.now();
-          setCurrentProjectId(`${projectId}-${timestamp}`);
+          projectId = `${projectId}-${timestamp}`;
         }
-      } else {
-        setCurrentProjectId(projectId);
       }
     }
 
@@ -255,22 +280,34 @@ function App() {
       selectedQuestions: []
     }));
 
-    setSections(initialSections);
-    setCurrentSectionIndex(0);
-    setStep('section-config-physics');
+    // Create new project in memory
+    setProjectsData(prev => ({
+      ...prev,
+      [projectId]: {
+        testMetadata: metadata,
+        sections: initialSections,
+        currentSectionIndex: 0,
+        constraintConfig: { minIdx: 1, Sm: 0.1, Sh: 0.1 },
+        currentStep: 'section-config-physics'
+      }
+    }));
+
+    // Switch to new project
+    setCurrentProjectId(projectId);
   };
 
   const handleSectionConfiguration = (
     alpha: AlphaConstraint,
     beta: BetaConstraint
   ) => {
+    if (!currentProjectId) return;
+
     const updatedSections = [...sections];
     updatedSections[currentSectionIndex] = {
       ...updatedSections[currentSectionIndex],
       alphaConstraint: alpha,
       betaConstraint: beta
     };
-    setSections(updatedSections);
 
     // Move to question selection for this section
     const stepMap: { [key: number]: WorkflowStep } = {
@@ -278,28 +315,40 @@ function App() {
       1: 'question-select-chemistry',
       2: 'question-select-math'
     };
-    setStep(stepMap[currentSectionIndex]);
+
+    updateCurrentProject({
+      sections: updatedSections,
+      currentStep: stepMap[currentSectionIndex]
+    });
   };
 
-
   const handleQuestionSelection = (selectedQuestions: SelectedQuestion[]) => {
+    if (!currentProjectId) return;
+
     const updatedSections = [...sections];
     updatedSections[currentSectionIndex] = {
       ...updatedSections[currentSectionIndex],
       selectedQuestions
     };
-    setSections(updatedSections);
 
     // Move to next section or review
     if (currentSectionIndex < 2) {
-      setCurrentSectionIndex(currentSectionIndex + 1);
+      const newIndex = currentSectionIndex + 1;
       const stepMap: { [key: number]: WorkflowStep } = {
         1: 'section-config-chemistry',
         2: 'section-config-math'
       };
-      setStep(stepMap[currentSectionIndex + 1]);
+
+      updateCurrentProject({
+        sections: updatedSections,
+        currentSectionIndex: newIndex,
+        currentStep: stepMap[newIndex]
+      });
     } else {
-      setStep('test-review');
+      updateCurrentProject({
+        sections: updatedSections,
+        currentStep: 'test-review'
+      });
     }
   };
 
@@ -309,7 +358,10 @@ function App() {
       1: 'section-config-chemistry',
       2: 'section-config-math'
     };
-    setStep(stepMap[currentSectionIndex]);
+
+    updateCurrentProject({
+      currentStep: stepMap[currentSectionIndex]
+    });
   };
 
   const handleExportTest = async () => {
@@ -324,11 +376,15 @@ function App() {
       const result = await window.electronAPI.test.export(test);
       if (result.success) {
         alert(`Test exported successfully to: ${result.path}`);
-        setStep('complete');
+        updateCurrentProject({ currentStep: 'complete' });
       } else {
         alert('Failed to export test: ' + result.error);
       }
     }
+  };
+
+  const handleConstraintConfigChange = (config: ConstraintConfig) => {
+    updateCurrentProject({ constraintConfig: config });
   };
 
   // Render different steps
@@ -357,10 +413,10 @@ function App() {
       case 'section-config-math':
         return (
           <SectionConfiguration
-            sectionName={sections[currentSectionIndex].name}
-            chapters={sections[currentSectionIndex].chapters}
+            sectionName={sections[currentSectionIndex]?.name || 'Physics'}
+            chapters={sections[currentSectionIndex]?.chapters || []}
             constraintConfig={constraintConfig}
-            onConfigChange={setConstraintConfig}
+            onConfigChange={handleConstraintConfigChange}
             onConfigure={handleSectionConfiguration}
           />
         );
@@ -369,14 +425,18 @@ function App() {
       case 'question-select-chemistry':
       case 'question-select-math':
         const currentSection = sections[currentSectionIndex];
+        if (!currentSection) return <div>Loading...</div>;
+
         return (
           <QuestionSelection
+            key={`${currentProjectId}-${currentSectionIndex}`}
             sectionName={currentSection.name}
             chapters={currentSection.chapters}
             alphaConstraint={currentSection.alphaConstraint}
             betaConstraint={currentSection.betaConstraint}
             onComplete={handleQuestionSelection}
             onBack={handleBackFromSelection}
+            initialSelectedQuestions={currentSection.selectedQuestions}
           />
         );
 
@@ -405,7 +465,7 @@ function App() {
             <div className="review-actions">
               <button
                 className="btn-secondary"
-                onClick={() => setStep('test-creation')}
+                onClick={createNewProject}
               >
                 Start Over
               </button>
@@ -426,12 +486,7 @@ function App() {
             <p>Your test has been exported as a JSON file.</p>
             <button
               className="btn-primary"
-              onClick={() => {
-                setStep('test-creation');
-                setSections([]);
-                setTestMetadata(null);
-                setCurrentSectionIndex(0);
-              }}
+              onClick={createNewProject}
             >
               Create Another Test
             </button>
