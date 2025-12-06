@@ -378,12 +378,12 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
                   const chapterCode = question.tag_2 || chapters[0].code;
                   const chapter = chapters.find(ch => ch.code === chapterCode);
                   const chapterName = chapter ? chapter.name : chapters[0].name;
-                  const difficulty: Difficulty = 'M'; // Default
+                  const difficulty: Difficulty = (question.tag_3 as Difficulty) || 'M'; // Use question's difficulty from tag_3
 
                   // Division logic: numerical answers MUST go to Division 2, others fill Division 1 first
                   const division: 1 | 2 = isDivision2 ? 2 : (summary.division1 < 20 ? 1 : 2);
 
-                  console.log(`[SELECTION] Assigning to Division ${division}`);
+                  console.log(`[SELECTION] Assigning to Division ${division}, Difficulty ${difficulty}`);
 
                   toggleQuestion(question, chapterCode, chapterName, difficulty, division);
                 }}
