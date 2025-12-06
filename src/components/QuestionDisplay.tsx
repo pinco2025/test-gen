@@ -40,8 +40,8 @@ export const QuestionDisplay: React.FC<QuestionDisplayProps> = ({
     }
   };
 
-  const difficultyColors = getDifficultyColor(question.tag_3);
-  const difficultyLabel = question.tag_3 === 'E' ? 'Easy' : difficulty === 'M' ? 'Medium' : difficulty === 'H' ? 'Hard' : 'Unknown';
+  const difficultyColors = getDifficultyColor(question.tag_3 as 'E' | 'M' | 'H');
+  const difficultyLabel = question.tag_3 === 'E' ? 'Easy' : question.tag_3 === 'M' ? 'Medium' : question.tag_3 === 'H' ? 'Hard' : 'Unknown';
   return (
     <div className={`question-card ${isSelected ? 'selected' : ''}`}>
       {showCheckbox && (
@@ -55,28 +55,27 @@ export const QuestionDisplay: React.FC<QuestionDisplayProps> = ({
       )}
 
       <div className="question-header" style={{
-        display: 'flex',
-        gap: '12px',
-        alignItems: 'center',
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+        gap: '10px',
         marginBottom: '16px',
-        padding: '12px',
+        padding: '14px',
         backgroundColor: '#f5f5f5',
-        borderRadius: '6px',
-        flexWrap: 'wrap'
+        borderRadius: '6px'
       }}>
         {questionNumber !== undefined && (
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '8px'
+            gap: '6px'
           }}>
-            <strong style={{ color: '#666', fontSize: '13px' }}>Q#:</strong>
+            <strong style={{ color: '#666', fontSize: '12px' }}>Q#:</strong>
             <span style={{
               backgroundColor: '#f3e5f5',
               color: '#7b1fa2',
-              padding: '6px 12px',
+              padding: '4px 10px',
               borderRadius: '4px',
-              fontSize: '14px',
+              fontSize: '13px',
               fontWeight: '600'
             }}>{questionNumber}</span>
           </div>
@@ -85,15 +84,15 @@ export const QuestionDisplay: React.FC<QuestionDisplayProps> = ({
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '8px'
+          gap: '6px'
         }}>
-          <strong style={{ color: '#666', fontSize: '13px' }}>ID:</strong>
+          <strong style={{ color: '#666', fontSize: '12px' }}>ID:</strong>
           <span style={{
             backgroundColor: '#e3f2fd',
             color: '#1976d2',
-            padding: '6px 12px',
+            padding: '4px 10px',
             borderRadius: '4px',
-            fontSize: '14px',
+            fontSize: '13px',
             fontWeight: '600',
             fontFamily: 'monospace'
           }}>{question.uuid}</span>
@@ -103,50 +102,50 @@ export const QuestionDisplay: React.FC<QuestionDisplayProps> = ({
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '8px'
+            gap: '6px'
           }}>
-            <strong style={{ color: '#666', fontSize: '13px' }}>Chapter:</strong>
+            <strong style={{ color: '#666', fontSize: '12px' }}>Chapter:</strong>
             <span style={{
               backgroundColor: '#e0f2f1',
               color: '#00695c',
-              padding: '6px 12px',
+              padding: '4px 10px',
               borderRadius: '4px',
-              fontSize: '14px',
+              fontSize: '13px',
               fontWeight: '600'
             }}>{question.tag_2}</span>
           </div>
         )}
 
-        {difficulty && (
+        {question.tag_3 && (
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '8px'
+            gap: '6px'
           }}>
-            <strong style={{ color: '#666', fontSize: '13px' }}>Difficulty:</strong>
+            <strong style={{ color: '#666', fontSize: '12px' }}>Difficulty:</strong>
             <span style={{
               backgroundColor: difficultyColors.bg,
               color: difficultyColors.color,
-              padding: '6px 12px',
+              padding: '4px 10px',
               borderRadius: '4px',
-              fontSize: '14px',
+              fontSize: '13px',
               fontWeight: '600'
-            }}>{question.tag_3}</span>
+            }}>{difficultyLabel}</span>
           </div>
         )}
 
         <div style={{
           display: 'flex',
           alignItems: 'center',
-          gap: '8px'
+          gap: '6px'
         }}>
-          <strong style={{ color: '#666', fontSize: '13px' }}>Type:</strong>
+          <strong style={{ color: '#666', fontSize: '12px' }}>Type:</strong>
           <span style={{
             backgroundColor: '#e8f5e9',
             color: '#2e7d32',
-            padding: '6px 12px',
+            padding: '4px 10px',
             borderRadius: '4px',
-            fontSize: '14px',
+            fontSize: '13px',
             fontWeight: '600'
           }}>{question.type}</span>
         </div>
@@ -155,15 +154,15 @@ export const QuestionDisplay: React.FC<QuestionDisplayProps> = ({
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '8px'
+            gap: '6px'
           }}>
-            <strong style={{ color: '#666', fontSize: '13px' }}>Year:</strong>
+            <strong style={{ color: '#666', fontSize: '12px' }}>Year:</strong>
             <span style={{
               backgroundColor: '#fff3e0',
               color: '#f57c00',
-              padding: '6px 12px',
+              padding: '4px 10px',
               borderRadius: '4px',
-              fontSize: '14px',
+              fontSize: '13px',
               fontWeight: '600'
             }}>{question.year}</span>
           </div>
