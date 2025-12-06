@@ -81,8 +81,40 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
 
   // Helper function to check if a question has nil options (numerical type)
   const hasNilOptions = (question: Question): boolean => {
-    return !question.option_a && !question.option_b && !question.option_c && !question.option_d;
+    // Check if all options are null, undefined, empty string, or whitespace only
+    const hasNoOptionA = !question.option_a || question.option_a.trim() === '';
+    const hasNoOptionB = !question.option_b || question.option_b.trim() === '';
+    const hasNoOptionC = !question.option_c || question.option_c.trim() === '';
+    const hasNoOptionD = !question.option_d || question.option_d.trim() === '';
+
+    const isNilOptions = hasNoOptionA && hasNoOptionB && hasNoOptionC && hasNoOptionD;
+
+    // Debug logging
+    if (isNilOptions) {
+      console.log(`[NIL-OPTIONS] Question ${question.uuid} has nil options - will be assigned to Division 2`);
+    }
+
+    return isNilOptions;
   };
+
+  // Auto-correct existing selections: move nil-options from Division 1 to Division 2
+  useEffect(() => {
+    let correctionsMade = false;
+    const correctedSelections = selectedQuestions.map(sq => {
+      // If this question has nil options but is in Division 1, move to Division 2
+      if (hasNilOptions(sq.question) && sq.division === 1) {
+        console.log(`[AUTO-CORRECT] Moving question ${sq.question.uuid} from Division 1 to Division 2 (nil options)`);
+        correctionsMade = true;
+        return { ...sq, division: 2 as 1 | 2 };
+      }
+      return sq;
+    });
+
+    if (correctionsMade) {
+      console.log('[AUTO-CORRECT] Correcting nil-options questions assignments');
+      setSelectedQuestions(correctedSelections);
+    }
+  }, [selectedQuestions]);
 
   const getSummary = (): SelectionSummary => {
     const byChapter: SelectionSummary['byChapter'] = {};
@@ -317,8 +349,24 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
               </div>
             )}
 
-            {filteredQuestions.map(question => (
+            {filteredQuestions.map(question => {
+              const isNilOptionsQuestion = hasNilOptions(question);
+              return (
               <div key={question.uuid} className="selectable-question">
+                {isNilOptionsQuestion && (
+                  <div className="nil-options-badge" style={{
+                    background: '#ff9800',
+                    color: 'white',
+                    padding: '4px 8px',
+                    borderRadius: '4px',
+                    fontSize: '12px',
+                    fontWeight: 'bold',
+                    marginBottom: '8px',
+                    display: 'inline-block'
+                  }}>
+                    📝 NUMERICAL TYPE - Division 2 (B) Only
+                  </div>
+                )}
                 <QuestionDisplay
                   question={question}
                   showAnswer={false}
@@ -327,6 +375,16 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
                   onSelect={() => {
                     // Check if question has nil options (numerical type)
                     const isNilOptions = hasNilOptions(question);
+
+                    console.log(`[SELECTION] Question ${question.uuid}:`, {
+                      isNilOptions,
+                      option_a: question.option_a,
+                      option_b: question.option_b,
+                      option_c: question.option_c,
+                      option_d: question.option_d,
+                      currentDiv1: summary.division1,
+                      currentDiv2: summary.division2
+                    });
 
                     // If nil options question and Division 2 is full, prevent selection
                     if (isNilOptions && summary.division2 >= 5) {
@@ -344,11 +402,14 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
                     // Division logic: nil options MUST go to Division 2, others fill Division 1 first
                     const division: 1 | 2 = isNilOptions ? 2 : (summary.division1 < 20 ? 1 : 2);
 
+                    console.log(`[SELECTION] Assigning to Division ${division}`);
+
                     toggleQuestion(question, chapterCode, chapterName, difficulty, division);
                   }}
                 />
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
