@@ -117,6 +117,15 @@ ipcMain.handle('questions:getByChapterCodes', async (_, type: string, chapterCod
   return dbService.getQuestionsByChapterCodes(type, chapterCodes);
 });
 
+// Frequency operations
+ipcMain.handle('questions:incrementFrequency', async (_, uuid: string): Promise<boolean> => {
+  return dbService.incrementFrequency(uuid);
+});
+
+ipcMain.handle('questions:decrementFrequency', async (_, uuid: string): Promise<boolean> => {
+  return dbService.decrementFrequency(uuid);
+});
+
 // Metadata queries
 ipcMain.handle('db:getTypes', async (): Promise<string[]> => {
   return dbService.getTypes();

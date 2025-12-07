@@ -45,5 +45,8 @@ CREATE TABLE IF NOT EXISTS questions (
     
     -- Timestamps
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- When record was created
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP   -- When record was last updated
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- When record was last updated
+
+    -- Frequency tracking
+    frequency INTEGER DEFAULT 0                      -- Tracks how many times question has been selected
 );

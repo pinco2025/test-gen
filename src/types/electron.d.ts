@@ -16,6 +16,8 @@ declare global {
         search: (criteria: any) => Promise<any[]>;
         getCount: (filter?: any) => Promise<number>;
         getByChapterCodes: (type: string, chapterCodes: string[]) => Promise<any[]>;
+        incrementFrequency: (uuid: string) => Promise<boolean>;
+        decrementFrequency: (uuid: string) => Promise<boolean>;
       };
       test: {
         export: (test: any) => Promise<{ success: boolean; path?: string; error?: string }>;
