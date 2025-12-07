@@ -19,6 +19,7 @@ interface QuestionSelectionProps {
   onComplete: (selectedQuestions: SelectedQuestion[]) => void;
   onBack: () => void;
   initialSelectedQuestions?: SelectedQuestion[];
+  onChange?: (selectedQuestions: SelectedQuestion[]) => void; // Immediate sync callback
 }
 
 /**
@@ -30,9 +31,17 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
   alphaConstraint,
   onComplete,
   onBack,
-  initialSelectedQuestions = []
+  initialSelectedQuestions = [],
+  onChange
 }) => {
   const [selectedQuestions, setSelectedQuestions] = useState<SelectedQuestion[]>(initialSelectedQuestions);
+
+  // Sync selections to parent immediately when they change
+  useEffect(() => {
+    if (onChange) {
+      onChange(selectedQuestions);
+    }
+  }, [selectedQuestions, onChange]);
   const [availableQuestions, setAvailableQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterChapter, setFilterChapter] = useState<string>('all');

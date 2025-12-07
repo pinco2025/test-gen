@@ -413,6 +413,22 @@ function App() {
     });
   };
 
+  // Immediate sync of question selections (saves on every change, not just on "Continue")
+  const handleSelectionChange = useCallback((selectedQuestions: SelectedQuestion[]) => {
+    if (!currentProjectId) return;
+
+    const updatedSections = [...sections];
+    updatedSections[currentSectionIndex] = {
+      ...updatedSections[currentSectionIndex],
+      selectedQuestions
+    };
+
+    // Just update the sections, don't change step
+    updateCurrentProject({
+      sections: updatedSections
+    });
+  }, [currentProjectId, sections, currentSectionIndex, updateCurrentProject]);
+
   const handleQuestionSelection = (selectedQuestions: SelectedQuestion[]) => {
     if (!currentProjectId) return;
 
@@ -573,6 +589,7 @@ function App() {
             onComplete={handleQuestionSelection}
             onBack={handleBackFromSelection}
             initialSelectedQuestions={currentSection.selectedQuestions}
+            onChange={handleSelectionChange}
           />
         );
 
