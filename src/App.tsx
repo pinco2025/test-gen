@@ -56,6 +56,8 @@ function App() {
 
   // Database state
   const [dbConnected, setDbConnected] = useState(false);
+  const [dbPath, setDbPath] = useState<string | null>(null);
+  const [showDbDropdown, setShowDbDropdown] = useState(false);
 
   // Track when creating a new project
   const [isCreatingNew, setIsCreatingNew] = useState(false);
@@ -108,6 +110,7 @@ function App() {
       const result = await window.electronAPI.db.connect(config.databasePath);
       if (result.success) {
         setDbConnected(true);
+        setDbPath(config.databasePath);
 
         // Load project list and show dashboard
         const loadedProjects = await window.electronAPI.project.list();
@@ -324,11 +327,25 @@ function App() {
     const result = await window.electronAPI.db.selectFile();
     if (result.success) {
       setDbConnected(true);
+      setDbPath(result.path || null);
+      setShowDbDropdown(false);
       await window.electronAPI.config.update({ databasePath: result.path || null });
       createNewProject();
     } else {
       alert('Failed to connect to database: ' + result.error);
     }
+  };
+
+  // Handle database dropdown toggle
+  const toggleDbDropdown = () => {
+    setShowDbDropdown(!showDbDropdown);
+  };
+
+  // Get filename from path
+  const getDbFileName = (path: string | null): string => {
+    if (!path) return 'Unknown';
+    const parts = path.split(/[/\\]/);
+    return parts[parts.length - 1];
   };
 
   const handleTestCreation = async (metadata: TestMetadata, chapters: Chapter[][]) => {
@@ -707,12 +724,36 @@ function App() {
               {saveStatus === 'unsaved' && 'Unsaved'}
             </div>
           )}
-          {dbConnected && (
-            <div className="db-status">
+          <div className="db-status-container">
+            <div
+              className={`db-status ${dbConnected ? 'connected' : 'disconnected'}`}
+              onClick={toggleDbDropdown}
+            >
               <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>database</span>
-              Connected
+              {dbConnected ? 'Connected' : 'Disconnected'}
+              <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>
+                {showDbDropdown ? 'expand_less' : 'expand_more'}
+              </span>
             </div>
-          )}
+            {showDbDropdown && (
+              <div className="db-dropdown">
+                <div className="db-dropdown-header">
+                  <span className="material-symbols-outlined">storage</span>
+                  Database Connection
+                </div>
+                {dbConnected && dbPath && (
+                  <div className="db-dropdown-info">
+                    <div className="db-file-name">{getDbFileName(dbPath)}</div>
+                    <div className="db-file-path" title={dbPath}>{dbPath}</div>
+                  </div>
+                )}
+                <button className="db-dropdown-btn" onClick={handleDatabaseSelect}>
+                  <span className="material-symbols-outlined">folder_open</span>
+                  {dbConnected ? 'Change Database' : 'Select Database'}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
       {dbConnected && (

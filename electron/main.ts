@@ -126,6 +126,10 @@ ipcMain.handle('questions:decrementFrequency', async (_, uuid: string): Promise<
   return dbService.decrementFrequency(uuid);
 });
 
+ipcMain.handle('questions:updateQuestion', async (_, uuid: string, updates: { tag_2?: string; tag_3?: string }): Promise<boolean> => {
+  return dbService.updateQuestion(uuid, updates);
+});
+
 // Metadata queries
 ipcMain.handle('db:getTypes', async (): Promise<string[]> => {
   return dbService.getTypes();
@@ -143,7 +147,7 @@ ipcMain.handle('db:getChaptersByType', async (): Promise<{ [type: string]: strin
   return dbService.getChaptersByType();
 });
 
-// Test export
+// Test export - Transform to match sample-test-001.json format
 ipcMain.handle('test:export', async (_, test: Test) => {
   const result = await dialog.showSaveDialog({
     defaultPath: `test-${test.metadata.code}.json`,
@@ -154,7 +158,9 @@ ipcMain.handle('test:export', async (_, test: Test) => {
 
   if (!result.canceled && result.filePath) {
     try {
-      fs.writeFileSync(result.filePath, JSON.stringify(test, null, 2), 'utf-8');
+      // Transform the test data to match sample-test-001.json format
+      const exportData = transformTestToExportFormat(test);
+      fs.writeFileSync(result.filePath, JSON.stringify(exportData, null, 2), 'utf-8');
       return { success: true, path: result.filePath };
     } catch (error: any) {
       return { success: false, error: error.message };
@@ -163,6 +169,118 @@ ipcMain.handle('test:export', async (_, test: Test) => {
 
   return { success: false, error: 'Export cancelled' };
 });
+
+// Helper function to transform Test object to sample-test-001.json format
+function transformTestToExportFormat(test: Test) {
+  const marksPerQuestion = 4;
+
+  // Build section definitions
+  // For each subject (Physics, Chemistry, Mathematics) we have Section A (Division 1) and Section B (Division 2)
+  const sectionDefinitions = [
+    { name: 'Physics A', marksPerQuestion },
+    { name: 'Physics B', marksPerQuestion },
+    { name: 'Chemistry A', marksPerQuestion },
+    { name: 'Chemistry B', marksPerQuestion },
+    { name: 'Mathematics A', marksPerQuestion },
+    { name: 'Mathematics B', marksPerQuestion }
+  ];
+
+  // Build questions array
+  const questions: any[] = [];
+  let questionIndex = 1;
+
+  for (const section of test.sections) {
+    const sectionNameA = `${section.name} A`; // Division 1
+    const sectionNameB = `${section.name} B`; // Division 2
+
+    // Sort questions by division: Division 1 first, then Division 2
+    const division1Questions = section.selectedQuestions.filter(sq => sq.division === 1);
+    const division2Questions = section.selectedQuestions.filter(sq => sq.division === 2);
+
+    // Process Division 1 questions (MCQ type)
+    for (const sq of division1Questions) {
+      const q = sq.question;
+      questions.push({
+        id: `q${questionIndex}`,
+        uuid: q.uuid,
+        text: q.question,
+        image: q.question_schematic ? 1 : 0,
+        imageSchematic: q.question_schematic || null,
+        imageSchematicType: q.question_schematic_type || null,
+        options: [
+          { id: 'a', text: q.option_a || '', schematic: q.option_a_schematic || null },
+          { id: 'b', text: q.option_b || '', schematic: q.option_b_schematic || null },
+          { id: 'c', text: q.option_c || '', schematic: q.option_c_schematic || null },
+          { id: 'd', text: q.option_d || '', schematic: q.option_d_schematic || null }
+        ],
+        correctAnswer: q.answer.toLowerCase(),
+        marks: marksPerQuestion,
+        section: sectionNameA,
+        tags: {
+          tag1: q.tag_1 || '',
+          tag2: q.tag_2 || '',
+          tag3: q.tag_3 || '',
+          tag4: q.tag_4 || '',
+          type: q.type || '',
+          year: q.year || ''
+        },
+        chapterCode: sq.chapterCode,
+        chapterName: sq.chapterName,
+        difficulty: sq.difficulty,
+        division: sq.division
+      });
+      questionIndex++;
+    }
+
+    // Process Division 2 questions (numerical/integer type)
+    for (const sq of division2Questions) {
+      const q = sq.question;
+      questions.push({
+        id: `q${questionIndex}`,
+        uuid: q.uuid,
+        text: q.question,
+        image: q.question_schematic ? 1 : 0,
+        imageSchematic: q.question_schematic || null,
+        imageSchematicType: q.question_schematic_type || null,
+        options: [], // Division 2 questions are numerical, no options
+        correctAnswer: q.answer,
+        marks: marksPerQuestion,
+        section: sectionNameB,
+        tags: {
+          tag1: q.tag_1 || '',
+          tag2: q.tag_2 || '',
+          tag3: q.tag_3 || '',
+          tag4: q.tag_4 || '',
+          type: q.type || '',
+          year: q.year || ''
+        },
+        chapterCode: sq.chapterCode,
+        chapterName: sq.chapterName,
+        difficulty: sq.difficulty,
+        division: sq.division
+      });
+      questionIndex++;
+    }
+  }
+
+  // Calculate total marks
+  const totalMarks = questions.length * marksPerQuestion;
+
+  // Calculate duration based on test type (Full = 3 hours, Part = 1.5 hours)
+  const duration = test.metadata.testType === 'Full' ? 10800 : 5400;
+
+  return {
+    testId: test.metadata.code,
+    title: test.metadata.description,
+    testType: test.metadata.testType,
+    createdAt: test.metadata.createdAt,
+    duration,
+    totalMarks,
+    totalQuestions: questions.length,
+    sections: sectionDefinitions,
+    questions
+  };
+}
 
 // Project management
 ipcMain.handle('project:save', async (_, projectState: ProjectState) => {

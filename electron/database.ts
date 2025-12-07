@@ -305,6 +305,48 @@ export class DatabaseService {
       return false;
     }
   }
+
+  /**
+   * Update question properties (tag_2 for chapter, tag_3 for difficulty)
+   */
+  updateQuestion(uuid: string, updates: { tag_2?: string; tag_3?: string }): boolean {
+    if (!this.db) throw new Error('Database not connected');
+
+    try {
+      const setClauses: string[] = [];
+      const params: any[] = [];
+
+      if (updates.tag_2 !== undefined) {
+        setClauses.push('tag_2 = ?');
+        params.push(updates.tag_2);
+      }
+
+      if (updates.tag_3 !== undefined) {
+        setClauses.push('tag_3 = ?');
+        params.push(updates.tag_3);
+      }
+
+      if (setClauses.length === 0) {
+        console.log('[DB] No updates to apply');
+        return false;
+      }
+
+      // Always update timestamp
+      setClauses.push('updated_at = CURRENT_TIMESTAMP');
+      params.push(uuid);
+
+      const query = `UPDATE questions SET ${setClauses.join(', ')} WHERE uuid = ?`;
+      console.log('[DB] Update query:', query, 'params:', params);
+
+      const stmt = this.db.prepare(query);
+      const result = stmt.run(...params);
+      console.log(`[DB] Updated question ${uuid}, changes: ${result.changes}`);
+      return result.changes > 0;
+    } catch (error) {
+      console.error(`[DB] Error updating question ${uuid}:`, error);
+      return false;
+    }
+  }
 }
 
 // Singleton instance
