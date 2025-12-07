@@ -18,6 +18,8 @@ declare global {
         search: (criteria: any) => Promise<Question[]>;
         getCount: (filter?: QuestionFilter) => Promise<number>;
         getByChapterCodes: (type: string, chapterCodes: string[]) => Promise<Question[]>;
+        incrementFrequency: (uuid: string) => Promise<boolean>;
+        decrementFrequency: (uuid: string) => Promise<boolean>;
       };
       test: {
         export: (test: Test) => Promise<{ success: boolean; path?: string; error?: string }>;

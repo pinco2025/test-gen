@@ -142,6 +142,18 @@ export const QuestionDisplay: React.FC<QuestionDisplayProps> = ({
             }}>{question.year}</span>
           </div>
         )}
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+          <strong style={{ color: 'var(--text-muted-light)', fontSize: '0.75rem' }}>Freq:</strong>
+          <span style={{
+            backgroundColor: (question.frequency || 0) > 0 ? 'var(--purple-bg)' : 'var(--bg-light)',
+            color: (question.frequency || 0) > 0 ? 'var(--purple)' : 'var(--text-muted-light)',
+            padding: '0.25rem 0.625rem',
+            borderRadius: 'var(--radius-sm)',
+            fontSize: '0.8125rem',
+            fontWeight: '600'
+          }}>{question.frequency || 0}</span>
+        </div>
       </div>
 
       <div className="question-content">

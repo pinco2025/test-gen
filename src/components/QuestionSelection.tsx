@@ -185,7 +185,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
     return selectedQuestions.some(sq => sq.question.uuid === uuid);
   };
 
-  const toggleQuestion = (
+  const toggleQuestion = async (
     question: Question,
     chapterCode: string,
     chapterName: string,
@@ -193,10 +193,36 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
     division: 1 | 2
   ) => {
     if (isQuestionSelected(question.uuid)) {
+      // Deselecting - decrement frequency
+      try {
+        await window.electronAPI.questions.decrementFrequency(question.uuid);
+        // Update the local question's frequency
+        setAvailableQuestions(prev => prev.map(q =>
+          q.uuid === question.uuid
+            ? { ...q, frequency: Math.max((q.frequency || 0) - 1, 0) }
+            : q
+        ));
+        console.log(`[FREQUENCY] Decremented frequency for question ${question.uuid}`);
+      } catch (error) {
+        console.error('[FREQUENCY] Error decrementing frequency:', error);
+      }
       setSelectedQuestions(
         selectedQuestions.filter(sq => sq.question.uuid !== question.uuid)
       );
     } else {
+      // Selecting - increment frequency
+      try {
+        await window.electronAPI.questions.incrementFrequency(question.uuid);
+        // Update the local question's frequency
+        setAvailableQuestions(prev => prev.map(q =>
+          q.uuid === question.uuid
+            ? { ...q, frequency: (q.frequency || 0) + 1 }
+            : q
+        ));
+        console.log(`[FREQUENCY] Incremented frequency for question ${question.uuid}`);
+      } catch (error) {
+        console.error('[FREQUENCY] Error incrementing frequency:', error);
+      }
       const newSelection: SelectedQuestion = {
         question,
         chapterCode,

@@ -21,7 +21,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getByUUID: (uuid: string) => ipcRenderer.invoke('questions:getByUUID', uuid),
     search: (criteria: any) => ipcRenderer.invoke('questions:search', criteria),
     getCount: (filter?: QuestionFilter) => ipcRenderer.invoke('questions:getCount', filter),
-    getByChapterCodes: (type: string, chapterCodes: string[]) => ipcRenderer.invoke('questions:getByChapterCodes', type, chapterCodes)
+    getByChapterCodes: (type: string, chapterCodes: string[]) => ipcRenderer.invoke('questions:getByChapterCodes', type, chapterCodes),
+    incrementFrequency: (uuid: string) => ipcRenderer.invoke('questions:incrementFrequency', uuid),
+    decrementFrequency: (uuid: string) => ipcRenderer.invoke('questions:decrementFrequency', uuid)
   },
 
   // Test operations

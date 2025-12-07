@@ -48,6 +48,9 @@ export interface Question {
   // Timestamps
   created_at: string;
   updated_at: string;
+
+  // Frequency - tracks how many times this question has been selected
+  frequency: number | null;
 }
 
 export interface QuestionFilter {

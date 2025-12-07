@@ -259,6 +259,52 @@ export class DatabaseService {
 
     return chaptersByType;
   }
+
+  /**
+   * Increment the frequency of a question by 1
+   * If frequency is NULL, set it to 1
+   */
+  incrementFrequency(uuid: string): boolean {
+    if (!this.db) throw new Error('Database not connected');
+
+    try {
+      const stmt = this.db.prepare(`
+        UPDATE questions
+        SET frequency = COALESCE(frequency, 0) + 1,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE uuid = ?
+      `);
+      const result = stmt.run(uuid);
+      console.log(`[DB] Incremented frequency for question ${uuid}, changes: ${result.changes}`);
+      return result.changes > 0;
+    } catch (error) {
+      console.error(`[DB] Error incrementing frequency for ${uuid}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Decrement the frequency of a question by 1
+   * Ensures frequency doesn't go below 0
+   */
+  decrementFrequency(uuid: string): boolean {
+    if (!this.db) throw new Error('Database not connected');
+
+    try {
+      const stmt = this.db.prepare(`
+        UPDATE questions
+        SET frequency = MAX(COALESCE(frequency, 0) - 1, 0),
+            updated_at = CURRENT_TIMESTAMP
+        WHERE uuid = ?
+      `);
+      const result = stmt.run(uuid);
+      console.log(`[DB] Decremented frequency for question ${uuid}, changes: ${result.changes}`);
+      return result.changes > 0;
+    } catch (error) {
+      console.error(`[DB] Error decrementing frequency for ${uuid}:`, error);
+      return false;
+    }
+  }
 }
 
 // Singleton instance
