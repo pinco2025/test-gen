@@ -234,7 +234,12 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
   return (
     <div className="question-selection">
       <div className="selection-header">
-        <h2>{sectionName} - Question Selection</h2>
+        <h2>
+          <span className="material-symbols-outlined" style={{ marginRight: '0.5rem', verticalAlign: 'middle' }}>
+            {sectionName === 'Physics' ? 'science' : sectionName === 'Chemistry' ? 'biotech' : 'calculate'}
+          </span>
+          {sectionName} - Question Selection
+        </h2>
         <div className="selection-progress">
           <span className={summary.division1 === 20 ? 'valid' : 'invalid'}>
             Division 1: {summary.division1}/20
@@ -249,7 +254,10 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
       <div className="selection-layout">
         {/* Left Panel - Constraints Summary */}
         <div className="constraints-panel">
-          <h3>Alpha Constraints</h3>
+          <h3>
+            <span className="material-symbols-outlined" style={{ marginRight: '0.375rem', fontSize: '1.125rem' }}>tune</span>
+            Alpha Constraints
+          </h3>
 
           <div className="constraint-section">
             <h4>By Chapter</h4>
@@ -400,26 +408,29 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
                 }}
                 style={{
                   cursor: 'pointer',
-                  border: selected ? '3px solid #2196F3' : '1px solid #ddd',
-                  borderRadius: '8px',
-                  padding: '16px',
-                  marginBottom: '16px',
-                  transition: 'all 0.2s ease',
-                  backgroundColor: selected ? '#E3F2FD' : 'white'
+                  border: selected ? '2px solid var(--primary)' : '1px solid var(--border-light)',
+                  borderRadius: 'var(--radius-lg)',
+                  padding: '1rem',
+                  marginBottom: '1rem',
+                  transition: 'var(--transition)',
+                  backgroundColor: selected ? 'var(--primary-light)' : 'var(--bg-card-light)'
                 }}
               >
                 {isDivision2Question && (
                   <div style={{
-                    background: '#ff9800',
+                    background: 'var(--amber)',
                     color: 'white',
-                    padding: '4px 8px',
-                    borderRadius: '4px',
-                    fontSize: '12px',
-                    fontWeight: 'bold',
-                    marginBottom: '8px',
-                    display: 'inline-block'
+                    padding: '0.25rem 0.625rem',
+                    borderRadius: 'var(--radius)',
+                    fontSize: '0.75rem',
+                    fontWeight: '600',
+                    marginBottom: '0.5rem',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.375rem'
                   }}>
-                    📝 NUMERICAL ANSWER ({question.answer}) - Division 2 (B) Only
+                    <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>edit_note</span>
+                    NUMERICAL ANSWER ({question.answer}) - Division 2 (B) Only
                   </div>
                 )}
                 <QuestionDisplay
@@ -439,6 +450,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
 
       <div className="selection-actions">
         <button className="btn-secondary" onClick={onBack}>
+          <span className="material-symbols-outlined">arrow_back</span>
           Back to Configuration
         </button>
         <button
@@ -447,7 +459,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
           disabled={!isSelectionValid()}
         >
           {isSelectionValid()
-            ? 'Continue to Next Section'
+            ? <>Continue to Next Section <span className="material-symbols-outlined">arrow_forward</span></>
             : `Need ${20 - summary.division1} more for Div1, ${5 - summary.division2} more for Div2`}
         </button>
       </div>

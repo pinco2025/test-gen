@@ -31,6 +31,7 @@ function ProjectTabs({
           title="View all projects"
         >
           <div className="tab-content">
+            <span className="material-symbols-outlined tab-icon">dashboard</span>
             <div className="tab-title">All Projects</div>
           </div>
         </div>
@@ -46,6 +47,7 @@ function ProjectTabs({
             onClick={() => onSelectProject(project.id)}
           >
             <div className="tab-content">
+              <span className="material-symbols-outlined tab-icon">description</span>
               <div className="tab-title">{project.testCode || 'Untitled'}</div>
             </div>
             <button
@@ -56,14 +58,14 @@ function ProjectTabs({
               }}
               title="Close tab"
             >
-              ×
+              <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>close</span>
             </button>
           </div>
         ))}
 
         {/* New Project Button */}
         <button className="new-tab-btn" onClick={onNewProject} title="Create new project">
-          +
+          <span className="material-symbols-outlined">add</span>
         </button>
       </div>
     </div>
