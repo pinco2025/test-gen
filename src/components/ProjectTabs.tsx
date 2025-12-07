@@ -7,6 +7,7 @@ interface ProjectTabsProps {
   onSelectProject: (projectId: string) => void;
   onCloseProject: (projectId: string) => void;
   onNewProject: () => void;
+  onDashboard: () => void;
 }
 
 function ProjectTabs({
@@ -14,27 +15,30 @@ function ProjectTabs({
   currentProjectId,
   onSelectProject,
   onCloseProject,
-  onNewProject
+  onNewProject,
+  onDashboard
 }: ProjectTabsProps) {
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr);
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const seconds = Math.floor(diff / 1000);
-    const minutes = Math.floor(seconds / 60);
-    const hours = Math.floor(minutes / 60);
-    const days = Math.floor(hours / 24);
-
-    if (seconds < 60) return 'just now';
-    if (minutes < 60) return `${minutes}m ago`;
-    if (hours < 24) return `${hours}h ago`;
-    if (days < 7) return `${days}d ago`;
-    return date.toLocaleDateString();
-  };
+  const hasOpenTabs = projects.length > 0;
+  const isOnDashboard = currentProjectId === null;
 
   return (
     <div className="project-tabs">
       <div className="tabs-container">
+        {/* Dashboard/Home Tab */}
+        <div
+          className={`tab dashboard-tab ${isOnDashboard ? 'active' : ''}`}
+          onClick={onDashboard}
+          title="View all projects"
+        >
+          <div className="tab-content">
+            <div className="tab-title">All Projects</div>
+          </div>
+        </div>
+
+        {/* Separator */}
+        {hasOpenTabs && <div className="tab-separator" />}
+
+        {/* Open Project Tabs */}
         {projects.map((project) => (
           <div
             key={project.id}
@@ -43,9 +47,6 @@ function ProjectTabs({
           >
             <div className="tab-content">
               <div className="tab-title">{project.testCode || 'Untitled'}</div>
-              <div className="tab-info">
-                {formatDate(project.lastModified)}
-              </div>
             </div>
             <button
               className="tab-close"
@@ -53,14 +54,16 @@ function ProjectTabs({
                 e.stopPropagation();
                 onCloseProject(project.id);
               }}
-              title="Close project"
+              title="Close tab"
             >
               ×
             </button>
           </div>
         ))}
-        <button className="new-project-btn" onClick={onNewProject} title="New Project">
-          + New
+
+        {/* New Project Button */}
+        <button className="new-tab-btn" onClick={onNewProject} title="Create new project">
+          +
         </button>
       </div>
     </div>

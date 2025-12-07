@@ -38,14 +38,20 @@ interface ProjectData {
   currentSectionIndex: number;
   constraintConfig: ConstraintConfig;
   currentStep: WorkflowStep;
+  createdAt: string; // Track creation time
 }
 
 function App() {
-  // Multi-project state
+  // All saved projects (from disk)
   const [projects, setProjects] = useState<ProjectInfo[]>([]);
+
+  // Currently OPEN project IDs (like browser tabs)
+  const [openProjectIds, setOpenProjectIds] = useState<string[]>([]);
+
+  // Currently active/focused project
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
 
-  // All loaded projects in memory
+  // All loaded projects data in memory
   const [projectsData, setProjectsData] = useState<Record<string, ProjectData>>({});
 
   // Database state
@@ -53,6 +59,9 @@ function App() {
 
   // Track when creating a new project
   const [isCreatingNew, setIsCreatingNew] = useState(false);
+
+  // Save status
+  const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
 
   // Auto-save state
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -73,6 +82,7 @@ function App() {
   const updateCurrentProject = useCallback((updates: Partial<ProjectData>) => {
     if (!currentProjectId) return;
 
+    setSaveStatus('unsaved');
     setProjectsData(prev => ({
       ...prev,
       [currentProjectId]: {
@@ -141,6 +151,8 @@ function App() {
 
     // Set new timeout for auto-save
     saveTimeoutRef.current = setTimeout(async () => {
+      setSaveStatus('saving');
+
       const projectState: ProjectState = {
         id: currentProjectId,
         testMetadata: currentData.testMetadata,
@@ -148,7 +160,7 @@ function App() {
         currentSectionIndex: currentData.currentSectionIndex,
         constraintConfig: currentData.constraintConfig,
         currentStep: currentData.currentStep,
-        createdAt: new Date().toISOString(),
+        createdAt: currentData.createdAt, // Preserve original creation time
         lastModified: new Date().toISOString()
       };
 
@@ -157,7 +169,9 @@ function App() {
       // Refresh project list
       const updatedProjects = await window.electronAPI.project.list();
       setProjects(updatedProjects);
-    }, 1000); // 1 second debounce
+
+      setSaveStatus('saved');
+    }, 800); // 800ms debounce for snappier feel
   }, [currentProjectId, projectsData]);
 
   // Trigger auto-save when project data changes
@@ -187,11 +201,20 @@ function App() {
             sections: projectState.sections,
             currentSectionIndex: projectState.currentSectionIndex,
             constraintConfig: projectState.constraintConfig,
-            currentStep: projectState.currentStep as WorkflowStep
+            currentStep: projectState.currentStep as WorkflowStep,
+            createdAt: projectState.createdAt
           }
         }));
       }
     }
+
+    // Add to open tabs if not already open
+    setOpenProjectIds(prev => {
+      if (!prev.includes(projectId)) {
+        return [...prev, projectId];
+      }
+      return prev;
+    });
 
     // Switch to this project
     setCurrentProjectId(projectId);
@@ -209,21 +232,34 @@ function App() {
     setIsCreatingNew(true);
   };
 
-  // Close project (remove from memory only, keep on disk)
+  // Close project tab (remove from open tabs, keep data in memory and on disk)
   const handleCloseProject = async (projectId: string) => {
-    if (!window.electronAPI) return;
+    // Remove from open tabs
+    setOpenProjectIds(prev => prev.filter(id => id !== projectId));
 
-    // Remove from memory only
+    // Remove from memory
     setProjectsData(prev => {
       const newData = { ...prev };
       delete newData[projectId];
       return newData;
     });
 
-    // If current project was closed, go to dashboard
+    // If current project was closed, switch to another open tab or go to dashboard
     if (currentProjectId === projectId) {
-      setCurrentProjectId(null);
+      const remainingTabs = openProjectIds.filter(id => id !== projectId);
+      if (remainingTabs.length > 0) {
+        // Switch to the last remaining tab
+        setCurrentProjectId(remainingTabs[remainingTabs.length - 1]);
+      } else {
+        setCurrentProjectId(null);
+      }
     }
+  };
+
+  // Go to dashboard (view all projects)
+  const goToDashboard = () => {
+    setCurrentProjectId(null);
+    setIsCreatingNew(false);
   };
 
   // Delete project permanently
@@ -237,6 +273,9 @@ function App() {
       );
       if (!confirmed) return;
     }
+
+    // Remove from open tabs
+    setOpenProjectIds(prev => prev.filter(id => id !== projectId));
 
     // Remove from memory
     setProjectsData(prev => {
@@ -252,9 +291,14 @@ function App() {
     const updatedProjects = await window.electronAPI.project.list();
     setProjects(updatedProjects);
 
-    // If current project was deleted, go to dashboard
+    // If current project was deleted, switch to another or go to dashboard
     if (currentProjectId === projectId) {
-      setCurrentProjectId(null);
+      const remainingTabs = openProjectIds.filter(id => id !== projectId);
+      if (remainingTabs.length > 0) {
+        setCurrentProjectId(remainingTabs[remainingTabs.length - 1]);
+      } else {
+        setCurrentProjectId(null);
+      }
     }
   };
 
@@ -273,6 +317,8 @@ function App() {
       // Delete all projects
       await window.electronAPI.config.deleteAllProjects();
       setProjects([]);
+      setOpenProjectIds([]);
+      setProjectsData({});
     }
 
     const result = await window.electronAPI.db.selectFile();
@@ -318,6 +364,8 @@ function App() {
       selectedQuestions: []
     }));
 
+    const now = new Date().toISOString();
+
     // Create new project in memory
     setProjectsData(prev => ({
       ...prev,
@@ -326,9 +374,13 @@ function App() {
         sections: initialSections,
         currentSectionIndex: 0,
         constraintConfig: { minIdx: 1, Sm: 0.1, Sh: 0.1 },
-        currentStep: 'section-config-physics'
+        currentStep: 'section-config-physics',
+        createdAt: now
       }
     }));
+
+    // Add to open tabs
+    setOpenProjectIds(prev => [...prev, projectId]);
 
     // Switch to new project
     setCurrentProjectId(projectId);
@@ -582,21 +634,43 @@ function App() {
     }
   };
 
+  // Get open projects info for tabs
+  const openProjects = openProjectIds
+    .map(id => projects.find(p => p.id === id) || {
+      id,
+      testCode: projectsData[id]?.testMetadata?.code || 'New Project',
+      description: projectsData[id]?.testMetadata?.description || '',
+      createdAt: projectsData[id]?.createdAt || new Date().toISOString(),
+      lastModified: new Date().toISOString(),
+      progress: 0
+    })
+    .filter(Boolean) as ProjectInfo[];
+
   return (
     <div className="app">
       <div className="app-header">
-        <h1>JEE Test Generator</h1>
+        <div className="header-left">
+          <h1 onClick={goToDashboard} style={{ cursor: 'pointer' }}>JEE Test Generator</h1>
+        </div>
         <div className="header-right">
-          {dbConnected && <div className="db-status">Database: Connected</div>}
+          {currentProjectId && (
+            <div className={`save-status ${saveStatus}`}>
+              {saveStatus === 'saving' && 'Saving...'}
+              {saveStatus === 'saved' && 'Saved'}
+              {saveStatus === 'unsaved' && 'Unsaved changes'}
+            </div>
+          )}
+          {dbConnected && <div className="db-status">Database Connected</div>}
         </div>
       </div>
-      {dbConnected && projects.length > 0 && (
+      {dbConnected && (
         <ProjectTabs
-          projects={projects}
+          projects={openProjects}
           currentProjectId={currentProjectId}
           onSelectProject={loadProject}
           onCloseProject={handleCloseProject}
           onNewProject={createNewProject}
+          onDashboard={goToDashboard}
         />
       )}
       <div className="app-content" key={currentProjectId || 'new'}>

@@ -1,6 +1,6 @@
 .project-tabs {
-  background-color: #f5f5f5;
-  border-bottom: 1px solid #ddd;
+  background: #1e1e1e;
+  border-bottom: 1px solid #333;
   padding: 0;
   position: sticky;
   top: 0;
@@ -9,26 +9,24 @@
 
 .tabs-container {
   display: flex;
+  align-items: flex-end;
   overflow-x: auto;
   padding: 8px 8px 0 8px;
-  gap: 4px;
+  gap: 2px;
+  scrollbar-width: thin;
 }
 
 .tabs-container::-webkit-scrollbar {
-  height: 6px;
+  height: 4px;
 }
 
 .tabs-container::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: transparent;
 }
 
 .tabs-container::-webkit-scrollbar-thumb {
-  background: #888;
-  border-radius: 3px;
-}
-
-.tabs-container::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: #444;
+  border-radius: 2px;
 }
 
 .tab {
@@ -36,26 +34,65 @@
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  background-color: #e0e0e0;
-  border: 1px solid #ccc;
-  border-bottom: none;
-  border-radius: 6px 6px 0 0;
+  background: #2d2d2d;
+  border: none;
+  border-radius: 8px 8px 0 0;
   cursor: pointer;
-  transition: all 0.2s ease;
-  min-width: 150px;
-  max-width: 250px;
+  transition: background 0.15s ease;
+  min-width: 120px;
+  max-width: 200px;
   position: relative;
 }
 
 .tab:hover {
-  background-color: #d0d0d0;
+  background: #3d3d3d;
 }
 
 .tab.active {
-  background-color: #fff;
-  border-color: #007acc;
-  border-bottom: 2px solid #fff;
-  margin-bottom: -1px;
+  background: #1a1a2e;
+  z-index: 1;
+}
+
+.tab.active::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: #4a9eff;
+}
+
+/* Dashboard tab special styling */
+.tab.dashboard-tab {
+  background: transparent;
+  min-width: auto;
+  padding: 8px 16px;
+}
+
+.tab.dashboard-tab:hover {
+  background: #2d2d2d;
+}
+
+.tab.dashboard-tab.active {
+  background: #1a1a2e;
+}
+
+.tab.dashboard-tab .tab-title {
+  color: #aaa;
+  font-weight: 500;
+}
+
+.tab.dashboard-tab.active .tab-title {
+  color: #4a9eff;
+}
+
+.tab-separator {
+  width: 1px;
+  height: 24px;
+  background: #444;
+  margin: 0 8px;
+  align-self: center;
 }
 
 .tab-content {
@@ -66,62 +103,68 @@
 
 .tab-title {
   font-weight: 500;
-  font-size: 14px;
-  color: #333;
+  font-size: 13px;
+  color: #ccc;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .tab.active .tab-title {
-  color: #007acc;
-}
-
-.tab-info {
-  font-size: 11px;
-  color: #666;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin-top: 2px;
+  color: #fff;
 }
 
 .tab-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
   background: none;
   border: none;
-  font-size: 20px;
+  font-size: 14px;
   line-height: 1;
   cursor: pointer;
   color: #666;
-  padding: 0 4px;
-  border-radius: 3px;
-  transition: all 0.2s ease;
+  border-radius: 4px;
+  transition: all 0.15s ease;
   flex-shrink: 0;
+  opacity: 0;
+}
+
+.tab:hover .tab-close {
+  opacity: 1;
 }
 
 .tab-close:hover {
-  background-color: rgba(0, 0, 0, 0.1);
-  color: #333;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
 }
 
-.new-project-btn {
-  padding: 8px 16px;
-  background-color: #007acc;
-  color: white;
+.new-tab-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  color: #888;
   border: none;
-  border-radius: 6px 6px 0 0;
+  border-radius: 6px;
   cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  transition: all 0.2s ease;
-  white-space: nowrap;
+  font-size: 18px;
+  font-weight: 300;
+  transition: all 0.15s ease;
   flex-shrink: 0;
+  margin-left: 4px;
+  align-self: center;
 }
 
-.new-project-btn:hover {
-  background-color: #005a9e;
+.new-tab-btn:hover {
+  background: #3d3d3d;
+  color: #fff;
 }
 
-.new-project-btn:active {
-  transform: scale(0.98);
+.new-tab-btn:active {
+  transform: scale(0.95);
 }
