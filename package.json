@@ -11,9 +11,17 @@
     "electron:dev:simple": "vite & sleep 5 && electron .",
     "electron:build": "vite build && electron-builder",
     "postinstall": "electron-builder install-app-deps",
-    "rebuild": "electron-rebuild -f -w better-sqlite3"
+    "rebuild": "electron-rebuild -f -w better-sqlite3",
+    "dist": "electron-builder --publish never",
+    "pack": "electron-builder --dir"
   },
-  "keywords": ["electron", "react", "typescript", "test-generation", "latex"],
+  "keywords": [
+    "electron",
+    "react",
+    "typescript",
+    "test-generation",
+    "latex"
+  ],
   "author": "",
   "license": "MIT",
   "dependencies": {
@@ -30,8 +38,8 @@
     "@types/react-dom": "^18.2.18",
     "@vitejs/plugin-react": "^4.2.1",
     "concurrently": "^6.5.1",
-    "electron": "^28.1.0",
-    "electron-builder": "^24.9.1",
+    "electron": "^28.3.3",
+    "electron-builder": "^24.13.3",
     "electron-rebuild": "^3.2.9",
     "typescript": "^5.3.3",
     "vite": "^5.0.10",
@@ -52,13 +60,21 @@
     },
     "mac": {
       "category": "public.app-category.education",
-      "target": ["dmg"]
+      "target": [
+        "dmg"
+      ]
     },
     "win": {
-      "target": ["nsis"]
+      "icon": "assets/icons/logo.ico",
+      "target": [
+        "nsis"
+      ]
     },
     "linux": {
-      "target": ["AppImage"],
+      "icon": "assets/icons/logo.png",
+      "target": [
+        "AppImage"
+      ],
       "category": "Education"
     }
   }
