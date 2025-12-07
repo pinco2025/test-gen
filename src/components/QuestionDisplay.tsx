@@ -25,21 +25,22 @@ export const QuestionDisplay: React.FC<QuestionDisplayProps> = ({
   hideOptions = false,
   questionNumber
 }) => {
-  // Get difficulty color
-  const getDifficultyColor = (diff?: 'E' | 'M' | 'H') => {
+  // Get difficulty styling
+  const getDifficultyStyle = (diff?: 'E' | 'M' | 'H') => {
     switch (diff) {
       case 'E':
-        return { bg: '#e8f5e9', color: '#2e7d32' }; // Green
+        return { background: 'var(--success-bg)', color: 'var(--success)' };
       case 'M':
-        return { bg: '#fff3e0', color: '#f57c00' }; // Orange
+        return { background: 'var(--warning-bg)', color: '#f57c00' };
       case 'H':
-        return { bg: '#ffebee', color: '#c62828' }; // Red
+        return { background: 'var(--error-bg)', color: 'var(--error)' };
       default:
-        return { bg: '#f5f5f5', color: '#666' }; // Gray
+        return { background: 'var(--bg-light)', color: 'var(--text-muted-light)' };
     }
   };
 
-  const difficultyColors = getDifficultyColor(question.tag_3 as 'E' | 'M' | 'H');
+  const difficultyStyle = getDifficultyStyle(question.tag_3 as 'E' | 'M' | 'H');
+
   return (
     <div className={`question-card ${isSelected ? 'selected' : ''}`}>
       {showCheckbox && (
@@ -55,112 +56,88 @@ export const QuestionDisplay: React.FC<QuestionDisplayProps> = ({
       <div className="question-header" style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-        gap: '10px',
-        marginBottom: '16px',
-        padding: '14px',
-        backgroundColor: '#f5f5f5',
-        borderRadius: '6px'
+        gap: '0.625rem',
+        marginBottom: '1rem',
+        padding: '0.875rem',
+        backgroundColor: 'var(--bg-light)',
+        borderRadius: 'var(--radius)',
+        border: '1px solid var(--border-light)'
       }}>
         {questionNumber !== undefined && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px'
-          }}>
-            <strong style={{ color: '#666', fontSize: '12px' }}>Q#:</strong>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+            <strong style={{ color: 'var(--text-muted-light)', fontSize: '0.75rem' }}>Q#:</strong>
             <span style={{
-              backgroundColor: '#f3e5f5',
-              color: '#7b1fa2',
-              padding: '2px 8px',
-              borderRadius: '4px',
-              fontSize: '13px',
+              backgroundColor: 'var(--purple-bg)',
+              color: 'var(--purple)',
+              padding: '0.125rem 0.5rem',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: '0.8125rem',
               fontWeight: '600'
             }}>{questionNumber}</span>
           </div>
         )}
 
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px'
-        }}>
-          <strong style={{ color: '#666', fontSize: '12px' }}>ID:</strong>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+          <strong style={{ color: 'var(--text-muted-light)', fontSize: '0.75rem' }}>ID:</strong>
           <span style={{
-            backgroundColor: '#e3f2fd',
-            color: '#1976d2',
-            padding: '4px 10px',
-            borderRadius: '4px',
-            fontSize: '13px',
+            backgroundColor: 'var(--info-bg)',
+            color: 'var(--info)',
+            padding: '0.25rem 0.625rem',
+            borderRadius: 'var(--radius-sm)',
+            fontSize: '0.8125rem',
             fontWeight: '600',
             fontFamily: 'monospace'
           }}>{question.uuid}</span>
         </div>
 
         {question.tag_2 && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px'
-          }}>
-            <strong style={{ color: '#666', fontSize: '12px' }}>Chapter:</strong>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+            <strong style={{ color: 'var(--text-muted-light)', fontSize: '0.75rem' }}>Chapter:</strong>
             <span style={{
-              backgroundColor: '#e0f2f1',
-              color: '#00695c',
-              padding: '4px 8px',
-              borderRadius: '4px',
-              fontSize: '13px',
+              backgroundColor: 'var(--teal-bg)',
+              color: 'var(--teal)',
+              padding: '0.25rem 0.5rem',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: '0.8125rem',
               fontWeight: '600'
             }}>{question.tag_2}</span>
           </div>
         )}
 
         {question.tag_3 && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px'
-          }}>
-            <strong style={{ color: '#666', fontSize: '12px' }}>Difficulty:</strong>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+            <strong style={{ color: 'var(--text-muted-light)', fontSize: '0.75rem' }}>Difficulty:</strong>
             <span style={{
-              backgroundColor: difficultyColors.bg,
-              color: difficultyColors.color,
-              padding: '4px 8px',
-              borderRadius: '4px',
-              fontSize: '13px',
+              ...difficultyStyle,
+              padding: '0.25rem 0.5rem',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: '0.8125rem',
               fontWeight: '600'
             }}>{question.tag_3}</span>
           </div>
         )}
 
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px'
-        }}>
-          <strong style={{ color: '#666', fontSize: '12px' }}>Type:</strong>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+          <strong style={{ color: 'var(--text-muted-light)', fontSize: '0.75rem' }}>Type:</strong>
           <span style={{
-            backgroundColor: '#e8f5e9',
-            color: '#2e7d32',
-            padding: '4px 10px',
-            borderRadius: '4px',
-            fontSize: '13px',
+            backgroundColor: 'var(--primary-light)',
+            color: 'var(--primary)',
+            padding: '0.25rem 0.625rem',
+            borderRadius: 'var(--radius-sm)',
+            fontSize: '0.8125rem',
             fontWeight: '600'
           }}>{question.type}</span>
         </div>
 
         {question.year && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px'
-          }}>
-            <strong style={{ color: '#666', fontSize: '12px' }}>Year:</strong>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
+            <strong style={{ color: 'var(--text-muted-light)', fontSize: '0.75rem' }}>Year:</strong>
             <span style={{
-              backgroundColor: '#fff3e0',
-              color: '#f57c00',
-              padding: '4px 10px',
-              borderRadius: '4px',
-              fontSize: '13px',
+              backgroundColor: 'var(--amber-bg)',
+              color: 'var(--amber)',
+              padding: '0.25rem 0.625rem',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: '0.8125rem',
               fontWeight: '600'
             }}>{question.year}</span>
           </div>

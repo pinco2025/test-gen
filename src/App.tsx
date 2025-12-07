@@ -500,9 +500,13 @@ function App() {
       case 'database-connect':
         return (
           <div className="connect-screen">
-            <h1>Test Generation Engine</h1>
+            <div style={{ marginBottom: '1.5rem' }}>
+              <span className="material-symbols-outlined" style={{ fontSize: '4rem', color: 'var(--primary)' }}>database</span>
+            </div>
+            <h1>Test Generation System</h1>
             <p>Please connect to a question database to begin.</p>
             <button className="btn-primary" onClick={handleDatabaseSelect}>
+              <span className="material-symbols-outlined">folder_open</span>
               Select Database File
             </button>
           </div>
@@ -531,13 +535,14 @@ function App() {
                       }}
                       title="Delete project permanently"
                     >
-                      🗑️
+                      <span className="material-symbols-outlined">delete</span>
                     </button>
                   </div>
                   <p className="project-description">{project.description || 'No description'}</p>
                   <div className="project-meta">
                     <span className="project-date">
-                      Last modified: {new Date(project.lastModified).toLocaleString()}
+                      <span className="material-symbols-outlined" style={{ fontSize: '0.875rem', marginRight: '0.25rem' }}>schedule</span>
+                      {new Date(project.lastModified).toLocaleString()}
                     </span>
                   </div>
                 </div>
@@ -546,7 +551,9 @@ function App() {
                 className="project-tile project-tile-new"
                 onClick={createNewProject}
               >
-                <div className="new-project-icon">+</div>
+                <div className="new-project-icon">
+                  <span className="material-symbols-outlined" style={{ fontSize: '1.75rem' }}>add</span>
+                </div>
                 <h3>Create New Project</h3>
               </div>
             </div>
@@ -596,9 +603,15 @@ function App() {
       case 'test-review':
         return (
           <div className="test-review">
-            <h2>Test Review</h2>
+            <h2>
+              <span className="material-symbols-outlined" style={{ marginRight: '0.5rem', verticalAlign: 'middle' }}>fact_check</span>
+              Test Review
+            </h2>
             <div className="test-summary">
-              <h3>Test Details</h3>
+              <h3>
+                <span className="material-symbols-outlined" style={{ marginRight: '0.375rem', fontSize: '1.125rem' }}>info</span>
+                Test Details
+              </h3>
               <p><strong>Code:</strong> {testMetadata?.code}</p>
               <p><strong>Description:</strong> {testMetadata?.description}</p>
               <p><strong>Type:</strong> {testMetadata?.testType}</p>
@@ -606,7 +619,12 @@ function App() {
 
             {sections.map((section, idx) => (
               <div key={idx} className="section-summary">
-                <h3>{section.name}</h3>
+                <h3>
+                  <span className="material-symbols-outlined" style={{ marginRight: '0.375rem', fontSize: '1.125rem' }}>
+                    {idx === 0 ? 'science' : idx === 1 ? 'biotech' : 'calculate'}
+                  </span>
+                  {section.name}
+                </h3>
                 <p>Questions selected: {section.selectedQuestions.length}/25</p>
                 <ul>
                   <li>Division 1: {section.selectedQuestions.filter(sq => sq.division === 1).length}/20</li>
@@ -620,12 +638,14 @@ function App() {
                 className="btn-secondary"
                 onClick={createNewProject}
               >
+                <span className="material-symbols-outlined">refresh</span>
                 Start Over
               </button>
               <button
                 className="btn-primary"
                 onClick={handleExportTest}
               >
+                <span className="material-symbols-outlined">download</span>
                 Export Test as JSON
               </button>
             </div>
@@ -635,12 +655,16 @@ function App() {
       case 'complete':
         return (
           <div className="complete-screen">
+            <div style={{ marginBottom: '1.5rem' }}>
+              <span className="material-symbols-outlined" style={{ fontSize: '4rem', color: 'var(--success)' }}>check_circle</span>
+            </div>
             <h2>Test Generated Successfully!</h2>
             <p>Your test has been exported as a JSON file.</p>
             <button
               className="btn-primary"
               onClick={createNewProject}
             >
+              <span className="material-symbols-outlined">add</span>
               Create Another Test
             </button>
           </div>
@@ -667,17 +691,28 @@ function App() {
     <div className="app">
       <div className="app-header">
         <div className="header-left">
-          <h1 onClick={goToDashboard} style={{ cursor: 'pointer' }}>JEE Test Generator</h1>
+          <svg className="header-logo" fill="none" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+            <path d="M42.4379 44C42.4379 44 36.0744 33.9038 41.1692 24C46.8624 12.9336 42.2078 4 42.2078 4L7.01134 4C7.01134 4 11.6577 12.932 5.96912 23.9969C0.876273 33.9029 7.27094 44 7.27094 44L42.4379 44Z" fill="currentColor"></path>
+          </svg>
+          <h1 onClick={goToDashboard}>Test Generation System</h1>
         </div>
         <div className="header-right">
           {currentProjectId && (
             <div className={`save-status ${saveStatus}`}>
+              <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>
+                {saveStatus === 'saving' ? 'sync' : saveStatus === 'saved' ? 'check_circle' : 'pending'}
+              </span>
               {saveStatus === 'saving' && 'Saving...'}
               {saveStatus === 'saved' && 'Saved'}
-              {saveStatus === 'unsaved' && 'Unsaved changes'}
+              {saveStatus === 'unsaved' && 'Unsaved'}
             </div>
           )}
-          {dbConnected && <div className="db-status">Database Connected</div>}
+          {dbConnected && (
+            <div className="db-status">
+              <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>database</span>
+              Connected
+            </div>
+          )}
         </div>
       </div>
       {dbConnected && (
