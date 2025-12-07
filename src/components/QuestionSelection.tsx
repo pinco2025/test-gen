@@ -25,6 +25,17 @@ interface QuestionSelectionProps {
 /**
  * Component for selecting questions based on Alpha/Beta constraints
  */
+// Import chapters data for valid chapter codes
+import chaptersData from '../data/chapters.json';
+
+// Edit modal state interface
+interface EditModalState {
+  isOpen: boolean;
+  question: Question | null;
+  difficulty: Difficulty;
+  chapterCode: string;
+}
+
 export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
   sectionName,
   chapters,
@@ -35,6 +46,80 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
   onChange
 }) => {
   const [selectedQuestions, setSelectedQuestions] = useState<SelectedQuestion[]>(initialSelectedQuestions);
+
+  // Edit modal state
+  const [editModal, setEditModal] = useState<EditModalState>({
+    isOpen: false,
+    question: null,
+    difficulty: 'M',
+    chapterCode: ''
+  });
+
+  // Get valid chapters for current section
+  const getValidChaptersForSection = (): { code: string; name: string }[] => {
+    const sectionKey = sectionName as keyof typeof chaptersData;
+    const sectionChapters = chaptersData[sectionKey] || [];
+    return sectionChapters.map(ch => ({ code: ch.code, name: ch.name }));
+  };
+
+  // Open edit modal for a question
+  const openEditModal = (e: React.MouseEvent, question: Question) => {
+    e.stopPropagation(); // Prevent question selection
+    setEditModal({
+      isOpen: true,
+      question,
+      difficulty: (question.tag_3 as Difficulty) || 'M',
+      chapterCode: question.tag_2 || ''
+    });
+  };
+
+  // Close edit modal
+  const closeEditModal = () => {
+    setEditModal({
+      isOpen: false,
+      question: null,
+      difficulty: 'M',
+      chapterCode: ''
+    });
+  };
+
+  // Save question edits to database
+  const saveQuestionEdit = async () => {
+    if (!editModal.question) return;
+
+    try {
+      // Update in database
+      await window.electronAPI.questions.updateQuestion(editModal.question.uuid, {
+        tag_3: editModal.difficulty,
+        tag_2: editModal.chapterCode
+      });
+
+      // Update local state
+      setAvailableQuestions(prev => prev.map(q =>
+        q.uuid === editModal.question!.uuid
+          ? { ...q, tag_3: editModal.difficulty, tag_2: editModal.chapterCode }
+          : q
+      ));
+
+      // Update selected questions if this question is selected
+      setSelectedQuestions(prev => prev.map(sq =>
+        sq.question.uuid === editModal.question!.uuid
+          ? {
+              ...sq,
+              question: { ...sq.question, tag_3: editModal.difficulty, tag_2: editModal.chapterCode },
+              difficulty: editModal.difficulty,
+              chapterCode: editModal.chapterCode,
+              chapterName: getValidChaptersForSection().find(ch => ch.code === editModal.chapterCode)?.name || sq.chapterName
+            }
+          : sq
+      ));
+
+      closeEditModal();
+    } catch (error) {
+      console.error('[EDIT] Error saving question edit:', error);
+      alert('Failed to save changes. Please try again.');
+    }
+  };
 
   // Sync selections to parent immediately when they change
   useEffect(() => {
@@ -442,23 +527,52 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
                   backgroundColor: selected ? 'var(--primary-light)' : 'var(--bg-card-light)'
                 }}
               >
-                {isDivision2Question && (
-                  <div style={{
-                    background: 'var(--amber)',
-                    color: 'white',
-                    padding: '0.25rem 0.625rem',
-                    borderRadius: 'var(--radius)',
-                    fontSize: '0.75rem',
-                    fontWeight: '600',
-                    marginBottom: '0.5rem',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.375rem'
-                  }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>edit_note</span>
-                    NUMERICAL ANSWER ({question.answer}) - Division 2 (B) Only
+                <div className="question-card-header" style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  marginBottom: '0.5rem'
+                }}>
+                  <div style={{ flex: 1 }}>
+                    {isDivision2Question && (
+                      <div style={{
+                        background: 'var(--amber)',
+                        color: 'white',
+                        padding: '0.25rem 0.625rem',
+                        borderRadius: 'var(--radius)',
+                        fontSize: '0.75rem',
+                        fontWeight: '600',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.375rem'
+                      }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>edit_note</span>
+                        NUMERICAL ANSWER ({question.answer}) - Division 2 (B) Only
+                      </div>
+                    )}
                   </div>
-                )}
+                  <button
+                    className="question-edit-btn"
+                    onClick={(e) => openEditModal(e, question)}
+                    title="Edit question properties"
+                    style={{
+                      background: 'var(--bg-light)',
+                      border: '1px solid var(--border-light)',
+                      borderRadius: 'var(--radius)',
+                      padding: '0.375rem 0.5rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.25rem',
+                      fontSize: '0.75rem',
+                      color: 'var(--text-secondary-light)',
+                      transition: 'var(--transition)'
+                    }}
+                  >
+                    <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>edit</span>
+                    Edit
+                  </button>
+                </div>
                 <QuestionDisplay
                   question={question}
                   showAnswer={false}
@@ -489,6 +603,95 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
             : `Need ${20 - summary.division1} more for Div1, ${5 - summary.division2} more for Div2`}
         </button>
       </div>
+
+      {/* Edit Question Modal */}
+      {editModal.isOpen && editModal.question && (
+        <div className="edit-modal-overlay" onClick={closeEditModal}>
+          <div className="edit-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="edit-modal-header">
+              <h3>
+                <span className="material-symbols-outlined" style={{ marginRight: '0.5rem' }}>edit</span>
+                Edit Question Properties
+              </h3>
+              <button className="edit-modal-close" onClick={closeEditModal}>
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <div className="edit-modal-body">
+              <div className="edit-modal-question-preview">
+                <div className="edit-modal-uuid">
+                  <span className="material-symbols-outlined" style={{ fontSize: '0.875rem' }}>tag</span>
+                  {editModal.question.uuid}
+                </div>
+                <p className="edit-modal-question-text">
+                  {editModal.question.question.length > 200
+                    ? editModal.question.question.substring(0, 200) + '...'
+                    : editModal.question.question}
+                </p>
+              </div>
+
+              <div className="edit-modal-fields">
+                <div className="edit-modal-field">
+                  <label>
+                    <span className="material-symbols-outlined" style={{ fontSize: '1rem', marginRight: '0.375rem' }}>speed</span>
+                    Difficulty
+                  </label>
+                  <div className="edit-modal-radio-group">
+                    {(['E', 'M', 'H'] as Difficulty[]).map((diff) => (
+                      <label key={diff} className={`edit-modal-radio ${editModal.difficulty === diff ? 'selected' : ''}`}>
+                        <input
+                          type="radio"
+                          name="difficulty"
+                          value={diff}
+                          checked={editModal.difficulty === diff}
+                          onChange={() => setEditModal(prev => ({ ...prev, difficulty: diff }))}
+                        />
+                        <span className="radio-label">
+                          {diff === 'E' ? 'Easy' : diff === 'M' ? 'Medium' : 'Hard'}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="edit-modal-field">
+                  <label>
+                    <span className="material-symbols-outlined" style={{ fontSize: '1rem', marginRight: '0.375rem' }}>menu_book</span>
+                    Chapter / Topic
+                  </label>
+                  <select
+                    value={editModal.chapterCode}
+                    onChange={(e) => setEditModal(prev => ({ ...prev, chapterCode: e.target.value }))}
+                    className="edit-modal-select"
+                  >
+                    <option value="">Select a chapter...</option>
+                    {getValidChaptersForSection().map(ch => (
+                      <option key={ch.code} value={ch.code}>
+                        {ch.code} - {ch.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div className="edit-modal-footer">
+              <button className="btn-secondary" onClick={closeEditModal}>
+                Cancel
+              </button>
+              <button
+                className="btn-primary"
+                onClick={saveQuestionEdit}
+                disabled={!editModal.chapterCode}
+              >
+                <span className="material-symbols-outlined">save</span>
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

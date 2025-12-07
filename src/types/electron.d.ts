@@ -18,6 +18,7 @@ declare global {
         getByChapterCodes: (type: string, chapterCodes: string[]) => Promise<any[]>;
         incrementFrequency: (uuid: string) => Promise<boolean>;
         decrementFrequency: (uuid: string) => Promise<boolean>;
+        updateQuestion: (uuid: string, updates: { tag_2?: string; tag_3?: string }) => Promise<boolean>;
       };
       test: {
         export: (test: any) => Promise<{ success: boolean; path?: string; error?: string }>;
