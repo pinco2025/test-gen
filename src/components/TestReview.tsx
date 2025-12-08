@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { SectionConfig, Question } from '../types';
+import React, { useState, useEffect, useMemo } from 'react';
+import { SectionConfig, Question, SelectedQuestion } from '../types';
+import QuestionDisplay from './QuestionDisplay';
 import '../styles/TestReview.css';
 
 interface TestReviewProps {
@@ -7,52 +8,118 @@ interface TestReviewProps {
   onEditQuestion: (updatedQuestion: Question) => void;
   onBack: () => void;
   onExport: () => void;
+  onRemoveQuestion: (questionUuid: string) => void;
 }
+
+type QuestionStatus = 'accepted' | 'review' | 'pending';
 
 const TestReview: React.FC<TestReviewProps> = ({
   sections,
   onEditQuestion,
   onBack,
-  onExport
+  onExport,
+  onRemoveQuestion
 }) => {
-  const [, setActiveSection] = useState<number>(0);
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [questionStatuses, setQuestionStatuses] = useState<{ [key: string]: QuestionStatus }>({});
+  const [isPaletteOpen, setIsPaletteOpen] = useState(false);
+
+  // Edit state
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const [editForm, setEditForm] = useState<Partial<Question>>({});
-  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
 
-  // Refs for scrolling
-  const questionRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+  // Flatten questions
+  const allQuestions = useMemo(() => {
+    const flat: Array<{ sq: SelectedQuestion; sectionIndex: number; absoluteIndex: number }> = [];
+    let count = 0;
+    sections.forEach((section, sIdx) => {
+      section.selectedQuestions.forEach((sq) => {
+        count++;
+        flat.push({
+          sq,
+          sectionIndex: sIdx,
+          absoluteIndex: count
+        });
+      });
+    });
+    return flat;
+  }, [sections]);
 
-  // Handle clicking outside of menu
+  // Adjust index if out of bounds (e.g. after deletion)
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuOpenId && !(event.target as Element).closest('.question-actions')) {
-        setMenuOpenId(null);
-      }
-    };
+    if (allQuestions.length === 0) {
+      setCurrentQuestionIndex(0);
+    } else if (currentQuestionIndex >= allQuestions.length) {
+      setCurrentQuestionIndex(Math.max(0, allQuestions.length - 1));
+    }
+  }, [allQuestions.length, currentQuestionIndex]);
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [menuOpenId]);
+  const currentItem = allQuestions[currentQuestionIndex];
+  const currentQuestion = currentItem?.sq.question;
 
-  const scrollToQuestion = (questionId: string) => {
-    const element = questionRefs.current[questionId];
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  // Navigation
+  const handleNext = () => {
+    if (currentQuestionIndex < allQuestions.length - 1) {
+      setCurrentQuestionIndex(prev => prev + 1);
     }
   };
 
-  const handleEditClick = (question: Question) => {
-    setEditingQuestion(question);
+  const handlePrev = () => {
+    if (currentQuestionIndex > 0) {
+      setCurrentQuestionIndex(prev => prev - 1);
+    }
+  };
+
+  const handleJumpToQuestion = (index: number) => {
+    setCurrentQuestionIndex(index);
+    setIsPaletteOpen(false);
+  };
+
+  // Status Actions
+  const handleAccept = () => {
+    if (!currentQuestion) return;
+    setQuestionStatuses(prev => ({
+      ...prev,
+      [currentQuestion.uuid]: 'accepted'
+    }));
+    // Auto-advance
+    handleNext();
+  };
+
+  const handleMarkReview = () => {
+    if (!currentQuestion) return;
+    setQuestionStatuses(prev => ({
+      ...prev,
+      [currentQuestion.uuid]: 'review'
+    }));
+    handleNext();
+  };
+
+  const handleReject = () => {
+    if (!currentQuestion) return;
+    // Remove from test
+    onRemoveQuestion(currentQuestion.uuid);
+    // Note: useEffect will handle index adjustment
+  };
+
+  // Export Check
+  const canExport = useMemo(() => {
+    if (allQuestions.length === 0) return false;
+    return allQuestions.every(item => questionStatuses[item.sq.question.uuid] === 'accepted');
+  }, [allQuestions, questionStatuses]);
+
+  // Edit Handlers
+  const handleEditClick = () => {
+    if (!currentQuestion) return;
+    setEditingQuestion(currentQuestion);
     setEditForm({
-      question: question.question,
-      option_a: question.option_a,
-      option_b: question.option_b,
-      option_c: question.option_c,
-      option_d: question.option_d,
-      answer: question.answer
+      question: currentQuestion.question,
+      option_a: currentQuestion.option_a,
+      option_b: currentQuestion.option_b,
+      option_c: currentQuestion.option_c,
+      option_d: currentQuestion.option_d,
+      answer: currentQuestion.answer
     });
-    setMenuOpenId(null);
   };
 
   const handleSaveEdit = async () => {
@@ -62,13 +129,11 @@ const TestReview: React.FC<TestReviewProps> = ({
       const success = await window.electronAPI.questions.updateQuestion(editingQuestion.uuid, editForm);
 
       if (success) {
-        // Construct the updated question object
         const updatedQuestion = {
           ...editingQuestion,
           ...editForm,
           updated_at: new Date().toISOString()
         };
-
         onEditQuestion(updatedQuestion);
         setEditingQuestion(null);
       } else {
@@ -87,181 +152,133 @@ const TestReview: React.FC<TestReviewProps> = ({
     }));
   };
 
-  // Helper to get total question count up to a section
-  const getQuestionOffset = (sectionIndex: number) => {
-    let count = 0;
-    for (let i = 0; i < sectionIndex; i++) {
-      count += sections[i].selectedQuestions.length;
-    }
-    return count;
-  };
-
   return (
     <div className="test-review-container">
-      {/* Sidebar / Palette */}
-      <div className="review-sidebar">
-        <div className="review-sidebar-header">
-          <h3>
-            <span className="material-symbols-outlined">list</span>
-            Question Palette
-          </h3>
-        </div>
-
-        <div className="review-sidebar-content">
-          {sections.map((section, idx) => (
-            <div key={idx} className="section-palette">
-              <h4>{section.name}</h4>
-              <div className="question-grid">
-                {section.selectedQuestions.map((sq, qIdx) => {
-                  const absoluteIndex = getQuestionOffset(idx) + qIdx + 1;
-                  return (
-                    <button
-                      key={sq.question.uuid}
-                      className="palette-btn"
-                      onClick={() => {
-                        setActiveSection(idx);
-                        // Small timeout to allow render if switching sections (though currently all rendered)
-                        setTimeout(() => scrollToQuestion(sq.question.uuid), 50);
-                      }}
-                    >
-                      {absoluteIndex}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="review-sidebar-footer">
-          <button className="btn-secondary" style={{ flex: 1 }} onClick={onBack}>
-            Back
+      {/* Header */}
+      <div className="review-header">
+        <div className="header-left">
+          <button className="icon-btn hamburger-btn" onClick={() => setIsPaletteOpen(true)} title="Question Palette">
+            <span className="material-symbols-outlined">menu</span>
           </button>
-          <button className="btn-primary" style={{ flex: 1 }} onClick={onExport}>
-            Export
-          </button>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="review-main">
-        <div className="review-header">
           <h2>Review Test</h2>
-          {/* We could add filters or view options here */}
         </div>
-
-        <div className="review-content">
-          {sections.map((section, sectionIdx) => (
-            <div key={sectionIdx} className="section-questions">
-              <h3 style={{
-                margin: '2rem 0 1rem 0',
-                borderBottom: '2px solid var(--primary)',
-                display: 'inline-block',
-                paddingBottom: '0.25rem'
-              }}>
-                {section.name} Section
-              </h3>
-
-              {section.selectedQuestions.length === 0 ? (
-                <p style={{ color: 'var(--text-secondary)', fontStyle: 'italic' }}>
-                  No questions selected for this section.
-                </p>
-              ) : (
-                section.selectedQuestions.map((sq, qIdx) => {
-                  const absoluteIndex = getQuestionOffset(sectionIdx) + qIdx + 1;
-                  const q = sq.question;
-
-                  return (
-                    <div
-                      key={q.uuid}
-                      className="question-card"
-                      id={`q-${q.uuid}`}
-                      ref={el => questionRefs.current[q.uuid] = el}
-                    >
-                      <div className="question-header">
-                        <div className="question-info">
-                          <span className="question-number">Q{absoluteIndex}</span>
-                          <span className="question-id">{q.uuid.substring(0, 8)}...</span>
-                          <span className="badge badge-chapter">{sq.chapterName}</span>
-                          <span className={`badge badge-${sq.difficulty.toLowerCase()}`}>
-                            {sq.difficulty === 'E' ? 'Easy' : sq.difficulty === 'M' ? 'Medium' : 'Hard'}
-                          </span>
-                        </div>
-
-                        <div className="question-actions">
-                          <button
-                            className="icon-btn"
-                            onClick={() => setMenuOpenId(menuOpenId === q.uuid ? null : q.uuid)}
-                          >
-                            <span className="material-symbols-outlined">more_vert</span>
-                          </button>
-
-                          {menuOpenId === q.uuid && (
-                            <div className="question-menu">
-                              <button
-                                className="menu-item"
-                                onClick={() => handleEditClick(q)}
-                              >
-                                <span className="material-symbols-outlined">edit</span>
-                                Edit Question
-                              </button>
-                              <button
-                                className="menu-item"
-                                disabled // Placeholder functionality
-                                title="Feature coming soon"
-                              >
-                                <span className="material-symbols-outlined">image</span>
-                                Add Images
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="question-body">
-                        <div className="question-text">{q.question}</div>
-
-                        {/* Only show options for MCQ (Division 1) */}
-                        {sq.division === 1 && (
-                          <div className="options-list">
-                            <div className={`option-item ${q.answer === 'A' ? 'correct' : ''}`}>
-                              <span className="option-marker">A.</span>
-                              <span className="option-text">{q.option_a}</span>
-                              {q.answer === 'A' && <span className="material-symbols-outlined" style={{color: 'var(--success)'}}>check_circle</span>}
-                            </div>
-                            <div className={`option-item ${q.answer === 'B' ? 'correct' : ''}`}>
-                              <span className="option-marker">B.</span>
-                              <span className="option-text">{q.option_b}</span>
-                              {q.answer === 'B' && <span className="material-symbols-outlined" style={{color: 'var(--success)'}}>check_circle</span>}
-                            </div>
-                            <div className={`option-item ${q.answer === 'C' ? 'correct' : ''}`}>
-                              <span className="option-marker">C.</span>
-                              <span className="option-text">{q.option_c}</span>
-                              {q.answer === 'C' && <span className="material-symbols-outlined" style={{color: 'var(--success)'}}>check_circle</span>}
-                            </div>
-                            <div className={`option-item ${q.answer === 'D' ? 'correct' : ''}`}>
-                              <span className="option-marker">D.</span>
-                              <span className="option-text">{q.option_d}</span>
-                              {q.answer === 'D' && <span className="material-symbols-outlined" style={{color: 'var(--success)'}}>check_circle</span>}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Show answer for Division 2 (Numerical) */}
-                        {sq.division === 2 && (
-                          <div className="answer-display" style={{ marginTop: '1rem', fontWeight: 500 }}>
-                            Correct Answer: <span style={{ color: 'var(--success)' }}>{q.answer}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          ))}
+        <div className="header-right">
+          <span className="progress-text">
+             {allQuestions.length > 0 ? `${currentQuestionIndex + 1} / ${allQuestions.length}` : '0 / 0'}
+          </span>
+          <button
+            className="btn-primary"
+            onClick={onExport}
+            disabled={!canExport}
+            title={!canExport ? "All questions must be accepted to export" : "Export Test"}
+          >
+            Export Test
+          </button>
         </div>
       </div>
+
+      {/* Main Content (Single Question) */}
+      <div className="review-main-single">
+        {allQuestions.length === 0 ? (
+           <div className="empty-state">
+             <p>No questions in this test.</p>
+             <button className="btn-secondary" onClick={onBack}>Back to Selection</button>
+           </div>
+        ) : currentQuestion ? (
+          <div className="single-question-view">
+             <QuestionDisplay
+               question={currentQuestion}
+               questionNumber={currentItem.absoluteIndex}
+               showAnswer={true}
+             />
+
+             {/* Edit Button overlay or nearby */}
+             <div className="question-actions-bar">
+                <button className="btn-text" onClick={handleEditClick}>
+                   <span className="material-symbols-outlined">edit</span> Edit
+                </button>
+             </div>
+          </div>
+        ) : (
+          <div>Loading...</div>
+        )}
+      </div>
+
+      {/* Footer Controls */}
+      <div className="review-footer">
+         <div className="nav-controls">
+            <button className="btn-secondary" onClick={handlePrev} disabled={currentQuestionIndex === 0}>
+              <span className="material-symbols-outlined">chevron_left</span> Prev
+            </button>
+         </div>
+
+         <div className="status-controls">
+            <button className="btn-reject" onClick={handleReject}>
+               <span className="material-symbols-outlined">close</span> Reject
+            </button>
+            <button
+              className={`btn-review ${questionStatuses[currentQuestion?.uuid || ''] === 'review' ? 'active' : ''}`}
+              onClick={handleMarkReview}
+            >
+               <span className="material-symbols-outlined">flag</span> Mark for Review
+            </button>
+            <button
+              className={`btn-accept ${questionStatuses[currentQuestion?.uuid || ''] === 'accepted' ? 'active' : ''}`}
+              onClick={handleAccept}
+            >
+               <span className="material-symbols-outlined">check</span> Accept
+            </button>
+         </div>
+
+         <div className="nav-controls">
+            <button className="btn-secondary" onClick={handleNext} disabled={currentQuestionIndex === allQuestions.length - 1}>
+               Next <span className="material-symbols-outlined">chevron_right</span>
+            </button>
+         </div>
+      </div>
+
+      {/* Palette Modal */}
+      {isPaletteOpen && (
+        <div className="palette-modal-overlay" onClick={() => setIsPaletteOpen(false)}>
+          <div className="palette-modal" onClick={e => e.stopPropagation()}>
+            <div className="palette-header">
+              <h3>Question Palette</h3>
+              <button className="icon-btn" onClick={() => setIsPaletteOpen(false)}>
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="palette-content">
+               {sections.map((section, idx) => {
+                 // Filter to only show questions that are still in allQuestions (not rejected/removed)
+                 // Actually allQuestions is derived from sections, so if sections updated, this updates.
+                 const sectionQuestions = allQuestions.filter(q => q.sectionIndex === idx);
+                 if (sectionQuestions.length === 0) return null;
+
+                 return (
+                   <div key={idx} className="palette-section">
+                     <h4>{section.name}</h4>
+                     <div className="palette-grid">
+                       {sectionQuestions.map((item) => {
+                         const status = questionStatuses[item.sq.question.uuid] || 'pending';
+                         const isActive = currentQuestionIndex === allQuestions.findIndex(q => q.sq.question.uuid === item.sq.question.uuid);
+                         return (
+                           <button
+                             key={item.sq.question.uuid}
+                             className={`palette-item ${status} ${isActive ? 'current' : ''}`}
+                             onClick={() => handleJumpToQuestion(allQuestions.findIndex(q => q.sq.question.uuid === item.sq.question.uuid))}
+                           >
+                             {item.absoluteIndex}
+                           </button>
+                         );
+                       })}
+                     </div>
+                   </div>
+                 );
+               })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Edit Modal */}
       {editingQuestion && (
@@ -317,11 +334,6 @@ const TestReview: React.FC<TestReviewProps> = ({
 
               <div className="form-group">
                 <label>Correct Answer</label>
-                {/* Check if it is a numerical or MCQ question based on current value or context.
-                    Since we edit raw fields, we should probably allow free text for answer if it's numerical,
-                    but restricted if it's MCQ. However, the requirement says "edit... configure the correct answer".
-                    Usually answer is 'A', 'B', 'C', 'D' for MCQs.
-                */}
                 <select
                   value={editForm.answer || ''}
                   onChange={(e) => handleInputChange('answer', e.target.value)}
@@ -330,14 +342,10 @@ const TestReview: React.FC<TestReviewProps> = ({
                   <option value="B">B</option>
                   <option value="C">C</option>
                   <option value="D">D</option>
-                  {/* Allow other values for numerical questions if needed, but <select> limits us.
-                      If the original answer was not A/B/C/D, we should probably use a text input or add that option.
-                   */}
                    {['A','B','C','D'].includes(editingQuestion.answer) ? null : (
                      <option value={editingQuestion.answer}>{editingQuestion.answer}</option>
                    )}
                 </select>
-                {/* Fallback input for numerical/integer answers if it's not ABCD */}
                 {!['A','B','C','D'].includes(editingQuestion.answer) && (
                    <input
                     type="text"

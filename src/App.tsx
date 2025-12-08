@@ -532,6 +532,17 @@ function App() {
     updateCurrentProject({ sections: updatedSections });
   }, [currentProjectId, sections, updateCurrentProject]);
 
+  const handleRemoveQuestion = useCallback((questionUuid: string) => {
+    if (!currentProjectId) return;
+
+    const updatedSections = sections.map(section => ({
+      ...section,
+      selectedQuestions: section.selectedQuestions.filter(sq => sq.question.uuid !== questionUuid)
+    }));
+
+    updateCurrentProject({ sections: updatedSections });
+  }, [currentProjectId, sections, updateCurrentProject]);
+
   // Render different steps
   const renderStep = () => {
     switch (step) {
@@ -645,6 +656,7 @@ function App() {
             onEditQuestion={handleQuestionUpdate}
             onBack={handleBackFromSelection}
             onExport={handleExportTest}
+            onRemoveQuestion={handleRemoveQuestion}
           />
         );
 
