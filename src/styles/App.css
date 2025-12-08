@@ -968,6 +968,8 @@
   border-radius: var(--radius-xl);
   border: 1px solid var(--border-light);
   height: fit-content;
+  max-height: calc(100vh - 220px);
+  overflow-y: auto;
   position: sticky;
   top: 1rem;
   box-shadow: var(--shadow-sm);
