@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { FixedSizeList as List, ListChildComponentProps } from 'react-window';
 import {
   Question,
   AlphaConstraint,
@@ -36,6 +37,140 @@ interface EditModalState {
   chapterCode: string;
 }
 
+// Helper function to check if a question should go to Division 2 (B)
+// Criteria: Answer is numerical (not A, B, C, or D)
+// Moved outside component to avoid recreation on each render
+const isNumericalAnswer = (question: Question): boolean => {
+  const answerUpper = question.answer.toUpperCase().trim();
+  return !['A', 'B', 'C', 'D'].includes(answerUpper);
+};
+
+// Estimated row heights for virtualization
+const ESTIMATED_ROW_HEIGHT = 350; // Average height of a question card
+
+// Memoized Question Row component for virtualized list
+interface QuestionRowProps {
+  question: Question;
+  index: number;
+  selected: boolean;
+  isDivision2Question: boolean;
+  summary: SelectionSummary;
+  chapters: Chapter[];
+  onToggle: (
+    question: Question,
+    chapterCode: string,
+    chapterName: string,
+    difficulty: Difficulty,
+    division: 1 | 2
+  ) => void;
+  onEdit: (e: React.MouseEvent, question: Question) => void;
+  style: React.CSSProperties;
+}
+
+const QuestionRow = React.memo<QuestionRowProps>(({
+  question,
+  index,
+  selected,
+  isDivision2Question,
+  summary,
+  chapters,
+  onToggle,
+  onEdit,
+  style
+}) => {
+  const handleClick = useCallback(() => {
+    // If Division 2 question and Division 2 is full, prevent selection
+    if (isDivision2Question && summary.division2 >= 5 && !selected) {
+      alert(`This question has numerical answer (${question.answer}) and can only be placed in Division 2 (B), which is already full (5/5).`);
+      return;
+    }
+
+    const chapterCode = question.tag_2 || chapters[0]?.code || '';
+    const chapter = chapters.find(ch => ch.code === chapterCode);
+    const chapterName = chapter ? chapter.name : chapters[0]?.name || '';
+    const difficulty: Difficulty = (question.tag_3 as Difficulty) || 'M';
+    const division: 1 | 2 = isDivision2Question ? 2 : (summary.division1 < 20 ? 1 : 2);
+
+    onToggle(question, chapterCode, chapterName, difficulty, division);
+  }, [question, isDivision2Question, summary.division2, summary.division1, selected, chapters, onToggle]);
+
+  return (
+    <div style={style}>
+      <div
+        className={`selectable-question ${selected ? 'selected' : ''}`}
+        onClick={handleClick}
+        style={{
+          cursor: 'pointer',
+          border: selected ? '2px solid var(--primary)' : '1px solid var(--border-light)',
+          borderRadius: 'var(--radius-lg)',
+          padding: '1rem',
+          marginBottom: '0.5rem',
+          marginRight: '0.5rem',
+          transition: 'border-color 0.15s, background-color 0.15s',
+          backgroundColor: selected ? 'var(--primary-light)' : 'var(--bg-card-light)'
+        }}
+      >
+        <div className="question-card-header" style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          marginBottom: '0.5rem'
+        }}>
+          <div style={{ flex: 1 }}>
+            {isDivision2Question && (
+              <div style={{
+                background: 'var(--amber)',
+                color: 'white',
+                padding: '0.25rem 0.625rem',
+                borderRadius: 'var(--radius)',
+                fontSize: '0.75rem',
+                fontWeight: '600',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.375rem'
+              }}>
+                <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>edit_note</span>
+                NUMERICAL ANSWER ({question.answer}) - Division 2 (B) Only
+              </div>
+            )}
+          </div>
+          <button
+            className="question-edit-btn"
+            onClick={(e) => onEdit(e, question)}
+            title="Edit question properties"
+            style={{
+              background: 'var(--bg-light)',
+              border: '1px solid var(--border-light)',
+              borderRadius: 'var(--radius)',
+              padding: '0.375rem 0.5rem',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.25rem',
+              fontSize: '0.75rem',
+              color: 'var(--text-secondary-light)',
+              transition: 'var(--transition)'
+            }}
+          >
+            <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>edit</span>
+            Edit
+          </button>
+        </div>
+        <QuestionDisplay
+          question={question}
+          showAnswer={false}
+          showCheckbox={false}
+          isSelected={selected}
+          hideOptions={isDivision2Question}
+          questionNumber={index + 1}
+        />
+      </div>
+    </div>
+  );
+});
+
+QuestionRow.displayName = 'QuestionRow';
+
 export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
   sectionName,
   chapters,
@@ -55,12 +190,12 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
     chapterCode: ''
   });
 
-  // Get valid chapters for current section
-  const getValidChaptersForSection = (): { code: string; name: string }[] => {
+  // Get valid chapters for current section - memoized
+  const validChaptersForSection = useMemo(() => {
     const sectionKey = sectionName as keyof typeof chaptersData;
     const sectionChapters = chaptersData[sectionKey] || [];
     return sectionChapters.map(ch => ({ code: ch.code, name: ch.name }));
-  };
+  }, [sectionName]);
 
   // Open edit modal for a question
   const openEditModal = (e: React.MouseEvent, question: Question) => {
@@ -109,7 +244,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
               question: { ...sq.question, tag_3: editModal.difficulty, tag_2: editModal.chapterCode },
               difficulty: editModal.difficulty,
               chapterCode: editModal.chapterCode,
-              chapterName: getValidChaptersForSection().find(ch => ch.code === editModal.chapterCode)?.name || sq.chapterName
+              chapterName: validChaptersForSection.find(ch => ch.code === editModal.chapterCode)?.name || sq.chapterName
             }
           : sq
       ));
@@ -133,6 +268,33 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
   const [filterDifficulty, setFilterDifficulty] = useState<string>('all');
   const [filterDivision, setFilterDivision] = useState<string>('all');
   const [searchText, setSearchText] = useState('');
+
+  // Refs for virtualized list
+  const listContainerRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<List>(null);
+  const [listHeight, setListHeight] = useState(500);
+
+  // Update list height on resize
+  useEffect(() => {
+    const updateHeight = () => {
+      if (listContainerRef.current) {
+        const rect = listContainerRef.current.getBoundingClientRect();
+        const newHeight = Math.max(300, window.innerHeight - rect.top - 100);
+        setListHeight(newHeight);
+      }
+    };
+
+    updateHeight();
+    window.addEventListener('resize', updateHeight);
+    return () => window.removeEventListener('resize', updateHeight);
+  }, []);
+
+  // Reset list scroll when filters change
+  useEffect(() => {
+    if (listRef.current) {
+      listRef.current.scrollTo(0);
+    }
+  }, [filterChapter, filterDifficulty, filterDivision, searchText]);
 
   // Load questions based on selected chapters
   useEffect(() => {
@@ -175,23 +337,6 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sectionName, chapters]);
 
-  // Helper function to check if a question should go to Division 2 (B)
-  // Criteria: Answer is numerical (not A, B, C, or D)
-  const isNumericalAnswer = (question: Question): boolean => {
-    const answerUpper = question.answer.toUpperCase().trim();
-    const isDivision2 = !['A', 'B', 'C', 'D'].includes(answerUpper);
-
-    // Debug logging
-    if (isDivision2) {
-      console.log(`[DIVISION-2] Question ${question.uuid}:`, {
-        answer: question.answer,
-        reason: 'Numerical answer'
-      });
-    }
-
-    return isDivision2;
-  };
-
   // Auto-correct existing selections: move numerical answers from Division 1 to Division 2
   useEffect(() => {
     let correctionsMade = false;
@@ -211,10 +356,12 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
     }
   }, [selectedQuestions]);
 
-  const getSummary = (): SelectionSummary => {
+  // Memoize summary calculation - only recompute when selectedQuestions or alphaConstraint changes
+  const summary = useMemo((): SelectionSummary => {
     const byChapter: SelectionSummary['byChapter'] = {};
     let totalE = 0, totalM = 0, totalH = 0;
     let requiredE = 0, requiredM = 0, requiredH = 0;
+    let div1Count = 0, div2Count = 0;
 
     // Initialize byChapter with alpha constraints
     alphaConstraint.chapters.forEach(ch => {
@@ -230,23 +377,26 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
       requiredH += ch.h;
     });
 
-    // Count current selections
+    // Count current selections - single pass
     selectedQuestions.forEach(sq => {
       if (byChapter[sq.chapterCode]) {
         if (sq.division === 1) {
           byChapter[sq.chapterCode].a++;
+          div1Count++;
         } else {
           byChapter[sq.chapterCode].b++;
+          div2Count++;
         }
+      } else {
+        // Question not in any tracked chapter
+        if (sq.division === 1) div1Count++;
+        else div2Count++;
       }
 
       if (sq.difficulty === 'E') totalE++;
-      if (sq.difficulty === 'M') totalM++;
-      if (sq.difficulty === 'H') totalH++;
+      else if (sq.difficulty === 'M') totalM++;
+      else if (sq.difficulty === 'H') totalH++;
     });
-
-    const div1Count = selectedQuestions.filter(sq => sq.division === 1).length;
-    const div2Count = selectedQuestions.filter(sq => sq.division === 2).length;
 
     return {
       total: selectedQuestions.length,
@@ -262,22 +412,22 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
         required_h: requiredH
       }
     };
-  };
+  }, [selectedQuestions, alphaConstraint]);
 
-  const summary = getSummary();
+  // Create a Set for O(1) lookup of selected question UUIDs
+  const selectedUuids = useMemo(() => {
+    return new Set(selectedQuestions.map(sq => sq.question.uuid));
+  }, [selectedQuestions]);
 
-  const isQuestionSelected = (uuid: string): boolean => {
-    return selectedQuestions.some(sq => sq.question.uuid === uuid);
-  };
-
-  const toggleQuestion = async (
+  // Memoize toggleQuestion to prevent recreation on every render
+  const toggleQuestion = useCallback(async (
     question: Question,
     chapterCode: string,
     chapterName: string,
     difficulty: Difficulty,
     division: 1 | 2
   ) => {
-    if (isQuestionSelected(question.uuid)) {
+    if (selectedUuids.has(question.uuid)) {
       // Deselecting - decrement frequency
       try {
         await window.electronAPI.questions.decrementFrequency(question.uuid);
@@ -287,12 +437,11 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
             ? { ...q, frequency: Math.max((q.frequency || 0) - 1, 0) }
             : q
         ));
-        console.log(`[FREQUENCY] Decremented frequency for question ${question.uuid}`);
       } catch (error) {
         console.error('[FREQUENCY] Error decrementing frequency:', error);
       }
-      setSelectedQuestions(
-        selectedQuestions.filter(sq => sq.question.uuid !== question.uuid)
+      setSelectedQuestions(prev =>
+        prev.filter(sq => sq.question.uuid !== question.uuid)
       );
     } else {
       // Selecting - increment frequency
@@ -304,7 +453,6 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
             ? { ...q, frequency: (q.frequency || 0) + 1 }
             : q
         ));
-        console.log(`[FREQUENCY] Incremented frequency for question ${question.uuid}`);
       } catch (error) {
         console.error('[FREQUENCY] Error incrementing frequency:', error);
       }
@@ -315,32 +463,45 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
         difficulty,
         division
       };
-      setSelectedQuestions([...selectedQuestions, newSelection]);
+      setSelectedQuestions(prev => [...prev, newSelection]);
     }
-  };
+  }, [selectedUuids]);
 
-  const getFilteredQuestions = (): Question[] => {
+  // Memoize filtered questions - only recompute when filters or data changes
+  const filteredQuestions = useMemo(() => {
+    const searchLower = searchText.toLowerCase();
+
     return availableQuestions.filter(q => {
+      // Filter by chapter
       if (filterChapter !== 'all' && q.tag_2 !== filterChapter) {
         return false;
       }
 
-      if (searchText) {
-        const search = searchText.toLowerCase();
-        if (!q.question.toLowerCase().includes(search)) {
-          return false;
-        }
+      // Filter by difficulty (was missing before!)
+      if (filterDifficulty !== 'all' && q.tag_3 !== filterDifficulty) {
+        return false;
+      }
+
+      // Filter by division type (numerical vs multiple choice)
+      if (filterDivision !== 'all') {
+        const isDiv2Type = isNumericalAnswer(q);
+        if (filterDivision === '1' && isDiv2Type) return false;
+        if (filterDivision === '2' && !isDiv2Type) return false;
+      }
+
+      // Filter by search text
+      if (searchText && !q.question.toLowerCase().includes(searchLower)) {
+        return false;
       }
 
       return true;
     });
-  };
+  }, [availableQuestions, filterChapter, filterDifficulty, filterDivision, searchText]);
 
-  const filteredQuestions = getFilteredQuestions();
-
-  const isSelectionValid = (): boolean => {
+  // Memoize isSelectionValid
+  const isSelectionValid = useMemo(() => {
     return summary.division1 === 20 && summary.division2 === 5;
-  };
+  }, [summary.division1, summary.division2]);
 
   return (
     <div className="question-selection">
@@ -458,7 +619,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
             </select>
           </div>
 
-          <div className="question-list">
+          <div className="question-list" ref={listContainerRef}>
             {loading ? (
               <div className="loading">Loading questions...</div>
             ) : filteredQuestions.length === 0 ? (
@@ -466,124 +627,43 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
                 No questions available. Please adjust filters or load a database.
               </div>
             ) : (
-              <div className="questions-info">
-                <p>
-                  Click on questions below to select them. You must assign each question
-                  to a chapter, difficulty level, and division.
-                </p>
-                <p className="note">
-                  Note: For MVP, questions will need manual categorization.
-                  Use tag_1/tag_2 from database as chapter hint.
-                </p>
-              </div>
-            )}
-
-            {filteredQuestions.map((question, index) => {
-              const isDivision2Question = isNumericalAnswer(question);
-              const selected = isQuestionSelected(question.uuid);
-
-              return (
-              <div
-                key={question.uuid}
-                className="selectable-question"
-                onClick={() => {
-                  // Check if question has numerical answer (Division 2 type)
-                  const isDivision2 = isNumericalAnswer(question);
-
-                  console.log(`[SELECTION] Question ${question.uuid}:`, {
-                    isDivision2,
-                    answer: question.answer,
-                    currentDiv1: summary.division1,
-                    currentDiv2: summary.division2
-                  });
-
-                  // If Division 2 question and Division 2 is full, prevent selection
-                  if (isDivision2 && summary.division2 >= 5 && !selected) {
-                    alert(`This question has numerical answer (${question.answer}) and can only be placed in Division 2 (B), which is already full (5/5).`);
-                    return;
-                  }
-
-                  // For MVP: Simple selection
-                  // In production: Show modal to select chapter, difficulty, division
-                  const chapterCode = question.tag_2 || chapters[0].code;
-                  const chapter = chapters.find(ch => ch.code === chapterCode);
-                  const chapterName = chapter ? chapter.name : chapters[0].name;
-                  const difficulty: Difficulty = (question.tag_3 as Difficulty) || 'M'; // Use question's difficulty from tag_3
-
-                  // Division logic: numerical answers MUST go to Division 2, others fill Division 1 first
-                  const division: 1 | 2 = isDivision2 ? 2 : (summary.division1 < 20 ? 1 : 2);
-
-                  console.log(`[SELECTION] Assigning to Division ${division}, Difficulty ${difficulty}`);
-
-                  toggleQuestion(question, chapterCode, chapterName, difficulty, division);
-                }}
-                style={{
-                  cursor: 'pointer',
-                  border: selected ? '2px solid var(--primary)' : '1px solid var(--border-light)',
-                  borderRadius: 'var(--radius-lg)',
-                  padding: '1rem',
-                  marginBottom: '1rem',
-                  transition: 'var(--transition)',
-                  backgroundColor: selected ? 'var(--primary-light)' : 'var(--bg-card-light)'
-                }}
-              >
-                <div className="question-card-header" style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'flex-start',
-                  marginBottom: '0.5rem'
-                }}>
-                  <div style={{ flex: 1 }}>
-                    {isDivision2Question && (
-                      <div style={{
-                        background: 'var(--amber)',
-                        color: 'white',
-                        padding: '0.25rem 0.625rem',
-                        borderRadius: 'var(--radius)',
-                        fontSize: '0.75rem',
-                        fontWeight: '600',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.375rem'
-                      }}>
-                        <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>edit_note</span>
-                        NUMERICAL ANSWER ({question.answer}) - Division 2 (B) Only
-                      </div>
-                    )}
-                  </div>
-                  <button
-                    className="question-edit-btn"
-                    onClick={(e) => openEditModal(e, question)}
-                    title="Edit question properties"
-                    style={{
-                      background: 'var(--bg-light)',
-                      border: '1px solid var(--border-light)',
-                      borderRadius: 'var(--radius)',
-                      padding: '0.375rem 0.5rem',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.25rem',
-                      fontSize: '0.75rem',
-                      color: 'var(--text-secondary-light)',
-                      transition: 'var(--transition)'
-                    }}
-                  >
-                    <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>edit</span>
-                    Edit
-                  </button>
+              <>
+                <div className="questions-info" style={{ marginBottom: '0.5rem' }}>
+                  <p style={{ margin: 0 }}>
+                    Showing {filteredQuestions.length} questions. Click to select.
+                  </p>
                 </div>
-                <QuestionDisplay
-                  question={question}
-                  showAnswer={false}
-                  showCheckbox={false}
-                  isSelected={selected}
-                  hideOptions={isDivision2Question}
-                  questionNumber={index + 1}
-                />
-              </div>
-              );
-            })}
+                <List
+                  ref={listRef}
+                  height={listHeight}
+                  itemCount={filteredQuestions.length}
+                  itemSize={ESTIMATED_ROW_HEIGHT}
+                  width="100%"
+                  overscanCount={3}
+                >
+                  {({ index, style }: ListChildComponentProps) => {
+                    const question = filteredQuestions[index];
+                    const isDivision2Question = isNumericalAnswer(question);
+                    const selected = selectedUuids.has(question.uuid);
+
+                    return (
+                      <QuestionRow
+                        key={question.uuid}
+                        question={question}
+                        index={index}
+                        selected={selected}
+                        isDivision2Question={isDivision2Question}
+                        summary={summary}
+                        chapters={chapters}
+                        onToggle={toggleQuestion}
+                        onEdit={openEditModal}
+                        style={style}
+                      />
+                    );
+                  }}
+                </List>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -596,9 +676,9 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
         <button
           className="btn-primary"
           onClick={() => onComplete(selectedQuestions)}
-          disabled={!isSelectionValid()}
+          disabled={!isSelectionValid}
         >
-          {isSelectionValid()
+          {isSelectionValid
             ? <>Continue to Next Section <span className="material-symbols-outlined">arrow_forward</span></>
             : `Need ${20 - summary.division1} more for Div1, ${5 - summary.division2} more for Div2`}
         </button>
@@ -666,7 +746,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
                     className="edit-modal-select"
                   >
                     <option value="">Select a chapter...</option>
-                    {getValidChaptersForSection().map(ch => (
+                    {validChaptersForSection.map(ch => (
                       <option key={ch.code} value={ch.code}>
                         {ch.code} - {ch.name}
                       </option>

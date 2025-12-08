@@ -1,4 +1,4 @@
-import React from 'react';
+import { memo } from 'react';
 import { Question } from '../types';
 import LatexRenderer from './LatexRenderer';
 
@@ -15,8 +15,9 @@ interface QuestionDisplayProps {
 
 /**
  * Component to display a question with LaTeX rendering
+ * Wrapped in React.memo to prevent unnecessary re-renders
  */
-export const QuestionDisplay: React.FC<QuestionDisplayProps> = ({
+export const QuestionDisplay = memo<QuestionDisplayProps>(({
   question,
   showAnswer = false,
   onSelect,
@@ -195,6 +196,8 @@ export const QuestionDisplay: React.FC<QuestionDisplayProps> = ({
       )}
     </div>
   );
-};
+});
+
+QuestionDisplay.displayName = 'QuestionDisplay';
 
 export default QuestionDisplay;
