@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { FixedSizeList as List, ListChildComponentProps } from 'react-window';
 import {
   Question,
   AlphaConstraint,
@@ -11,6 +10,7 @@ import {
   Chapter
 } from '../types';
 import QuestionDisplay from './QuestionDisplay';
+import chaptersData from '../data/chapters.json';
 
 interface QuestionSelectionProps {
   sectionName: SectionName;
@@ -20,14 +20,8 @@ interface QuestionSelectionProps {
   onComplete: (selectedQuestions: SelectedQuestion[]) => void;
   onBack: () => void;
   initialSelectedQuestions?: SelectedQuestion[];
-  onChange?: (selectedQuestions: SelectedQuestion[]) => void; // Immediate sync callback
+  onChange?: (selectedQuestions: SelectedQuestion[]) => void;
 }
-
-/**
- * Component for selecting questions based on Alpha/Beta constraints
- */
-// Import chapters data for valid chapter codes
-import chaptersData from '../data/chapters.json';
 
 // Edit modal state interface
 interface EditModalState {
@@ -38,17 +32,12 @@ interface EditModalState {
 }
 
 // Helper function to check if a question should go to Division 2 (B)
-// Criteria: Answer is numerical (not A, B, C, or D)
-// Moved outside component to avoid recreation on each render
 const isNumericalAnswer = (question: Question): boolean => {
   const answerUpper = question.answer.toUpperCase().trim();
   return !['A', 'B', 'C', 'D'].includes(answerUpper);
 };
 
-// Estimated row heights for virtualization
-const ESTIMATED_ROW_HEIGHT = 350; // Average height of a question card
-
-// Memoized Question Row component for virtualized list
+// Memoized Question Row component
 interface QuestionRowProps {
   question: Question;
   index: number;
@@ -64,7 +53,6 @@ interface QuestionRowProps {
     division: 1 | 2
   ) => void;
   onEdit: (e: React.MouseEvent, question: Question) => void;
-  style: React.CSSProperties;
 }
 
 const QuestionRow = React.memo<QuestionRowProps>(({
@@ -75,8 +63,7 @@ const QuestionRow = React.memo<QuestionRowProps>(({
   summary,
   chapters,
   onToggle,
-  onEdit,
-  style
+  onEdit
 }) => {
   const handleClick = useCallback(() => {
     // If Division 2 question and Division 2 is full, prevent selection
@@ -95,7 +82,15 @@ const QuestionRow = React.memo<QuestionRowProps>(({
   }, [question, isDivision2Question, summary.division2, summary.division1, selected, chapters, onToggle]);
 
   return (
-    <div style={style}>
+    <div
+      className="question-row-container"
+      style={{
+        contentVisibility: 'auto',
+        containIntrinsicSize: '350px',
+        marginBottom: '0.5rem',
+        marginRight: '0.5rem'
+      }}
+    >
       <div
         className={`selectable-question ${selected ? 'selected' : ''}`}
         onClick={handleClick}
@@ -104,8 +99,6 @@ const QuestionRow = React.memo<QuestionRowProps>(({
           border: selected ? '2px solid var(--primary)' : '1px solid var(--border-light)',
           borderRadius: 'var(--radius-lg)',
           padding: '1rem',
-          marginBottom: '0.5rem',
-          marginRight: '0.5rem',
           transition: 'border-color 0.15s, background-color 0.15s',
           backgroundColor: selected ? 'var(--primary-light)' : 'var(--bg-card-light)'
         }}
@@ -262,6 +255,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
       onChange(selectedQuestions);
     }
   }, [selectedQuestions, onChange]);
+
   const [availableQuestions, setAvailableQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterChapter, setFilterChapter] = useState<string>('all');
@@ -269,30 +263,13 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
   const [filterDivision, setFilterDivision] = useState<string>('all');
   const [searchText, setSearchText] = useState('');
 
-  // Refs for virtualized list
+  // Refs for list scrolling
   const listContainerRef = useRef<HTMLDivElement>(null);
-  const listRef = useRef<List>(null);
-  const [listHeight, setListHeight] = useState(500);
-
-  // Update list height on resize
-  useEffect(() => {
-    const updateHeight = () => {
-      if (listContainerRef.current) {
-        const rect = listContainerRef.current.getBoundingClientRect();
-        const newHeight = Math.max(300, window.innerHeight - rect.top - 100);
-        setListHeight(newHeight);
-      }
-    };
-
-    updateHeight();
-    window.addEventListener('resize', updateHeight);
-    return () => window.removeEventListener('resize', updateHeight);
-  }, []);
 
   // Reset list scroll when filters change
   useEffect(() => {
-    if (listRef.current) {
-      listRef.current.scrollTo(0);
+    if (listContainerRef.current) {
+      listContainerRef.current.scrollTop = 0;
     }
   }, [filterChapter, filterDifficulty, filterDivision, searchText]);
 
@@ -334,7 +311,6 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
       }
     };
     loadQuestions();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sectionName, chapters]);
 
   // Auto-correct existing selections: move numerical answers from Division 1 to Division 2
@@ -477,7 +453,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
         return false;
       }
 
-      // Filter by difficulty (was missing before!)
+      // Filter by difficulty
       if (filterDifficulty !== 'all' && q.tag_3 !== filterDifficulty) {
         return false;
       }
@@ -619,7 +595,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
             </select>
           </div>
 
-          <div className="question-list" ref={listContainerRef}>
+          <div className="question-list" ref={listContainerRef} style={{ overflowY: 'auto', height: '100%', display: 'block' }}>
             {loading ? (
               <div className="loading">Loading questions...</div>
             ) : filteredQuestions.length === 0 ? (
@@ -633,35 +609,24 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
                     Showing {filteredQuestions.length} questions. Click to select.
                   </p>
                 </div>
-                <List
-                  ref={listRef}
-                  height={listHeight}
-                  itemCount={filteredQuestions.length}
-                  itemSize={ESTIMATED_ROW_HEIGHT}
-                  width="100%"
-                  overscanCount={3}
-                >
-                  {({ index, style }: ListChildComponentProps) => {
-                    const question = filteredQuestions[index];
-                    const isDivision2Question = isNumericalAnswer(question);
-                    const selected = selectedUuids.has(question.uuid);
-
-                    return (
-                      <QuestionRow
-                        key={question.uuid}
-                        question={question}
-                        index={index}
-                        selected={selected}
-                        isDivision2Question={isDivision2Question}
-                        summary={summary}
-                        chapters={chapters}
-                        onToggle={toggleQuestion}
-                        onEdit={openEditModal}
-                        style={style}
-                      />
-                    );
-                  }}
-                </List>
+                {/* Render all questions without virtualization */}
+                {filteredQuestions.map((question, index) => {
+                  const isDivision2Question = isNumericalAnswer(question);
+                  const selected = selectedUuids.has(question.uuid);
+                  return (
+                    <QuestionRow
+                      key={question.uuid}
+                      question={question}
+                      index={index}
+                      selected={selected}
+                      isDivision2Question={isDivision2Question}
+                      summary={summary}
+                      chapters={chapters}
+                      onToggle={toggleQuestion}
+                      onEdit={openEditModal}
+                    />
+                  );
+                })}
               </>
             )}
           </div>
