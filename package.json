@@ -67,7 +67,10 @@
     "win": {
       "icon": "assets/icons/logo.ico",
       "target": [
-        "nsis"
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
       ]
     },
     "linux": {
