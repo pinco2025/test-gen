@@ -26,6 +26,8 @@ export const QuestionDisplay = memo<QuestionDisplayProps>(({
   hideOptions = false,
   questionNumber
 }) => {
+  // Silence unused variable warning since we keep it for potential future use or external interface compatibility
+  void questionNumber;
   // Get difficulty styling
   const getDifficultyStyle = (diff?: 'E' | 'M' | 'H') => {
     switch (diff) {
@@ -64,7 +66,7 @@ export const QuestionDisplay = memo<QuestionDisplayProps>(({
         borderRadius: 'var(--radius)',
         border: '1px solid var(--border-light)'
       }}>
-        {questionNumber !== undefined && (
+        {question.tag_1 && (
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
             <strong style={{ color: 'var(--text-muted-light)', fontSize: '0.75rem' }}>Q#:</strong>
             <span style={{
@@ -74,7 +76,7 @@ export const QuestionDisplay = memo<QuestionDisplayProps>(({
               borderRadius: 'var(--radius-sm)',
               fontSize: '0.8125rem',
               fontWeight: '600'
-            }}>{questionNumber}</span>
+            }}>{question.tag_1}</span>
           </div>
         )}
 
