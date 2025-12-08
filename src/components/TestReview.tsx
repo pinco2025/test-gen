@@ -199,7 +199,7 @@ const TestReview: React.FC<TestReviewProps> = ({
                             className={`palette-item ${status} ${isActive ? 'current' : ''}`}
                             onClick={() => handleJumpToQuestion(allQuestions.findIndex(q => q.sq.question.uuid === item.sq.question.uuid))}
                           >
-                            {item.sq.question.tag_1 || item.absoluteIndex}
+                            {item.absoluteIndex}
                           </button>
                         );
                       })}
