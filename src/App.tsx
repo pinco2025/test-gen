@@ -16,6 +16,7 @@ import TestCreationForm from './components/TestCreationForm';
 import SectionConfiguration from './components/SectionConfiguration';
 import QuestionSelection from './components/QuestionSelection';
 import ProjectTabs from './components/ProjectTabs';
+import TestReview from './components/TestReview';
 import './styles/App.css';
 
 type WorkflowStep =
@@ -511,6 +512,26 @@ function App() {
     updateCurrentProject({ constraintConfig: config });
   };
 
+  const handleQuestionUpdate = useCallback((updatedQuestion: any) => {
+    if (!currentProjectId) return;
+
+    // We need to update the question in the sections state
+    const updatedSections = sections.map(section => ({
+      ...section,
+      selectedQuestions: section.selectedQuestions.map(sq => {
+        if (sq.question.uuid === updatedQuestion.uuid) {
+          return {
+            ...sq,
+            question: updatedQuestion
+          };
+        }
+        return sq;
+      })
+    }));
+
+    updateCurrentProject({ sections: updatedSections });
+  }, [currentProjectId, sections, updateCurrentProject]);
+
   // Render different steps
   const renderStep = () => {
     switch (step) {
@@ -619,54 +640,12 @@ function App() {
 
       case 'test-review':
         return (
-          <div className="test-review">
-            <h2>
-              <span className="material-symbols-outlined" style={{ marginRight: '0.5rem', verticalAlign: 'middle' }}>fact_check</span>
-              Test Review
-            </h2>
-            <div className="test-summary">
-              <h3>
-                <span className="material-symbols-outlined" style={{ marginRight: '0.375rem', fontSize: '1.125rem' }}>info</span>
-                Test Details
-              </h3>
-              <p><strong>Code:</strong> {testMetadata?.code}</p>
-              <p><strong>Description:</strong> {testMetadata?.description}</p>
-              <p><strong>Type:</strong> {testMetadata?.testType}</p>
-            </div>
-
-            {sections.map((section, idx) => (
-              <div key={idx} className="section-summary">
-                <h3>
-                  <span className="material-symbols-outlined" style={{ marginRight: '0.375rem', fontSize: '1.125rem' }}>
-                    {idx === 0 ? 'science' : idx === 1 ? 'biotech' : 'calculate'}
-                  </span>
-                  {section.name}
-                </h3>
-                <p>Questions selected: {section.selectedQuestions.length}/25</p>
-                <ul>
-                  <li>Division 1: {section.selectedQuestions.filter(sq => sq.division === 1).length}/20</li>
-                  <li>Division 2: {section.selectedQuestions.filter(sq => sq.division === 2).length}/5</li>
-                </ul>
-              </div>
-            ))}
-
-            <div className="review-actions">
-              <button
-                className="btn-secondary"
-                onClick={createNewProject}
-              >
-                <span className="material-symbols-outlined">refresh</span>
-                Start Over
-              </button>
-              <button
-                className="btn-primary"
-                onClick={handleExportTest}
-              >
-                <span className="material-symbols-outlined">download</span>
-                Export Test as JSON
-              </button>
-            </div>
-          </div>
+          <TestReview
+            sections={sections}
+            onEditQuestion={handleQuestionUpdate}
+            onBack={handleBackFromSelection}
+            onExport={handleExportTest}
+          />
         );
 
       case 'complete':

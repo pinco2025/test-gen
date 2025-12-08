@@ -307,23 +307,27 @@ export class DatabaseService {
   }
 
   /**
-   * Update question properties (tag_2 for chapter, tag_3 for difficulty)
+   * Update question properties
    */
-  updateQuestion(uuid: string, updates: { tag_2?: string; tag_3?: string }): boolean {
+  updateQuestion(uuid: string, updates: Partial<Question>): boolean {
     if (!this.db) throw new Error('Database not connected');
 
     try {
+      const allowedFields = [
+        'question', 'option_a', 'option_b', 'option_c', 'option_d', 'answer',
+        'tag_2', 'tag_3'
+      ];
+
       const setClauses: string[] = [];
       const params: any[] = [];
 
-      if (updates.tag_2 !== undefined) {
-        setClauses.push('tag_2 = ?');
-        params.push(updates.tag_2);
-      }
-
-      if (updates.tag_3 !== undefined) {
-        setClauses.push('tag_3 = ?');
-        params.push(updates.tag_3);
+      for (const field of allowedFields) {
+        // @ts-ignore - Dynamic access to allowed fields
+        if (updates[field] !== undefined) {
+          setClauses.push(`${field} = ?`);
+          // @ts-ignore
+          params.push(updates[field]);
+        }
       }
 
       if (setClauses.length === 0) {
