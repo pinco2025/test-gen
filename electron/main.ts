@@ -127,7 +127,7 @@ ipcMain.handle('questions:decrementFrequency', async (_, uuid: string): Promise<
   return dbService.decrementFrequency(uuid);
 });
 
-ipcMain.handle('questions:updateQuestion', async (_, uuid: string, updates: { tag_2?: string; tag_3?: string }): Promise<boolean> => {
+ipcMain.handle('questions:updateQuestion', async (_, uuid: string, updates: Partial<Question>): Promise<boolean> => {
   return dbService.updateQuestion(uuid, updates);
 });
 
