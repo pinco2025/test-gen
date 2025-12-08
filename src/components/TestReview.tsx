@@ -22,7 +22,7 @@ const TestReview: React.FC<TestReviewProps> = ({
 }) => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [questionStatuses, setQuestionStatuses] = useState<{ [key: string]: QuestionStatus }>({});
-  const [isPaletteOpen, setIsPaletteOpen] = useState(false);
+  // Palette is always visible, no toggling state needed for sidebar
 
   // Edit state
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
@@ -72,7 +72,7 @@ const TestReview: React.FC<TestReviewProps> = ({
 
   const handleJumpToQuestion = (index: number) => {
     setCurrentQuestionIndex(index);
-    setIsPaletteOpen(false);
+    // Palette is always visible, no need to close
   };
 
   // Status Actions
@@ -157,9 +157,7 @@ const TestReview: React.FC<TestReviewProps> = ({
       {/* Header */}
       <div className="review-header">
         <div className="header-left">
-          <button className="icon-btn hamburger-btn" onClick={() => setIsPaletteOpen(true)} title="Question Palette">
-            <span className="material-symbols-outlined">menu</span>
-          </button>
+          {/* Hamburger removed as palette is always visible */}
           <h2>Review Test</h2>
         </div>
         <div className="header-right">
@@ -177,31 +175,70 @@ const TestReview: React.FC<TestReviewProps> = ({
         </div>
       </div>
 
-      {/* Main Content (Single Question) */}
-      <div className="review-main-single">
-        {allQuestions.length === 0 ? (
-           <div className="empty-state">
-             <p>No questions in this test.</p>
-             <button className="btn-secondary" onClick={onBack}>Back to Selection</button>
-           </div>
-        ) : currentQuestion ? (
-          <div className="single-question-view">
-             <QuestionDisplay
-               question={currentQuestion}
-               questionNumber={currentItem.absoluteIndex}
-               showAnswer={true}
-             />
+      {/* Main Body: Sidebar + Content */}
+      <div className="review-body">
 
-             {/* Edit Button overlay or nearby */}
-             <div className="question-actions-bar">
-                <button className="btn-text" onClick={handleEditClick}>
-                   <span className="material-symbols-outlined">edit</span> Edit
-                </button>
-             </div>
+        {/* Palette Sidebar */}
+        <div className="palette-sidebar">
+          <h3>Question Palette</h3>
+          <div className="palette-sidebar-content">
+              {sections.map((section, idx) => {
+                const sectionQuestions = allQuestions.filter(q => q.sectionIndex === idx);
+                if (sectionQuestions.length === 0) return null;
+
+                return (
+                  <div key={idx} className="palette-section">
+                    <h4>{section.name}</h4>
+                    <div className="palette-grid">
+                      {sectionQuestions.map((item) => {
+                        const status = questionStatuses[item.sq.question.uuid] || 'pending';
+                        const isActive = currentQuestionIndex === allQuestions.findIndex(q => q.sq.question.uuid === item.sq.question.uuid);
+                        return (
+                          <button
+                            key={item.sq.question.uuid}
+                            className={`palette-item ${status} ${isActive ? 'current' : ''}`}
+                            onClick={() => handleJumpToQuestion(allQuestions.findIndex(q => q.sq.question.uuid === item.sq.question.uuid))}
+                          >
+                            {item.sq.question.tag_1 || item.absoluteIndex}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
           </div>
-        ) : (
-          <div>Loading...</div>
-        )}
+        </div>
+
+        {/* Main Question Content */}
+        <div className="review-main-single">
+          {allQuestions.length === 0 ? (
+            <div className="empty-state">
+              <p>No questions in this test.</p>
+              <button className="btn-secondary" onClick={onBack}>Back to Selection</button>
+            </div>
+          ) : currentQuestion ? (
+            <div className="single-question-view">
+              <QuestionDisplay
+                question={currentQuestion}
+                // questionNumber is no longer used for Q# display but might be used for logic if needed,
+                // but we removed its usage in QuestionDisplay for Q#.
+                // We can pass it if we want to retain sequential numbering for other purposes or just pass 0.
+                // However, QuestionDisplay still accepts it.
+                questionNumber={currentItem.absoluteIndex}
+                showAnswer={true}
+              />
+
+              <div className="question-actions-bar">
+                  <button className="btn-text" onClick={handleEditClick}>
+                    <span className="material-symbols-outlined">edit</span> Edit
+                  </button>
+              </div>
+            </div>
+          ) : (
+            <div>Loading...</div>
+          )}
+        </div>
       </div>
 
       {/* Footer Controls */}
@@ -236,49 +273,6 @@ const TestReview: React.FC<TestReviewProps> = ({
             </button>
          </div>
       </div>
-
-      {/* Palette Modal */}
-      {isPaletteOpen && (
-        <div className="palette-modal-overlay" onClick={() => setIsPaletteOpen(false)}>
-          <div className="palette-modal" onClick={e => e.stopPropagation()}>
-            <div className="palette-header">
-              <h3>Question Palette</h3>
-              <button className="icon-btn" onClick={() => setIsPaletteOpen(false)}>
-                <span className="material-symbols-outlined">close</span>
-              </button>
-            </div>
-            <div className="palette-content">
-               {sections.map((section, idx) => {
-                 // Filter to only show questions that are still in allQuestions (not rejected/removed)
-                 // Actually allQuestions is derived from sections, so if sections updated, this updates.
-                 const sectionQuestions = allQuestions.filter(q => q.sectionIndex === idx);
-                 if (sectionQuestions.length === 0) return null;
-
-                 return (
-                   <div key={idx} className="palette-section">
-                     <h4>{section.name}</h4>
-                     <div className="palette-grid">
-                       {sectionQuestions.map((item) => {
-                         const status = questionStatuses[item.sq.question.uuid] || 'pending';
-                         const isActive = currentQuestionIndex === allQuestions.findIndex(q => q.sq.question.uuid === item.sq.question.uuid);
-                         return (
-                           <button
-                             key={item.sq.question.uuid}
-                             className={`palette-item ${status} ${isActive ? 'current' : ''}`}
-                             onClick={() => handleJumpToQuestion(allQuestions.findIndex(q => q.sq.question.uuid === item.sq.question.uuid))}
-                           >
-                             {item.absoluteIndex}
-                           </button>
-                         );
-                       })}
-                     </div>
-                   </div>
-                 );
-               })}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Edit Modal */}
       {editingQuestion && (
