@@ -17,6 +17,7 @@ import SectionConfiguration from './components/SectionConfiguration';
 import QuestionSelection from './components/QuestionSelection';
 import ProjectTabs from './components/ProjectTabs';
 import TestReview from './components/TestReview';
+import TestNavigation from './components/TestNavigation';
 import './styles/App.css';
 
 type WorkflowStep =
@@ -43,6 +44,26 @@ interface ProjectData {
 }
 
 function App() {
+  // Dark mode state
+  const [darkMode, setDarkMode] = useState(() => {
+    return localStorage.getItem('theme') === 'dark';
+  });
+
+  // Apply dark mode
+  useEffect(() => {
+    if (darkMode) {
+      document.body.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.body.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [darkMode]);
+
+  const toggleDarkMode = () => {
+    setDarkMode(!darkMode);
+  };
+
   // All saved projects (from disk)
   const [projects, setProjects] = useState<ProjectInfo[]>([]);
 
@@ -498,6 +519,20 @@ function App() {
     });
   };
 
+  const handleNavigation = (targetStep: WorkflowStep, sectionIndex?: number) => {
+    if (!currentProjectId) return;
+
+    const updates: Partial<ProjectData> = {
+      currentStep: targetStep
+    };
+
+    if (sectionIndex !== undefined) {
+      updates.currentSectionIndex = sectionIndex;
+    }
+
+    updateCurrentProject(updates);
+  };
+
   const handleExportTest = async () => {
     if (!testMetadata) return;
 
@@ -554,7 +589,16 @@ function App() {
 
   // Render different steps
   const renderStep = () => {
-    switch (step) {
+    // Show navigation for selection and review steps
+    const showNavigation = [
+      'question-select-physics',
+      'question-select-chemistry',
+      'question-select-math',
+      'test-review'
+    ].includes(step);
+
+    const stepContent = (() => {
+      switch (step) {
       case 'database-connect':
         return (
           <div className="connect-screen">
@@ -689,7 +733,21 @@ function App() {
 
       default:
         return <div>Unknown step</div>;
-    }
+      }
+    })();
+
+    return (
+      <>
+        {showNavigation && (
+          <TestNavigation
+            currentStep={step}
+            sections={sections}
+            onNavigate={handleNavigation}
+          />
+        )}
+        {stepContent}
+      </>
+    );
   };
 
   // Get open projects info for tabs
@@ -714,6 +772,15 @@ function App() {
           <h1 onClick={goToDashboard}>Test Generation System</h1>
         </div>
         <div className="header-right">
+          <button
+            className="theme-toggle-btn"
+            onClick={toggleDarkMode}
+            title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+          >
+            <span className="material-symbols-outlined">
+              {darkMode ? 'light_mode' : 'dark_mode'}
+            </span>
+          </button>
           {currentProjectId && (
             <div className={`save-status ${saveStatus}`}>
               <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>

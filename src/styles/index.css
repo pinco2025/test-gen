@@ -131,33 +131,19 @@ input[type="checkbox"]:disabled {
   cursor: not-allowed;
 }
 
-/* Scrollbar Styling */
+/* Scrollbar Styling - Invisible but functional */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 0px;
+  height: 0px;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--bg-light);
-  border-radius: 3px;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--border-light);
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--text-muted-light);
-}
-
-/* Dark mode scrollbar */
-.dark ::-webkit-scrollbar-track {
-  background: var(--bg-dark);
-}
-
-.dark ::-webkit-scrollbar-thumb {
-  background: var(--border-dark);
+  background: transparent;
 }
 
 /* Selection */
