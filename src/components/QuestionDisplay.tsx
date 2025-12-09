@@ -11,6 +11,7 @@ interface QuestionDisplayProps {
   hideOptions?: boolean;
   questionNumber?: number;
   difficulty?: 'E' | 'M' | 'H';
+  highlightCorrectAnswer?: boolean;
 }
 
 /**
@@ -24,7 +25,8 @@ export const QuestionDisplay = memo<QuestionDisplayProps>(({
   isSelected = false,
   showCheckbox = false,
   hideOptions = false,
-  questionNumber
+  questionNumber,
+  highlightCorrectAnswer = false
 }) => {
   // Silence unused variable warning since we keep it for potential future use or external interface compatibility
   void questionNumber;
@@ -187,12 +189,19 @@ export const QuestionDisplay = memo<QuestionDisplayProps>(({
 
             if (!optionText && !optionImageUrl) return null;
 
-            const isCorrect = showAnswer && question.answer.toLowerCase() === option;
+            // Highlight if showAnswer is true OR highlightCorrectAnswer is true
+            // AND match the answer
+            const isCorrect = (showAnswer || highlightCorrectAnswer) &&
+                              question.answer.toLowerCase() === option;
 
             return (
               <div
                 key={option}
                 className={`option ${isCorrect ? 'correct-answer' : ''}`}
+                style={isCorrect && highlightCorrectAnswer ? {
+                    backgroundColor: 'rgba(76, 175, 80, 0.1)', // Light green
+                    borderColor: 'var(--success)'
+                } : undefined}
               >
                 <span className="option-label">{option.toUpperCase()})</span>
                 <div className="option-content">
