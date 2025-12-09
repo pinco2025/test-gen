@@ -131,6 +131,10 @@ ipcMain.handle('questions:updateQuestion', async (_, uuid: string, updates: Part
   return dbService.updateQuestion(uuid, updates);
 });
 
+ipcMain.handle('questions:createQuestion', async (_, question: Question): Promise<boolean> => {
+  return dbService.createQuestion(question);
+});
+
 // Metadata queries
 ipcMain.handle('db:getTypes', async (): Promise<string[]> => {
   return dbService.getTypes();

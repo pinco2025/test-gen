@@ -28,6 +28,24 @@ const TestReview: React.FC<TestReviewProps> = ({
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const [editForm, setEditForm] = useState<Partial<Question>>({});
 
+  // Image modal state
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  const [imageForm, setImageForm] = useState<{
+    question_schematic: string;
+    option_a_schematic: string;
+    option_b_schematic: string;
+    option_c_schematic: string;
+    option_d_schematic: string;
+  }>({
+    question_schematic: '',
+    option_a_schematic: '',
+    option_b_schematic: '',
+    option_c_schematic: '',
+    option_d_schematic: ''
+  });
+  // Local state to trigger preview rendering (though direct input change already rerenders)
+  const [previewImages, setPreviewImages] = useState(imageForm);
+
   // Flatten questions
   const allQuestions = useMemo(() => {
     const flat: Array<{ sq: SelectedQuestion; sectionIndex: number; absoluteIndex: number }> = [];
@@ -152,12 +170,75 @@ const TestReview: React.FC<TestReviewProps> = ({
     }));
   };
 
+  // Image Management Handlers
+  const handleImageClick = () => {
+      if (!currentQuestion) return;
+      setImageForm({
+          question_schematic: currentQuestion.question_schematic || '',
+          option_a_schematic: currentQuestion.option_a_schematic || '',
+          option_b_schematic: currentQuestion.option_b_schematic || '',
+          option_c_schematic: currentQuestion.option_c_schematic || '',
+          option_d_schematic: currentQuestion.option_d_schematic || ''
+      });
+      setPreviewImages({
+          question_schematic: currentQuestion.question_schematic || '',
+          option_a_schematic: currentQuestion.option_a_schematic || '',
+          option_b_schematic: currentQuestion.option_b_schematic || '',
+          option_c_schematic: currentQuestion.option_c_schematic || '',
+          option_d_schematic: currentQuestion.option_d_schematic || ''
+      });
+      setIsImageModalOpen(true);
+  };
+
+  const handleImageSave = async () => {
+      if (!currentQuestion || !window.electronAPI) return;
+
+      try {
+        const updates = {
+            question_schematic: imageForm.question_schematic || null,
+            option_a_schematic: imageForm.option_a_schematic || null,
+            option_b_schematic: imageForm.option_b_schematic || null,
+            option_c_schematic: imageForm.option_c_schematic || null,
+            option_d_schematic: imageForm.option_d_schematic || null
+        };
+
+        const success = await window.electronAPI.questions.updateQuestion(currentQuestion.uuid, updates);
+
+        if (success) {
+            const updatedQuestion = {
+                ...currentQuestion,
+                ...updates,
+                updated_at: new Date().toISOString()
+            };
+            onEditQuestion(updatedQuestion);
+            setIsImageModalOpen(false);
+        } else {
+            alert('Failed to update image URLs');
+        }
+      } catch (error) {
+          console.error('Error updating images:', error);
+          alert('An error occurred while updating images');
+      }
+  };
+
+  const handlePreview = () => {
+      // Just update the state to trigger re-render of preview in modal
+      setPreviewImages({...imageForm});
+  };
+
   return (
     <div className="test-review-container">
       {/* Header */}
       <div className="review-header">
         <div className="header-left">
-          {/* Hamburger removed as palette is always visible */}
+          <button
+            className="btn-secondary"
+            onClick={onBack}
+            title="Back to Configuration"
+            style={{marginRight: '1rem'}}
+          >
+            <span className="material-symbols-outlined">arrow_back</span>
+          </button>
           <h2>Review Test</h2>
         </div>
         <div className="header-right">
@@ -232,6 +313,9 @@ const TestReview: React.FC<TestReviewProps> = ({
               <div className="question-actions-bar">
                   <button className="btn-text" onClick={handleEditClick}>
                     <span className="material-symbols-outlined">edit</span> Edit
+                  </button>
+                  <button className="btn-text" onClick={handleImageClick}>
+                    <span className="material-symbols-outlined">image</span> Image
                   </button>
               </div>
             </div>
@@ -358,6 +442,150 @@ const TestReview: React.FC<TestReviewProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Image Management Modal */}
+      {isImageModalOpen && (
+          <div className="modal-overlay">
+              <div className="edit-modal" style={{maxWidth: '800px', width: '90%'}}>
+                  <div className="modal-header">
+                      <h3>Image Management</h3>
+                      <button className="icon-btn" onClick={() => setIsImageModalOpen(false)}>
+                        <span className="material-symbols-outlined">close</span>
+                      </button>
+                  </div>
+                  <div className="modal-content" style={{display: 'flex', flexDirection: 'column', gap: '1.5rem'}}>
+                      <div className="image-inputs">
+                          <h4>Image URLs</h4>
+                          <div className="form-group">
+                              <label>Question Image URL</label>
+                              <input
+                                type="text"
+                                value={imageForm.question_schematic}
+                                onChange={(e) => setImageForm({...imageForm, question_schematic: e.target.value})}
+                                placeholder="Enter image URL..."
+                                style={{width: '100%', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: '4px'}}
+                              />
+                          </div>
+                          <div className="form-group">
+                              <label>Option A Image URL</label>
+                              <input
+                                type="text"
+                                value={imageForm.option_a_schematic}
+                                onChange={(e) => setImageForm({...imageForm, option_a_schematic: e.target.value})}
+                                placeholder="Enter image URL..."
+                                style={{width: '100%', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: '4px'}}
+                              />
+                          </div>
+                          <div className="form-group">
+                              <label>Option B Image URL</label>
+                              <input
+                                type="text"
+                                value={imageForm.option_b_schematic}
+                                onChange={(e) => setImageForm({...imageForm, option_b_schematic: e.target.value})}
+                                placeholder="Enter image URL..."
+                                style={{width: '100%', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: '4px'}}
+                              />
+                          </div>
+                          <div className="form-group">
+                              <label>Option C Image URL</label>
+                              <input
+                                type="text"
+                                value={imageForm.option_c_schematic}
+                                onChange={(e) => setImageForm({...imageForm, option_c_schematic: e.target.value})}
+                                placeholder="Enter image URL..."
+                                style={{width: '100%', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: '4px'}}
+                              />
+                          </div>
+                          <div className="form-group">
+                              <label>Option D Image URL</label>
+                              <input
+                                type="text"
+                                value={imageForm.option_d_schematic}
+                                onChange={(e) => setImageForm({...imageForm, option_d_schematic: e.target.value})}
+                                placeholder="Enter image URL..."
+                                style={{width: '100%', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: '4px'}}
+                              />
+                          </div>
+                      </div>
+
+                      <div className="preview-section" style={{borderTop: '1px solid var(--border-color)', paddingTop: '1rem'}}>
+                          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem'}}>
+                             <h4>Preview</h4>
+                             <button className="btn-secondary" onClick={handlePreview}>Update Preview</button>
+                          </div>
+
+                          <div className="preview-container" style={{background: 'var(--bg-light)', padding: '1rem', borderRadius: '8px'}}>
+                              <p style={{marginBottom: '0.5rem'}}>
+                                <strong>Question Text:</strong><br/>
+                                <span style={{display: 'block', marginTop: '0.5rem'}}>{currentQuestion ? currentQuestion.question : ''}</span>
+                              </p>
+
+                              {previewImages.question_schematic && (
+                                  <div className="preview-image" style={{margin: '1rem 0', textAlign: 'center'}}>
+                                      <img
+                                        src={previewImages.question_schematic}
+                                        alt="Question Schematic"
+                                        style={{maxWidth: '100%', maxHeight: '300px', border: '1px solid #ddd'}}
+                                      />
+                                  </div>
+                              )}
+
+                              <div className="options-preview" style={{display: 'grid', gap: '0.5rem'}}>
+                                  <div style={{display: 'flex', gap: '0.5rem', alignItems: 'flex-start'}}>
+                                      <strong>A)</strong>
+                                      <div style={{flex: 1}}>
+                                          ... (Option A text) ...
+                                          {previewImages.option_a_schematic && (
+                                              <div style={{marginTop: '0.5rem'}}>
+                                                <img src={previewImages.option_a_schematic} alt="Option A" style={{maxWidth: '100px', maxHeight: '100px'}} />
+                                              </div>
+                                          )}
+                                      </div>
+                                  </div>
+                                  <div style={{display: 'flex', gap: '0.5rem', alignItems: 'flex-start'}}>
+                                      <strong>B)</strong>
+                                      <div style={{flex: 1}}>
+                                          ... (Option B text) ...
+                                          {previewImages.option_b_schematic && (
+                                              <div style={{marginTop: '0.5rem'}}>
+                                                <img src={previewImages.option_b_schematic} alt="Option B" style={{maxWidth: '100px', maxHeight: '100px'}} />
+                                              </div>
+                                          )}
+                                      </div>
+                                  </div>
+                                  <div style={{display: 'flex', gap: '0.5rem', alignItems: 'flex-start'}}>
+                                      <strong>C)</strong>
+                                      <div style={{flex: 1}}>
+                                          ... (Option C text) ...
+                                          {previewImages.option_c_schematic && (
+                                              <div style={{marginTop: '0.5rem'}}>
+                                                <img src={previewImages.option_c_schematic} alt="Option C" style={{maxWidth: '100px', maxHeight: '100px'}} />
+                                              </div>
+                                          )}
+                                      </div>
+                                  </div>
+                                  <div style={{display: 'flex', gap: '0.5rem', alignItems: 'flex-start'}}>
+                                      <strong>D)</strong>
+                                      <div style={{flex: 1}}>
+                                          ... (Option D text) ...
+                                          {previewImages.option_d_schematic && (
+                                              <div style={{marginTop: '0.5rem'}}>
+                                                <img src={previewImages.option_d_schematic} alt="Option D" style={{maxWidth: '100px', maxHeight: '100px'}} />
+                                              </div>
+                                          )}
+                                      </div>
+                                  </div>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+                  <div className="modal-footer">
+                      <button className="btn-secondary" onClick={() => setIsImageModalOpen(false)}>Cancel</button>
+                      <button className="btn-primary" onClick={handleImageSave}>Save Images</button>
+                  </div>
+              </div>
+          </div>
       )}
     </div>
   );
