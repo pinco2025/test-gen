@@ -5,21 +5,21 @@
   display: flex;
   flex-direction: column;
   height: 100vh;
-  background: var(--bg-light);
-  color: var(--text-primary-light);
+  background: var(--bg-main);
+  color: var(--text-primary);
 }
 
 /* ========================================
    App Header
    ======================================== */
 .app-header {
-  background: var(--bg-card-light);
-  color: var(--text-primary-light);
+  background: var(--bg-card);
+  color: var(--text-primary);
   padding: 0.75rem 1.5rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .header-left {
@@ -38,7 +38,7 @@
   font-size: 1.125rem;
   font-weight: 700;
   margin: 0;
-  color: var(--text-primary-light);
+  color: var(--text-primary);
   letter-spacing: -0.015em;
   transition: color 0.2s;
   cursor: pointer;
@@ -56,7 +56,7 @@
 
 .theme-toggle-btn {
   background: transparent;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-full);
   width: 36px;
   height: 36px;
@@ -64,12 +64,12 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  color: var(--text-secondary-light);
+  color: var(--text-secondary);
   transition: var(--transition);
 }
 
 .theme-toggle-btn:hover {
-  background: var(--bg-light);
+  background: var(--bg-main);
   color: var(--primary);
   border-color: var(--primary);
 }
@@ -138,8 +138,8 @@
   position: absolute;
   top: calc(100% + 0.5rem);
   right: 0;
-  background: var(--bg-card-light);
-  border: 1px solid var(--border-light);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
   min-width: 280px;
@@ -152,28 +152,28 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.875rem 1rem;
-  background: var(--bg-light);
-  border-bottom: 1px solid var(--border-light);
+  background: var(--bg-main);
+  border-bottom: 1px solid var(--border-color);
   font-weight: 600;
   font-size: 0.9rem;
-  color: var(--text-primary-light);
+  color: var(--text-primary);
 }
 
 .db-dropdown-info {
   padding: 1rem;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .db-file-name {
   font-weight: 600;
   font-size: 0.9rem;
-  color: var(--text-primary-light);
+  color: var(--text-primary);
   margin-bottom: 0.25rem;
 }
 
 .db-file-path {
   font-size: 0.75rem;
-  color: var(--text-muted-light);
+  color: var(--text-muted);
   word-break: break-all;
   font-family: monospace;
 }
@@ -188,7 +188,7 @@
   border: none;
   cursor: pointer;
   font-size: 0.875rem;
-  color: var(--text-primary-light);
+  color: var(--text-primary);
   transition: var(--transition);
   text-align: left;
 }
@@ -205,7 +205,7 @@
   flex: 1;
   overflow-y: auto;
   padding: 2rem;
-  background: var(--bg-light);
+  background: var(--bg-main);
   display: flex;
   flex-direction: column;
 }
@@ -219,10 +219,10 @@
 
 .test-navigation {
   display: flex;
-  background: var(--bg-card-light);
+  background: var(--bg-card);
   padding: 0.5rem;
   border-radius: var(--radius-full);
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--border-color);
   box-shadow: var(--shadow-sm);
   gap: 0.5rem;
   align-items: center;
@@ -237,15 +237,15 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  color: var(--text-secondary-light);
+  color: var(--text-secondary);
   font-weight: 500;
   font-size: 0.9rem;
   transition: var(--transition);
 }
 
 .nav-segment:hover:not(:disabled) {
-  background: var(--bg-light);
-  color: var(--text-primary-light);
+  background: var(--bg-main);
+  color: var(--text-primary);
 }
 
 .nav-segment.active {
@@ -259,8 +259,8 @@
 }
 
 .nav-badge {
-  background: var(--bg-light);
-  color: var(--text-secondary-light);
+  background: var(--bg-main);
+  color: var(--text-secondary);
   padding: 0.1rem 0.5rem;
   border-radius: var(--radius-sm);
   font-size: 0.75rem;
@@ -275,7 +275,7 @@
 .nav-separator {
   width: 1px;
   height: 24px;
-  background: var(--border-light);
+  background: var(--border-color);
   margin: 0 0.25rem;
 }
 
@@ -303,17 +303,17 @@
   max-width: 500px;
   margin: 4rem auto;
   text-align: center;
-  background: var(--bg-card-light);
+  background: var(--bg-card);
   padding: 3rem;
   border-radius: var(--radius-xl);
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--border-color);
   box-shadow: var(--shadow);
 }
 
 .connect-screen h1,
 .complete-screen h2 {
   margin-bottom: 0.75rem;
-  color: var(--text-primary-light);
+  color: var(--text-primary);
   font-size: 1.5rem;
   font-weight: 700;
   letter-spacing: -0.015em;
@@ -322,7 +322,7 @@
 .connect-screen p,
 .complete-screen p {
   margin-bottom: 2rem;
-  color: var(--text-secondary-light);
+  color: var(--text-secondary);
   font-size: 1rem;
 }
 
@@ -344,7 +344,7 @@
 
 .dashboard-header h2 {
   font-size: 2rem;
-  color: var(--text-primary-light);
+  color: var(--text-primary);
   font-weight: 900;
   letter-spacing: -0.033em;
 }
@@ -356,8 +356,8 @@
 }
 
 .project-tile {
-  background: var(--bg-card-light);
-  border: 1px solid var(--border-light);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-xl);
   padding: 1.5rem;
   cursor: pointer;
@@ -380,7 +380,7 @@
 
 .project-tile-header h3 {
   font-size: 1.125rem;
-  color: var(--text-primary-light);
+  color: var(--text-primary);
   font-weight: 700;
   margin: 0;
   flex: 1;
@@ -396,7 +396,7 @@
   border-radius: var(--radius);
   transition: var(--transition);
   opacity: 0;
-  color: var(--text-muted-light);
+  color: var(--text-muted);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -412,7 +412,7 @@
 }
 
 .project-description {
-  color: var(--text-secondary-light);
+  color: var(--text-secondary);
   font-size: 0.9rem;
   margin-bottom: 1rem;
   line-height: 1.5;
@@ -427,12 +427,12 @@
   justify-content: space-between;
   align-items: center;
   padding-top: 1rem;
-  border-top: 1px solid var(--border-light);
+  border-top: 1px solid var(--border-color);
 }
 
 .project-date {
   font-size: 0.8rem;
-  color: var(--text-muted-light);
+  color: var(--text-muted);
 }
 
 .project-tile-new {
@@ -441,7 +441,7 @@
   justify-content: center;
   align-items: center;
   background: transparent;
-  border: 2px dashed var(--border-light);
+  border: 2px dashed var(--border-color);
   min-height: 180px;
 }
 
@@ -501,23 +501,23 @@
 }
 
 .btn-primary:disabled {
-  background: var(--border-light);
-  color: var(--text-muted-light);
+  background: var(--border-color);
+  color: var(--text-muted);
   cursor: not-allowed;
   box-shadow: none;
 }
 
 .btn-secondary {
-  background: var(--bg-card-light);
-  color: var(--text-secondary-light);
-  border: 1px solid var(--border-light);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
   margin-right: 0.75rem;
 }
 
 .btn-secondary:hover {
-  background: var(--bg-light);
-  color: var(--text-primary-light);
-  border-color: var(--text-muted-light);
+  background: var(--bg-main);
+  color: var(--text-primary);
+  border-color: var(--text-muted);
 }
 
 /* ========================================
@@ -527,10 +527,10 @@
 .section-configuration {
   max-width: 1100px;
   margin: 0 auto;
-  background: var(--bg-card-light);
+  background: var(--bg-card);
   padding: 2rem;
   border-radius: var(--radius-xl);
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--border-color);
   box-shadow: var(--shadow-sm);
 }
 
@@ -538,7 +538,7 @@
 .section-configuration h2 {
   font-size: 1.5rem;
   font-weight: 700;
-  color: var(--text-primary-light);
+  color: var(--text-primary);
   margin-bottom: 1.5rem;
   letter-spacing: -0.015em;
 }
@@ -549,7 +549,7 @@
 
 .form-section h3 {
   margin-bottom: 1.25rem;
-  color: var(--text-primary-light);
+  color: var(--text-primary);
   border-bottom: 2px solid var(--primary);
   padding-bottom: 0.625rem;
   font-size: 1.1rem;
@@ -564,7 +564,7 @@
   display: block;
   margin-bottom: 0.5rem;
   font-weight: 500;
-  color: var(--text-primary-light);
+  color: var(--text-primary);
   font-size: 0.95rem;
 }
 
@@ -573,17 +573,17 @@
 .form-group select {
   width: 100%;
   padding: 0.875rem 1rem;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
   font-size: 1rem;
-  background: var(--bg-light);
-  color: var(--text-primary-light);
+  background: var(--bg-main);
+  color: var(--text-primary);
   transition: var(--transition);
 }
 
 .form-group input::placeholder,
 .form-group textarea::placeholder {
-  color: var(--text-secondary-light);
+  color: var(--text-secondary);
 }
 
 .form-group input:focus,
@@ -600,7 +600,7 @@
   gap: 0.75rem;
   margin-top: 2rem;
   padding-top: 1.5rem;
-  border-top: 1px solid var(--border-light);
+  border-top: 1px solid var(--border-color);
 }
 
 /* ========================================
@@ -613,15 +613,15 @@
 }
 
 .chapter-group {
-  background: var(--bg-light);
-  border: 1px solid var(--border-light);
+  background: var(--bg-main);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
   padding: 1.25rem;
 }
 
 .chapter-group h4 {
   margin-bottom: 1rem;
-  color: var(--text-primary-light);
+  color: var(--text-primary);
   font-size: 0.95rem;
   font-weight: 600;
   display: flex;
@@ -633,16 +633,16 @@
   width: 100%;
   padding: 0.75rem 1rem;
   margin-bottom: 0.875rem;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius);
   font-size: 0.9rem;
-  background: var(--bg-card-light);
-  color: var(--text-primary-light);
+  background: var(--bg-card);
+  color: var(--text-primary);
   transition: var(--transition);
 }
 
 .chapter-search::placeholder {
-  color: var(--text-secondary-light);
+  color: var(--text-secondary);
 }
 
 .chapter-search:focus {
@@ -654,9 +654,9 @@
 .chapter-list {
   max-height: 300px;
   overflow-y: auto;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius);
-  background: var(--bg-card-light);
+  background: var(--bg-card);
 }
 
 .checkbox-label {
@@ -666,7 +666,7 @@
   cursor: pointer;
   transition: background 0.15s;
   gap: 0.75rem;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .checkbox-label:last-child {
@@ -674,7 +674,7 @@
 }
 
 .checkbox-label:hover {
-  background: var(--bg-light);
+  background: var(--bg-main);
 }
 
 .checkbox-label.chapter-unavailable {
@@ -687,11 +687,11 @@
 }
 
 .checkbox-label.chapter-unavailable .chapter-code {
-  background: var(--border-light);
+  background: var(--border-color);
 }
 
 .checkbox-label.chapter-unavailable .chapter-name {
-  color: var(--text-muted-light);
+  color: var(--text-muted);
   text-decoration: line-through;
 }
 
@@ -716,7 +716,7 @@
 
 .chapter-name {
   flex: 1;
-  color: var(--text-primary-light);
+  color: var(--text-primary);
   font-size: 0.875rem;
 }
 
@@ -724,8 +724,8 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: var(--border-light);
-  color: var(--text-secondary-light);
+  background: var(--border-color);
+  color: var(--text-secondary);
   padding: 0.15rem 0.4rem;
   border-radius: var(--radius-sm);
   font-size: 0.65rem;
@@ -739,7 +739,7 @@
 .loading-chapters {
   padding: 1.5rem;
   text-align: center;
-  color: var(--text-secondary-light);
+  color: var(--text-secondary);
   font-size: 0.9rem;
 }
 
@@ -747,8 +747,8 @@
    Auto-Generation Panel
    ======================================== */
 .auto-gen-panel {
-  background: var(--bg-light);
-  border: 1px solid var(--border-light);
+  background: var(--bg-main);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
   padding: 1.5rem;
   margin: 1.5rem 0;
@@ -763,7 +763,7 @@
 
 .auto-gen-header h3 {
   margin: 0;
-  color: var(--text-primary-light);
+  color: var(--text-primary);
   font-size: 1rem;
   font-weight: 600;
 }
@@ -785,15 +785,15 @@
 }
 
 .config-panel {
-  background: var(--bg-card-light);
+  background: var(--bg-card);
   padding: 1.5rem;
   border-radius: var(--radius);
   margin-bottom: 1rem;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--border-color);
 }
 
 .info-text {
-  color: var(--text-secondary-light);
+  color: var(--text-secondary);
   font-size: 0.9rem;
   margin-bottom: 1.25rem;
   font-style: italic;
@@ -816,7 +816,7 @@
   flex-direction: column;
   gap: 0.5rem;
   font-size: 0.9rem;
-  color: var(--text-primary-light);
+  color: var(--text-primary);
 }
 
 .config-input-group label strong {
@@ -825,11 +825,11 @@
 
 .config-input-group input {
   padding: 0.625rem 0.875rem;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius);
   font-size: 1rem;
-  background: var(--bg-light);
-  color: var(--text-primary-light);
+  background: var(--bg-main);
+  color: var(--text-primary);
   transition: var(--transition);
 }
 
@@ -841,7 +841,7 @@
 
 .config-input-group .hint {
   font-size: 0.75rem;
-  color: var(--text-muted-light);
+  color: var(--text-muted);
   font-style: italic;
 }
 
@@ -858,15 +858,15 @@
 
 .auto-gen-status {
   margin: 0;
-  color: var(--text-primary-light);
+  color: var(--text-primary);
   font-size: 0.9rem;
   flex: 1;
 }
 
 .btn-reset {
-  background: var(--bg-card-light);
-  color: var(--text-secondary-light);
-  border: 1px solid var(--border-light);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
   padding: 0.5rem 1rem;
   border-radius: var(--radius);
   font-size: 0.85rem;
@@ -877,9 +877,9 @@
 }
 
 .btn-reset:hover {
-  background: var(--bg-light);
-  color: var(--text-primary-light);
-  border-color: var(--text-muted-light);
+  background: var(--bg-main);
+  color: var(--text-primary);
+  border-color: var(--text-muted);
 }
 
 .btn-reset:active {
@@ -893,10 +893,10 @@
 .beta-configuration h3 {
   font-size: 1rem;
   font-weight: 600;
-  color: var(--text-primary-light);
+  color: var(--text-primary);
   margin-bottom: 1rem;
   padding-bottom: 0.5rem;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .alpha-table {
@@ -904,22 +904,22 @@
   border-collapse: collapse;
   margin: 1rem 0;
   font-size: 0.9rem;
-  background: var(--bg-card-light);
+  background: var(--bg-card);
   border-radius: var(--radius);
   overflow: hidden;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--border-color);
 }
 
 .alpha-table th,
 .alpha-table td {
   padding: 0.75rem;
   text-align: center;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .alpha-table th {
-  background: var(--bg-light);
-  color: var(--text-secondary-light);
+  background: var(--bg-main);
+  color: var(--text-secondary);
   font-weight: 600;
   font-size: 0.8rem;
   text-transform: uppercase;
@@ -927,7 +927,7 @@
 }
 
 .alpha-table td {
-  color: var(--text-primary-light);
+  color: var(--text-primary);
 }
 
 .alpha-table td.chapter-name {
@@ -939,10 +939,10 @@
   width: 60px;
   padding: 0.5rem;
   text-align: center;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius);
-  background: var(--bg-light);
-  color: var(--text-primary-light);
+  background: var(--bg-main);
+  color: var(--text-primary);
   font-size: 0.9rem;
   transition: var(--transition);
 }
@@ -954,12 +954,12 @@
 }
 
 .alpha-table .totals-row {
-  background: var(--bg-light);
+  background: var(--bg-main);
   font-weight: 600;
 }
 
 .alpha-table .totals-row td {
-  background: var(--bg-light);
+  background: var(--bg-main);
   border-bottom: none;
 }
 
@@ -972,7 +972,7 @@
 }
 
 .alpha-table .row-total {
-  background: var(--bg-light);
+  background: var(--bg-main);
   font-weight: 500;
 }
 
@@ -996,13 +996,13 @@
 }
 
 .placeholder-text {
-  color: var(--text-secondary-light);
+  color: var(--text-secondary);
   font-style: italic;
   font-size: 0.9rem;
   padding: 1rem;
-  background: var(--bg-light);
+  background: var(--bg-main);
   border-radius: var(--radius);
-  border: 1px dashed var(--border-light);
+  border: 1px dashed var(--border-color);
 }
 
 /* ========================================
@@ -1014,11 +1014,11 @@
 }
 
 .selection-header {
-  background: var(--bg-card-light);
+  background: var(--bg-card);
   padding: 1.25rem 1.5rem;
   border-radius: var(--radius-xl);
   margin-bottom: 1.25rem;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--border-color);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1028,7 +1028,7 @@
 .selection-header h2 {
   font-size: 1.25rem;
   font-weight: 700;
-  color: var(--text-primary-light);
+  color: var(--text-primary);
   margin: 0;
   letter-spacing: -0.015em;
 }
@@ -1040,12 +1040,12 @@
 
 .selection-progress span {
   padding: 0.5rem 1rem;
-  background: var(--bg-light);
+  background: var(--bg-main);
   border-radius: var(--radius-full);
   font-weight: 600;
   font-size: 0.85rem;
-  color: var(--text-secondary-light);
-  border: 1px solid var(--border-light);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
 }
 
 .selection-progress .valid {
@@ -1070,10 +1070,10 @@
    Constraints Panel
    ======================================== */
 .constraints-panel {
-  background: var(--bg-card-light);
+  background: var(--bg-card);
   padding: 1.5rem;
   border-radius: var(--radius-xl);
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--border-color);
   height: fit-content;
   max-height: calc(100vh - 220px);
   overflow-y: auto;
@@ -1084,7 +1084,7 @@
 
 .constraints-panel h3 {
   margin-bottom: 1.25rem;
-  color: var(--text-primary-light);
+  color: var(--text-primary);
   font-size: 1rem;
   font-weight: 600;
   display: flex;
@@ -1098,7 +1098,7 @@
 
 .constraint-section h4 {
   margin-bottom: 0.75rem;
-  color: var(--text-secondary-light);
+  color: var(--text-secondary);
   font-size: 0.85rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -1115,19 +1115,19 @@
 .summary-table td {
   padding: 0.5rem;
   text-align: left;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .summary-table th {
-  background: var(--bg-light);
+  background: var(--bg-main);
   font-weight: 600;
-  color: var(--text-secondary-light);
+  color: var(--text-secondary);
   font-size: 0.75rem;
   text-transform: uppercase;
 }
 
 .summary-table td {
-  color: var(--text-primary-light);
+  color: var(--text-primary);
 }
 
 .summary-table .valid {
@@ -1147,12 +1147,12 @@
 .difficulty-summary div {
   padding: 0.625rem 0.875rem;
   margin: 0.375rem 0;
-  background: var(--bg-light);
+  background: var(--bg-main);
   border-radius: var(--radius);
-  color: var(--text-primary-light);
+  color: var(--text-primary);
   display: flex;
   justify-content: space-between;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--border-color);
 }
 
 .difficulty-summary .valid {
@@ -1165,10 +1165,10 @@
    Questions Panel
    ======================================== */
 .questions-panel {
-  background: var(--bg-card-light);
+  background: var(--bg-card);
   padding: 1.5rem;
   border-radius: var(--radius-xl);
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--border-color);
   box-shadow: var(--shadow-sm);
 }
 
@@ -1182,10 +1182,10 @@
 .filters input,
 .filters select {
   padding: 0.625rem 1rem;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius);
-  background: var(--bg-light);
-  color: var(--text-primary-light);
+  background: var(--bg-main);
+  color: var(--text-primary);
   font-size: 0.9rem;
   transition: var(--transition);
 }
@@ -1219,7 +1219,7 @@
 .no-questions {
   text-align: center;
   padding: 3rem;
-  color: var(--text-secondary-light);
+  color: var(--text-secondary);
 }
 
 .questions-info {
@@ -1232,13 +1232,13 @@
 
 .questions-info p {
   margin: 0.375rem 0;
-  color: var(--text-primary-light);
+  color: var(--text-primary);
   font-size: 0.9rem;
 }
 
 .questions-info .note {
   font-size: 0.8rem;
-  color: var(--text-secondary-light);
+  color: var(--text-secondary);
   font-style: italic;
 }
 
@@ -1246,18 +1246,18 @@
    Question Card
    ======================================== */
 .question-card {
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
   padding: 1.25rem;
   margin-bottom: 1rem;
-  background: var(--bg-light);
+  background: var(--bg-main);
   transition: var(--transition);
   cursor: pointer;
 }
 
 .question-card:hover {
   border-color: var(--primary);
-  background: var(--bg-card-light);
+  background: var(--bg-card);
   box-shadow: var(--shadow);
 }
 
@@ -1276,12 +1276,12 @@
 
 .question-id {
   font-family: monospace;
-  background: var(--bg-card-light);
-  color: var(--text-secondary-light);
+  background: var(--bg-card);
+  color: var(--text-secondary);
   padding: 0.25rem 0.625rem;
   border-radius: var(--radius-sm);
   font-size: 0.8rem;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--border-color);
 }
 
 .question-type,
@@ -1296,7 +1296,7 @@
 
 .question-content {
   margin-bottom: 1rem;
-  color: var(--text-primary-light);
+  color: var(--text-primary);
 }
 
 .question-text {
@@ -1314,9 +1314,9 @@
   gap: 0.625rem;
   padding: 0.75rem 1rem;
   margin: 0.5rem 0;
-  background: var(--bg-card-light);
+  background: var(--bg-card);
   border-radius: var(--radius);
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--border-color);
   border-left: 4px solid transparent;
   font-size: 0.9rem;
   transition: var(--transition);
@@ -1341,7 +1341,7 @@
 
 .option-content {
   flex: 1;
-  color: var(--text-primary-light);
+  color: var(--text-primary);
 }
 
 .question-tags {
@@ -1352,12 +1352,12 @@
 }
 
 .tag {
-  background: var(--bg-card-light);
-  color: var(--text-secondary-light);
+  background: var(--bg-card);
+  color: var(--text-secondary);
   padding: 0.25rem 0.5rem;
   border-radius: var(--radius-sm);
   font-size: 0.7rem;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--border-color);
 }
 
 /* ========================================
@@ -1367,7 +1367,7 @@
   display: block;
   margin: 0.75rem 0;
   overflow-x: auto;
-  color: var(--text-primary-light);
+  color: var(--text-primary);
 }
 
 .latex-inline {
@@ -1390,17 +1390,17 @@
 .test-review {
   max-width: 700px;
   margin: 0 auto;
-  background: var(--bg-card-light);
+  background: var(--bg-card);
   padding: 2rem;
   border-radius: var(--radius-xl);
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--border-color);
   box-shadow: var(--shadow-sm);
 }
 
 .test-review h2 {
   font-size: 1.5rem;
   font-weight: 700;
-  color: var(--text-primary-light);
+  color: var(--text-primary);
   margin-bottom: 1.5rem;
   letter-spacing: -0.015em;
 }
@@ -1409,34 +1409,34 @@
 .section-summary {
   margin-bottom: 1.5rem;
   padding: 1.25rem;
-  background: var(--bg-light);
+  background: var(--bg-main);
   border-radius: var(--radius);
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--border-color);
 }
 
 .test-summary h3,
 .section-summary h3 {
   margin-bottom: 1rem;
-  color: var(--text-primary-light);
+  color: var(--text-primary);
   font-size: 1rem;
   font-weight: 600;
 }
 
 .test-summary p,
 .section-summary p {
-  color: var(--text-secondary-light);
+  color: var(--text-secondary);
   font-size: 0.9rem;
   margin: 0.5rem 0;
 }
 
 .test-summary strong,
 .section-summary strong {
-  color: var(--text-primary-light);
+  color: var(--text-primary);
 }
 
 .section-summary ul {
   margin: 0.75rem 0 0 1.5rem;
-  color: var(--text-secondary-light);
+  color: var(--text-secondary);
   font-size: 0.9rem;
 }
 
@@ -1450,7 +1450,7 @@
   gap: 0.75rem;
   margin-top: 2rem;
   padding-top: 1.5rem;
-  border-top: 1px solid var(--border-light);
+  border-top: 1px solid var(--border-color);
 }
 
 .selection-actions {
@@ -1458,7 +1458,7 @@
   justify-content: space-between;
   margin-top: 1.5rem;
   padding-top: 1.5rem;
-  border-top: 1px solid var(--border-light);
+  border-top: 1px solid var(--border-color);
 }
 
 /* ========================================
@@ -1511,13 +1511,13 @@
 
 .config-info p {
   margin-bottom: 0.75rem;
-  color: var(--text-primary-light);
+  color: var(--text-primary);
   font-size: 0.95rem;
 }
 
 .config-info ul {
   margin-left: 1.5rem;
-  color: var(--text-secondary-light);
+  color: var(--text-secondary);
   font-size: 0.9rem;
 }
 
@@ -1543,7 +1543,7 @@
 }
 
 .edit-modal {
-  background: var(--bg-card-light);
+  background: var(--bg-card);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-lg);
   width: 90%;
@@ -1559,15 +1559,15 @@
   justify-content: space-between;
   align-items: center;
   padding: 1.25rem 1.5rem;
-  background: var(--bg-light);
-  border-bottom: 1px solid var(--border-light);
+  background: var(--bg-main);
+  border-bottom: 1px solid var(--border-color);
 }
 
 .edit-modal-header h3 {
   margin: 0;
   font-size: 1.125rem;
   font-weight: 600;
-  color: var(--text-primary-light);
+  color: var(--text-primary);
   display: flex;
   align-items: center;
 }
@@ -1577,7 +1577,7 @@
   border: none;
   padding: 0.375rem;
   cursor: pointer;
-  color: var(--text-secondary-light);
+  color: var(--text-secondary);
   border-radius: var(--radius);
   transition: var(--transition);
   display: flex;
@@ -1596,8 +1596,8 @@
 }
 
 .edit-modal-question-preview {
-  background: var(--bg-light);
-  border: 1px solid var(--border-light);
+  background: var(--bg-main);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius);
   padding: 1rem;
   margin-bottom: 1.5rem;
@@ -1609,14 +1609,14 @@
   gap: 0.375rem;
   font-family: monospace;
   font-size: 0.75rem;
-  color: var(--text-muted-light);
+  color: var(--text-muted);
   margin-bottom: 0.5rem;
 }
 
 .edit-modal-question-text {
   margin: 0;
   font-size: 0.9rem;
-  color: var(--text-primary-light);
+  color: var(--text-primary);
   line-height: 1.5;
 }
 
@@ -1631,7 +1631,7 @@
   align-items: center;
   font-weight: 600;
   font-size: 0.9rem;
-  color: var(--text-primary-light);
+  color: var(--text-primary);
   margin-bottom: 0.75rem;
 }
 
@@ -1645,8 +1645,8 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.625rem 1rem;
-  background: var(--bg-light);
-  border: 1px solid var(--border-light);
+  background: var(--bg-main);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius);
   cursor: pointer;
   transition: var(--transition);
@@ -1676,10 +1676,10 @@
 .edit-modal-select {
   width: 100%;
   padding: 0.75rem 1rem;
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--border-color);
   border-radius: var(--radius);
-  background: var(--bg-light);
-  color: var(--text-primary-light);
+  background: var(--bg-main);
+  color: var(--text-primary);
   font-size: 0.9rem;
   cursor: pointer;
   transition: var(--transition);
@@ -1696,8 +1696,8 @@
   justify-content: flex-end;
   gap: 0.75rem;
   padding: 1.25rem 1.5rem;
-  background: var(--bg-light);
-  border-top: 1px solid var(--border-light);
+  background: var(--bg-main);
+  border-top: 1px solid var(--border-color);
 }
 
 .edit-modal-footer .btn-secondary {
