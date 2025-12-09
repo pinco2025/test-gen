@@ -135,6 +135,14 @@ ipcMain.handle('questions:createQuestion', async (_, question: Question): Promis
   return dbService.createQuestion(question);
 });
 
+ipcMain.handle('questions:getSolution', async (_, uuid: string) => {
+  return dbService.getSolution(uuid);
+});
+
+ipcMain.handle('questions:saveSolution', async (_, uuid: string, solutionText: string, solutionImageUrl: string) => {
+  return dbService.saveSolution(uuid, solutionText, solutionImageUrl);
+});
+
 // Metadata queries
 ipcMain.handle('db:getTypes', async (): Promise<string[]> => {
   return dbService.getTypes();

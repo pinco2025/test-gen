@@ -11,6 +11,24 @@ export class DatabaseService {
     const finalPath = dbPath || this.dbPath || path.join(process.cwd(), 'questions.db');
     this.db = new Database(finalPath);
     console.log(`Connected to database at: ${finalPath}`);
+    this.createSolutionTable();
+  }
+
+  createSolutionTable(): void {
+    if (!this.db) return;
+    try {
+      this.db.exec(`
+        CREATE TABLE IF NOT EXISTS solutions (
+            uuid TEXT PRIMARY KEY,
+            solution_text TEXT,
+            solution_image_url TEXT,
+            FOREIGN KEY(uuid) REFERENCES questions(uuid) ON DELETE CASCADE
+        );
+      `);
+      console.log('Solutions table checked/created');
+    } catch (error) {
+      console.error('Error creating solutions table:', error);
+    }
   }
 
   disconnect(): void {
@@ -393,6 +411,36 @@ export class DatabaseService {
     } catch (error) {
       console.error(`[DB] Error creating question ${question.uuid}:`, error);
       return false;
+    }
+  }
+
+  /**
+   * Get solution by question UUID
+   */
+  getSolution(uuid: string): { uuid: string, solution_text: string, solution_image_url: string } | null {
+    if (!this.db) throw new Error('Database not connected');
+    const stmt = this.db.prepare('SELECT * FROM solutions WHERE uuid = ?');
+    return (stmt.get(uuid) as { uuid: string, solution_text: string, solution_image_url: string }) || null;
+  }
+
+  /**
+   * Save solution (insert or update)
+   */
+  saveSolution(uuid: string, solutionText: string, solutionImageUrl: string): boolean {
+    if (!this.db) throw new Error('Database not connected');
+    try {
+        const stmt = this.db.prepare(`
+            INSERT INTO solutions (uuid, solution_text, solution_image_url)
+            VALUES (?, ?, ?)
+            ON CONFLICT(uuid) DO UPDATE SET
+            solution_text = excluded.solution_text,
+            solution_image_url = excluded.solution_image_url
+        `);
+        const result = stmt.run(uuid, solutionText, solutionImageUrl);
+        return result.changes > 0;
+    } catch (error) {
+        console.error(`[DB] Error saving solution for ${uuid}:`, error);
+        return false;
     }
   }
 }

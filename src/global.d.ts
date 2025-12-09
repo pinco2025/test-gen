@@ -1,4 +1,4 @@
-import { Question, QuestionFilter, Test, ProjectState, ProjectInfo, AppConfig } from './types';
+import { Question, QuestionFilter, Test, ProjectState, ProjectInfo, AppConfig, Solution } from './types';
 
 declare global {
   interface Window {
@@ -22,6 +22,8 @@ declare global {
         decrementFrequency: (uuid: string) => Promise<boolean>;
         updateQuestion: (uuid: string, updates: Partial<Question>) => Promise<boolean>;
         createQuestion: (question: Question) => Promise<boolean>;
+        getSolution: (uuid: string) => Promise<Solution | null>;
+        saveSolution: (uuid: string, solutionText: string, solutionImageUrl: string) => Promise<boolean>;
       };
       test: {
         export: (test: Test) => Promise<{ success: boolean; path?: string; error?: string }>;
