@@ -7,10 +7,10 @@
 
 :root {
   /* Primary Colors */
-  --primary: #5248e5;
-  --primary-hover: #4339c7;
-  --primary-light: rgba(82, 72, 229, 0.1);
-  --primary-medium: rgba(82, 72, 229, 0.2);
+  --primary: #3b82f6;
+  --primary-hover: #2563eb;
+  --primary-light: rgba(59, 130, 246, 0.1);
+  --primary-medium: rgba(59, 130, 246, 0.2);
 
   /* Background Colors */
   --bg-light: #f6f6f8;
