@@ -58,6 +58,7 @@ interface QuestionRowProps {
   ) => void;
   onEdit: (e: React.MouseEvent, question: Question) => void;
   onCloneAndEdit: (e: React.MouseEvent, question: Question) => void;
+  highlightCorrectAnswer?: boolean;
 }
 
 const QuestionRow = React.memo<QuestionRowProps>(({
@@ -69,7 +70,8 @@ const QuestionRow = React.memo<QuestionRowProps>(({
   chapters,
   onToggle,
   onEdit,
-  onCloneAndEdit
+  onCloneAndEdit,
+  highlightCorrectAnswer
 }) => {
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -105,6 +107,7 @@ const QuestionRow = React.memo<QuestionRowProps>(({
 
   return (
     <div
+      id={`question-row-${question.uuid}`}
       className="question-row-container"
       style={{
         contentVisibility: 'auto',
@@ -242,11 +245,12 @@ const QuestionRow = React.memo<QuestionRowProps>(({
         </div>
         <QuestionDisplay
           question={question}
-          showAnswer={false}
+          showAnswer={highlightCorrectAnswer && !isDivision2Question}
           showCheckbox={false}
           isSelected={selected}
           hideOptions={isDivision2Question}
           questionNumber={index + 1}
+          highlightCorrectAnswer={highlightCorrectAnswer && !isDivision2Question}
         />
       </div>
     </div>
@@ -325,6 +329,11 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
         tag_4: question.tag_4,
         type: question.type,
         year: question.year,
+        question_image_url: question.question_image_url,
+        option_a_image_url: question.option_a_image_url,
+        option_b_image_url: question.option_b_image_url,
+        option_c_image_url: question.option_c_image_url,
+        option_d_image_url: question.option_d_image_url,
         frequency: 0, // Reset frequency for new question
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
@@ -449,22 +458,10 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
           'Mathematics': 'mathematics'
         };
 
-        console.log('=== QuestionSelection Debug ===');
-        console.log('Section:', sectionName);
-        console.log('Type for query:', typeMap[sectionName]);
-        console.log('Chapter codes:', chapterCodes);
-
         const questions = await window.electronAPI.questions.getByChapterCodes(
           typeMap[sectionName],
           chapterCodes
         );
-
-        console.log('Questions loaded:', questions.length);
-        if (questions.length > 0) {
-          console.log('First question type:', questions[0].type);
-          console.log('First question tag_2:', questions[0].tag_2);
-        }
-        console.log('===============================');
 
         setAvailableQuestions(questions);
       } catch (error) {
@@ -483,7 +480,6 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
     const correctedSelections = selectedQuestions.map(sq => {
       // If this question has numerical answer but is in Division 1, move to Division 2
       if (isNumericalAnswer(sq.question) && sq.division === 1) {
-        console.log(`[AUTO-CORRECT] Moving question ${sq.question.uuid} from Division 1 to Division 2 (numerical answer: ${sq.question.answer})`);
         correctionsMade = true;
         return { ...sq, division: 2 as 1 | 2 };
       }
@@ -491,7 +487,6 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
     });
 
     if (correctionsMade) {
-      console.log('[AUTO-CORRECT] Correcting numerical answer questions assignments');
       setSelectedQuestions(correctedSelections);
     }
   }, [selectedQuestions]);
@@ -643,6 +638,71 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
     return summary.division1 === 20 && summary.division2 === 5;
   }, [summary.division1, summary.division2]);
 
+  // Navigation handlers
+  const scrollToSelected = (direction: 'next' | 'prev') => {
+    // Determine current scroll position to find "current" question in view
+    // For simplicity, we can maintain an index state, but since the user scrolls freely,
+    // we should find the first selected question after/before the current visible area or just cycle through them.
+
+    // Let's implement a simple cycle based on the filtered list order.
+    // We need to find the indices of selected questions within the filtered list.
+    const selectedIndices = filteredQuestions
+      .map((q, index) => selectedUuids.has(q.uuid) ? index : -1)
+      .filter(index => index !== -1);
+
+    if (selectedIndices.length === 0) return;
+
+    // Find the first selected index that is visible or below the scroll top?
+    // A simpler approach: maintain a "current focused selected question" index.
+    // Or just find the next selected question relative to the current scroll position.
+
+    // Let's use the scroll position of listContainerRef
+    if (!listContainerRef.current) return;
+
+    const container = listContainerRef.current;
+    const scrollTop = container.scrollTop;
+    // const containerHeight = container.clientHeight;
+
+    // Estimate current index based on scroll position (assuming fixed height helps, but heights are variable)
+    // We can use the element offsets.
+
+    let targetIndex = -1;
+
+    // Find next selected
+    if (direction === 'next') {
+        // Find the first selected question whose element is below the top of the container
+        for (const idx of selectedIndices) {
+            const el = document.getElementById(`question-row-${filteredQuestions[idx].uuid}`);
+            if (el && el.offsetTop > scrollTop + 10) { // +10 buffer
+                targetIndex = idx;
+                break;
+            }
+        }
+        // If none found below, wrap around to first
+        if (targetIndex === -1) targetIndex = selectedIndices[0];
+    } else {
+        // Find the last selected question whose element is above or at the top
+         for (let i = selectedIndices.length - 1; i >= 0; i--) {
+            const idx = selectedIndices[i];
+            const el = document.getElementById(`question-row-${filteredQuestions[idx].uuid}`);
+            if (el && el.offsetTop < scrollTop - 10) {
+                targetIndex = idx;
+                break;
+            }
+        }
+        // If none found above, wrap around to last
+        if (targetIndex === -1) targetIndex = selectedIndices[selectedIndices.length - 1];
+    }
+
+    if (targetIndex !== -1) {
+         const el = document.getElementById(`question-row-${filteredQuestions[targetIndex].uuid}`);
+         if (el) {
+             el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+         }
+    }
+  };
+
+
   return (
     <div className="question-selection">
       <div className="selection-header">
@@ -759,7 +819,38 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
             </select>
           </div>
 
-          <div className="question-list" ref={listContainerRef} style={{ overflowY: 'auto', height: '100%', display: 'block' }}>
+          <div className="question-list" ref={listContainerRef} style={{ overflowY: 'auto', height: '100%', display: 'block', position: 'relative' }}>
+            {/* Floating Navigation Buttons */}
+            {selectedQuestions.length > 0 && (
+                <div style={{
+                    position: 'sticky',
+                    top: '10px',
+                    right: '20px',
+                    zIndex: 100,
+                    float: 'right',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '5px'
+                }}>
+                    <button
+                        onClick={() => scrollToSelected('prev')}
+                        className="btn-primary"
+                        style={{ padding: '0.25rem', minWidth: 'auto', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        title="Previous Selected"
+                    >
+                        <span className="material-symbols-outlined">arrow_upward</span>
+                    </button>
+                    <button
+                        onClick={() => scrollToSelected('next')}
+                        className="btn-primary"
+                        style={{ padding: '0.25rem', minWidth: 'auto', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                         title="Next Selected"
+                    >
+                        <span className="material-symbols-outlined">arrow_downward</span>
+                    </button>
+                </div>
+            )}
+
             {loading ? (
               <div className="loading">Loading questions...</div>
             ) : filteredQuestions.length === 0 ? (
@@ -789,6 +880,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
                       onToggle={toggleQuestion}
                       onEdit={openEditModal}
                       onCloneAndEdit={openCloneAndEditModal}
+                      highlightCorrectAnswer={true}
                     />
                   );
                 })}
@@ -902,6 +994,27 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
                       />
                     </div>
 
+                    <div className="form-group" style={{marginBottom: '1rem'}}>
+                        <label style={{display: 'block', fontWeight: 600, marginBottom: '0.5rem'}}>Question Image URL</label>
+                        <div style={{display: 'flex', gap: '0.5rem'}}>
+                            <input
+                                type="text"
+                                value={editModal.fullEditForm.question_image_url || ''}
+                                onChange={(e) => handleFullEditChange('question_image_url', e.target.value)}
+                                style={{flex: 1, padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)'}}
+                            />
+                            {editModal.fullEditForm.question_image_url && (
+                                <button
+                                    onClick={() => window.open(editModal.fullEditForm.question_image_url || '', '_blank')}
+                                    className="btn-secondary"
+                                    style={{padding: '0.5rem'}}
+                                >
+                                    View
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
                     <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem'}}>
                         <div className="form-group">
                             <label style={{display: 'block', fontWeight: 600, marginBottom: '0.5rem'}}>Difficulty</label>
@@ -929,12 +1042,61 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
                         </div>
                     </div>
 
+                    <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem'}}>
+                        <div className="form-group">
+                            <label style={{display: 'block', fontWeight: 600, marginBottom: '0.5rem'}}>Type</label>
+                            <input
+                                type="text"
+                                value={editModal.fullEditForm.type || ''}
+                                onChange={(e) => handleFullEditChange('type', e.target.value)}
+                                style={{width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)'}}
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label style={{display: 'block', fontWeight: 600, marginBottom: '0.5rem'}}>Year</label>
+                            <input
+                                type="text"
+                                value={editModal.fullEditForm.year || ''}
+                                onChange={(e) => handleFullEditChange('year', e.target.value)}
+                                style={{width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)'}}
+                            />
+                        </div>
+                    </div>
+
+                    <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem'}}>
+                        <div className="form-group">
+                            <label style={{display: 'block', fontWeight: 600, marginBottom: '0.5rem'}}>Tag 1</label>
+                            <input
+                                type="text"
+                                value={editModal.fullEditForm.tag_1 || ''}
+                                onChange={(e) => handleFullEditChange('tag_1', e.target.value)}
+                                style={{width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)'}}
+                            />
+                        </div>
+                        <div className="form-group">
+                            <label style={{display: 'block', fontWeight: 600, marginBottom: '0.5rem'}}>Tag 4</label>
+                            <input
+                                type="text"
+                                value={editModal.fullEditForm.tag_4 || ''}
+                                onChange={(e) => handleFullEditChange('tag_4', e.target.value)}
+                                style={{width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)'}}
+                            />
+                        </div>
+                    </div>
+
                     <div className="form-group" style={{marginBottom: '1rem'}}>
                         <label style={{display: 'block', fontWeight: 600, marginBottom: '0.5rem'}}>Option A</label>
                         <textarea
                             value={editModal.fullEditForm.option_a || ''}
                             onChange={(e) => handleFullEditChange('option_a', e.target.value)}
                             style={{width: '100%', minHeight: '60px', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)'}}
+                        />
+                         <input
+                                type="text"
+                                placeholder="Image URL for Option A"
+                                value={editModal.fullEditForm.option_a_image_url || ''}
+                                onChange={(e) => handleFullEditChange('option_a_image_url', e.target.value)}
+                                style={{width: '100%', marginTop: '0.5rem', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)'}}
                         />
                     </div>
                     <div className="form-group" style={{marginBottom: '1rem'}}>
@@ -944,6 +1106,13 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
                             onChange={(e) => handleFullEditChange('option_b', e.target.value)}
                             style={{width: '100%', minHeight: '60px', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)'}}
                         />
+                         <input
+                                type="text"
+                                placeholder="Image URL for Option B"
+                                value={editModal.fullEditForm.option_b_image_url || ''}
+                                onChange={(e) => handleFullEditChange('option_b_image_url', e.target.value)}
+                                style={{width: '100%', marginTop: '0.5rem', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)'}}
+                        />
                     </div>
                     <div className="form-group" style={{marginBottom: '1rem'}}>
                         <label style={{display: 'block', fontWeight: 600, marginBottom: '0.5rem'}}>Option C</label>
@@ -952,6 +1121,13 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
                             onChange={(e) => handleFullEditChange('option_c', e.target.value)}
                             style={{width: '100%', minHeight: '60px', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)'}}
                         />
+                        <input
+                                type="text"
+                                placeholder="Image URL for Option C"
+                                value={editModal.fullEditForm.option_c_image_url || ''}
+                                onChange={(e) => handleFullEditChange('option_c_image_url', e.target.value)}
+                                style={{width: '100%', marginTop: '0.5rem', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)'}}
+                        />
                     </div>
                     <div className="form-group" style={{marginBottom: '1rem'}}>
                         <label style={{display: 'block', fontWeight: 600, marginBottom: '0.5rem'}}>Option D</label>
@@ -959,6 +1135,13 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
                             value={editModal.fullEditForm.option_d || ''}
                             onChange={(e) => handleFullEditChange('option_d', e.target.value)}
                             style={{width: '100%', minHeight: '60px', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)'}}
+                        />
+                         <input
+                                type="text"
+                                placeholder="Image URL for Option D"
+                                value={editModal.fullEditForm.option_d_image_url || ''}
+                                onChange={(e) => handleFullEditChange('option_d_image_url', e.target.value)}
+                                style={{width: '100%', marginTop: '0.5rem', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)'}}
                         />
                     </div>
 

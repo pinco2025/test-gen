@@ -23,6 +23,11 @@ const TestNavigation: React.FC<TestNavigationProps> = ({ currentStep, sections, 
   const chemistryQuestions = sections[1]?.selectedQuestions.length || 0;
   const mathQuestions = sections[2]?.selectedQuestions.length || 0;
 
+  // Constraints check: Check if alpha constraints are set (chapters array is not empty)
+  const isPhysicsConstraintSet = sections[0]?.alphaConstraint?.chapters?.length > 0;
+  const isChemistryConstraintSet = sections[1]?.alphaConstraint?.chapters?.length > 0;
+  const isMathConstraintSet = sections[2]?.alphaConstraint?.chapters?.length > 0;
+
   const totalRequired = 25;
   const canReview = physicsQuestions >= totalRequired &&
                     chemistryQuestions >= totalRequired &&
@@ -37,6 +42,8 @@ const TestNavigation: React.FC<TestNavigationProps> = ({ currentStep, sections, 
         <button
           className={getButtonClass(currentStep === 'question-select-physics')}
           onClick={() => onNavigate('question-select-physics', 0)}
+          disabled={!isPhysicsConstraintSet}
+          title={!isPhysicsConstraintSet ? "Constraints must be set first" : ""}
         >
           <span className="nav-label">Physics</span>
           <span className="nav-badge">{physicsQuestions}</span>
@@ -44,6 +51,8 @@ const TestNavigation: React.FC<TestNavigationProps> = ({ currentStep, sections, 
         <button
           className={getButtonClass(currentStep === 'question-select-chemistry')}
           onClick={() => onNavigate('question-select-chemistry', 1)}
+          disabled={!isChemistryConstraintSet}
+          title={!isChemistryConstraintSet ? "Constraints must be set first" : ""}
         >
           <span className="nav-label">Chemistry</span>
           <span className="nav-badge">{chemistryQuestions}</span>
@@ -51,6 +60,8 @@ const TestNavigation: React.FC<TestNavigationProps> = ({ currentStep, sections, 
         <button
           className={getButtonClass(currentStep === 'question-select-math')}
           onClick={() => onNavigate('question-select-math', 2)}
+          disabled={!isMathConstraintSet}
+          title={!isMathConstraintSet ? "Constraints must be set first" : ""}
         >
           <span className="nav-label">Maths</span>
           <span className="nav-badge">{mathQuestions}</span>
