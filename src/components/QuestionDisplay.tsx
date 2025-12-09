@@ -166,11 +166,11 @@ export const QuestionDisplay = memo<QuestionDisplayProps>(({
         </div>
 
         {/* Render Question Image if present */}
-        {question.question_schematic && (
+        {question.question_image_url && (
           <div className="question-image" style={{margin: '1rem 0', textAlign: 'center'}}>
             <img
-              src={question.question_schematic}
-              alt="Question Schematic"
+              src={question.question_image_url}
+              alt="Question Image"
               style={{maxWidth: '100%', maxHeight: '300px', border: '1px solid #ddd'}}
             />
           </div>
@@ -181,11 +181,11 @@ export const QuestionDisplay = memo<QuestionDisplayProps>(({
         <div className="question-options">
           {['a', 'b', 'c', 'd'].map((option) => {
             const optionKey = `option_${option}` as keyof Question;
-            const schematicKey = `option_${option}_schematic` as keyof Question;
+            const imageKey = `option_${option}_image_url` as keyof Question;
             const optionText = question[optionKey] as string | null;
-            const optionSchematic = question[schematicKey] as string | null;
+            const optionImageUrl = question[imageKey] as string | null;
 
-            if (!optionText && !optionSchematic) return null;
+            if (!optionText && !optionImageUrl) return null;
 
             const isCorrect = showAnswer && question.answer.toLowerCase() === option;
 
@@ -197,10 +197,10 @@ export const QuestionDisplay = memo<QuestionDisplayProps>(({
                 <span className="option-label">{option.toUpperCase()})</span>
                 <div className="option-content">
                   {optionText && <LatexRenderer content={optionText} />}
-                  {optionSchematic && (
+                  {optionImageUrl && (
                     <div style={{marginTop: '0.5rem'}}>
                       <img
-                        src={optionSchematic}
+                        src={optionImageUrl}
                         alt={`Option ${option.toUpperCase()}`}
                         style={{maxWidth: '100%', maxHeight: '150px'}}
                       />

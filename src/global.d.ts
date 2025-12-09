@@ -21,6 +21,7 @@ declare global {
         incrementFrequency: (uuid: string) => Promise<boolean>;
         decrementFrequency: (uuid: string) => Promise<boolean>;
         updateQuestion: (uuid: string, updates: Partial<Question>) => Promise<boolean>;
+        createQuestion: (question: Question) => Promise<boolean>;
       };
       test: {
         export: (test: Test) => Promise<{ success: boolean; path?: string; error?: string }>;

@@ -31,17 +31,17 @@ const TestReview: React.FC<TestReviewProps> = ({
   // Image modal state
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [imageForm, setImageForm] = useState<{
-    question_schematic: string;
-    option_a_schematic: string;
-    option_b_schematic: string;
-    option_c_schematic: string;
-    option_d_schematic: string;
+    question_image_url: string;
+    option_a_image_url: string;
+    option_b_image_url: string;
+    option_c_image_url: string;
+    option_d_image_url: string;
   }>({
-    question_schematic: '',
-    option_a_schematic: '',
-    option_b_schematic: '',
-    option_c_schematic: '',
-    option_d_schematic: ''
+    question_image_url: '',
+    option_a_image_url: '',
+    option_b_image_url: '',
+    option_c_image_url: '',
+    option_d_image_url: ''
   });
   // Local state to trigger preview rendering (though direct input change already rerenders)
   const [previewImages, setPreviewImages] = useState(imageForm);
@@ -174,18 +174,18 @@ const TestReview: React.FC<TestReviewProps> = ({
   const handleImageClick = () => {
       if (!currentQuestion) return;
       setImageForm({
-          question_schematic: currentQuestion.question_schematic || '',
-          option_a_schematic: currentQuestion.option_a_schematic || '',
-          option_b_schematic: currentQuestion.option_b_schematic || '',
-          option_c_schematic: currentQuestion.option_c_schematic || '',
-          option_d_schematic: currentQuestion.option_d_schematic || ''
+          question_image_url: currentQuestion.question_image_url || '',
+          option_a_image_url: currentQuestion.option_a_image_url || '',
+          option_b_image_url: currentQuestion.option_b_image_url || '',
+          option_c_image_url: currentQuestion.option_c_image_url || '',
+          option_d_image_url: currentQuestion.option_d_image_url || ''
       });
       setPreviewImages({
-          question_schematic: currentQuestion.question_schematic || '',
-          option_a_schematic: currentQuestion.option_a_schematic || '',
-          option_b_schematic: currentQuestion.option_b_schematic || '',
-          option_c_schematic: currentQuestion.option_c_schematic || '',
-          option_d_schematic: currentQuestion.option_d_schematic || ''
+          question_image_url: currentQuestion.question_image_url || '',
+          option_a_image_url: currentQuestion.option_a_image_url || '',
+          option_b_image_url: currentQuestion.option_b_image_url || '',
+          option_c_image_url: currentQuestion.option_c_image_url || '',
+          option_d_image_url: currentQuestion.option_d_image_url || ''
       });
       setIsImageModalOpen(true);
   };
@@ -195,11 +195,11 @@ const TestReview: React.FC<TestReviewProps> = ({
 
       try {
         const updates = {
-            question_schematic: imageForm.question_schematic || null,
-            option_a_schematic: imageForm.option_a_schematic || null,
-            option_b_schematic: imageForm.option_b_schematic || null,
-            option_c_schematic: imageForm.option_c_schematic || null,
-            option_d_schematic: imageForm.option_d_schematic || null
+            question_image_url: imageForm.question_image_url || null,
+            option_a_image_url: imageForm.option_a_image_url || null,
+            option_b_image_url: imageForm.option_b_image_url || null,
+            option_c_image_url: imageForm.option_c_image_url || null,
+            option_d_image_url: imageForm.option_d_image_url || null
         };
 
         const success = await window.electronAPI.questions.updateQuestion(currentQuestion.uuid, updates);
@@ -461,8 +461,8 @@ const TestReview: React.FC<TestReviewProps> = ({
                               <label>Question Image URL</label>
                               <input
                                 type="text"
-                                value={imageForm.question_schematic}
-                                onChange={(e) => setImageForm({...imageForm, question_schematic: e.target.value})}
+                                value={imageForm.question_image_url}
+                                onChange={(e) => setImageForm({...imageForm, question_image_url: e.target.value})}
                                 placeholder="Enter image URL..."
                                 style={{width: '100%', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: '4px'}}
                               />
@@ -471,8 +471,8 @@ const TestReview: React.FC<TestReviewProps> = ({
                               <label>Option A Image URL</label>
                               <input
                                 type="text"
-                                value={imageForm.option_a_schematic}
-                                onChange={(e) => setImageForm({...imageForm, option_a_schematic: e.target.value})}
+                                value={imageForm.option_a_image_url}
+                                onChange={(e) => setImageForm({...imageForm, option_a_image_url: e.target.value})}
                                 placeholder="Enter image URL..."
                                 style={{width: '100%', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: '4px'}}
                               />
@@ -481,8 +481,8 @@ const TestReview: React.FC<TestReviewProps> = ({
                               <label>Option B Image URL</label>
                               <input
                                 type="text"
-                                value={imageForm.option_b_schematic}
-                                onChange={(e) => setImageForm({...imageForm, option_b_schematic: e.target.value})}
+                                value={imageForm.option_b_image_url}
+                                onChange={(e) => setImageForm({...imageForm, option_b_image_url: e.target.value})}
                                 placeholder="Enter image URL..."
                                 style={{width: '100%', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: '4px'}}
                               />
@@ -491,8 +491,8 @@ const TestReview: React.FC<TestReviewProps> = ({
                               <label>Option C Image URL</label>
                               <input
                                 type="text"
-                                value={imageForm.option_c_schematic}
-                                onChange={(e) => setImageForm({...imageForm, option_c_schematic: e.target.value})}
+                                value={imageForm.option_c_image_url}
+                                onChange={(e) => setImageForm({...imageForm, option_c_image_url: e.target.value})}
                                 placeholder="Enter image URL..."
                                 style={{width: '100%', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: '4px'}}
                               />
@@ -501,8 +501,8 @@ const TestReview: React.FC<TestReviewProps> = ({
                               <label>Option D Image URL</label>
                               <input
                                 type="text"
-                                value={imageForm.option_d_schematic}
-                                onChange={(e) => setImageForm({...imageForm, option_d_schematic: e.target.value})}
+                                value={imageForm.option_d_image_url}
+                                onChange={(e) => setImageForm({...imageForm, option_d_image_url: e.target.value})}
                                 placeholder="Enter image URL..."
                                 style={{width: '100%', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: '4px'}}
                               />
@@ -521,11 +521,11 @@ const TestReview: React.FC<TestReviewProps> = ({
                                 <span style={{display: 'block', marginTop: '0.5rem'}}>{currentQuestion ? currentQuestion.question : ''}</span>
                               </p>
 
-                              {previewImages.question_schematic && (
+                              {previewImages.question_image_url && (
                                   <div className="preview-image" style={{margin: '1rem 0', textAlign: 'center'}}>
                                       <img
-                                        src={previewImages.question_schematic}
-                                        alt="Question Schematic"
+                                        src={previewImages.question_image_url}
+                                        alt="Question Image"
                                         style={{maxWidth: '100%', maxHeight: '300px', border: '1px solid #ddd'}}
                                       />
                                   </div>
@@ -536,9 +536,9 @@ const TestReview: React.FC<TestReviewProps> = ({
                                       <strong>A)</strong>
                                       <div style={{flex: 1}}>
                                           ... (Option A text) ...
-                                          {previewImages.option_a_schematic && (
+                                          {previewImages.option_a_image_url && (
                                               <div style={{marginTop: '0.5rem'}}>
-                                                <img src={previewImages.option_a_schematic} alt="Option A" style={{maxWidth: '100px', maxHeight: '100px'}} />
+                                                <img src={previewImages.option_a_image_url} alt="Option A" style={{maxWidth: '100px', maxHeight: '100px'}} />
                                               </div>
                                           )}
                                       </div>
@@ -547,9 +547,9 @@ const TestReview: React.FC<TestReviewProps> = ({
                                       <strong>B)</strong>
                                       <div style={{flex: 1}}>
                                           ... (Option B text) ...
-                                          {previewImages.option_b_schematic && (
+                                          {previewImages.option_b_image_url && (
                                               <div style={{marginTop: '0.5rem'}}>
-                                                <img src={previewImages.option_b_schematic} alt="Option B" style={{maxWidth: '100px', maxHeight: '100px'}} />
+                                                <img src={previewImages.option_b_image_url} alt="Option B" style={{maxWidth: '100px', maxHeight: '100px'}} />
                                               </div>
                                           )}
                                       </div>
@@ -558,9 +558,9 @@ const TestReview: React.FC<TestReviewProps> = ({
                                       <strong>C)</strong>
                                       <div style={{flex: 1}}>
                                           ... (Option C text) ...
-                                          {previewImages.option_c_schematic && (
+                                          {previewImages.option_c_image_url && (
                                               <div style={{marginTop: '0.5rem'}}>
-                                                <img src={previewImages.option_c_schematic} alt="Option C" style={{maxWidth: '100px', maxHeight: '100px'}} />
+                                                <img src={previewImages.option_c_image_url} alt="Option C" style={{maxWidth: '100px', maxHeight: '100px'}} />
                                               </div>
                                           )}
                                       </div>
@@ -569,9 +569,9 @@ const TestReview: React.FC<TestReviewProps> = ({
                                       <strong>D)</strong>
                                       <div style={{flex: 1}}>
                                           ... (Option D text) ...
-                                          {previewImages.option_d_schematic && (
+                                          {previewImages.option_d_image_url && (
                                               <div style={{marginTop: '0.5rem'}}>
-                                                <img src={previewImages.option_d_schematic} alt="Option D" style={{maxWidth: '100px', maxHeight: '100px'}} />
+                                                <img src={previewImages.option_d_image_url} alt="Option D" style={{maxWidth: '100px', maxHeight: '100px'}} />
                                               </div>
                                           )}
                                       </div>

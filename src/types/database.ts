@@ -6,33 +6,23 @@ export interface Question {
 
   // Question content
   question: string;
-  question_schematic: string | null;
-  question_schematic_type: 'chemfig' | 'circuitikz' | 'tikz' | 'none' | null;
-  question_schematic_packages: string | null; // JSON array
+  question_image_url: string | null;
 
   // Option A
   option_a: string | null;
-  option_a_schematic: string | null;
-  option_a_schematic_type: 'chemfig' | 'circuitikz' | 'tikz' | 'none' | null;
-  option_a_schematic_packages: string | null;
+  option_a_image_url: string | null;
 
   // Option B
   option_b: string | null;
-  option_b_schematic: string | null;
-  option_b_schematic_type: 'chemfig' | 'circuitikz' | 'tikz' | 'none' | null;
-  option_b_schematic_packages: string | null;
+  option_b_image_url: string | null;
 
   // Option C
   option_c: string | null;
-  option_c_schematic: string | null;
-  option_c_schematic_type: 'chemfig' | 'circuitikz' | 'tikz' | 'none' | null;
-  option_c_schematic_packages: string | null;
+  option_c_image_url: string | null;
 
   // Option D
   option_d: string | null;
-  option_d_schematic: string | null;
-  option_d_schematic_type: 'chemfig' | 'circuitikz' | 'tikz' | 'none' | null;
-  option_d_schematic_packages: string | null;
+  option_d_image_url: string | null;
 
   // Answer and metadata
   answer: 'A' | 'B' | 'C' | 'D';
