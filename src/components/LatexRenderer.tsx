@@ -155,11 +155,16 @@ function parseLatexContent(content: string): ContentPart[] {
     }
   }
 
-  // Sort matches by position
-  matches.sort((a, b) => a.index - b.index);
+  // Sort matches by position, then by length (descending) to prioritize longer matches (e.g., $$ over $)
+  matches.sort((a, b) => a.index - b.index || b.length - a.length);
 
   // Build parts array
   for (const match of matches) {
+    // Skip if this match overlaps with a previously processed match
+    if (match.index < currentPos) {
+      continue;
+    }
+
     // Add text before match
     if (match.index > currentPos) {
       parts.push({
