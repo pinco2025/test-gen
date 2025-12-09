@@ -314,8 +314,15 @@ export class DatabaseService {
 
     try {
       const allowedFields = [
-        'question', 'option_a', 'option_b', 'option_c', 'option_d', 'answer',
-        'tag_2', 'tag_3'
+        'question',
+        'question_schematic', 'question_schematic_type', 'question_schematic_packages',
+        'option_a', 'option_a_schematic', 'option_a_schematic_type', 'option_a_schematic_packages',
+        'option_b', 'option_b_schematic', 'option_b_schematic_type', 'option_b_schematic_packages',
+        'option_c', 'option_c_schematic', 'option_c_schematic_type', 'option_c_schematic_packages',
+        'option_d', 'option_d_schematic', 'option_d_schematic_type', 'option_d_schematic_packages',
+        'answer',
+        'type', 'year',
+        'tag_1', 'tag_2', 'tag_3', 'tag_4'
       ];
 
       const setClauses: string[] = [];
@@ -348,6 +355,45 @@ export class DatabaseService {
       return result.changes > 0;
     } catch (error) {
       console.error(`[DB] Error updating question ${uuid}:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Create a new question
+   */
+  createQuestion(question: Question): boolean {
+    if (!this.db) throw new Error('Database not connected');
+
+    try {
+      const keys = [
+        'uuid',
+        'question',
+        'question_schematic', 'question_schematic_type', 'question_schematic_packages',
+        'option_a', 'option_a_schematic', 'option_a_schematic_type', 'option_a_schematic_packages',
+        'option_b', 'option_b_schematic', 'option_b_schematic_type', 'option_b_schematic_packages',
+        'option_c', 'option_c_schematic', 'option_c_schematic_type', 'option_c_schematic_packages',
+        'option_d', 'option_d_schematic', 'option_d_schematic_type', 'option_d_schematic_packages',
+        'answer',
+        'type', 'year',
+        'tag_1', 'tag_2', 'tag_3', 'tag_4',
+        'created_at', 'updated_at', 'frequency'
+      ];
+
+      const placeholders = keys.map(() => '?').join(', ');
+      const query = `INSERT INTO questions (${keys.join(', ')}) VALUES (${placeholders})`;
+
+      const params = keys.map(key => {
+        // @ts-ignore
+        return question[key] !== undefined ? question[key] : null;
+      });
+
+      const stmt = this.db.prepare(query);
+      const result = stmt.run(...params);
+      console.log(`[DB] Created question ${question.uuid}, changes: ${result.changes}`);
+      return result.changes > 0;
+    } catch (error) {
+      console.error(`[DB] Error creating question ${question.uuid}:`, error);
       return false;
     }
   }

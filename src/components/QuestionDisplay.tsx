@@ -164,15 +164,28 @@ export const QuestionDisplay = memo<QuestionDisplayProps>(({
           <strong>Question: </strong>
           <LatexRenderer content={question.question} />
         </div>
+
+        {/* Render Question Image if present */}
+        {question.question_schematic && (
+          <div className="question-image" style={{margin: '1rem 0', textAlign: 'center'}}>
+            <img
+              src={question.question_schematic}
+              alt="Question Schematic"
+              style={{maxWidth: '100%', maxHeight: '300px', border: '1px solid #ddd'}}
+            />
+          </div>
+        )}
       </div>
 
       {!hideOptions && (
         <div className="question-options">
           {['a', 'b', 'c', 'd'].map((option) => {
             const optionKey = `option_${option}` as keyof Question;
+            const schematicKey = `option_${option}_schematic` as keyof Question;
             const optionText = question[optionKey] as string | null;
+            const optionSchematic = question[schematicKey] as string | null;
 
-            if (!optionText) return null;
+            if (!optionText && !optionSchematic) return null;
 
             const isCorrect = showAnswer && question.answer.toLowerCase() === option;
 
@@ -183,7 +196,16 @@ export const QuestionDisplay = memo<QuestionDisplayProps>(({
               >
                 <span className="option-label">{option.toUpperCase()})</span>
                 <div className="option-content">
-                  <LatexRenderer content={optionText} />
+                  {optionText && <LatexRenderer content={optionText} />}
+                  {optionSchematic && (
+                    <div style={{marginTop: '0.5rem'}}>
+                      <img
+                        src={optionSchematic}
+                        alt={`Option ${option.toUpperCase()}`}
+                        style={{maxWidth: '100%', maxHeight: '150px'}}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             );

@@ -27,8 +27,12 @@ interface QuestionSelectionProps {
 interface EditModalState {
   isOpen: boolean;
   question: Question | null;
+  mode: 'edit' | 'clone';
+  // Form fields for "edit" mode (only Difficulty/Chapter)
   difficulty: Difficulty;
   chapterCode: string;
+  // Form fields for "clone" mode (Everything)
+  fullEditForm: Partial<Question>;
 }
 
 // Helper function to check if a question should go to Division 2 (B)
@@ -53,6 +57,7 @@ interface QuestionRowProps {
     division: 1 | 2
   ) => void;
   onEdit: (e: React.MouseEvent, question: Question) => void;
+  onCloneAndEdit: (e: React.MouseEvent, question: Question) => void;
 }
 
 const QuestionRow = React.memo<QuestionRowProps>(({
@@ -63,8 +68,25 @@ const QuestionRow = React.memo<QuestionRowProps>(({
   summary,
   chapters,
   onToggle,
-  onEdit
+  onEdit,
+  onCloneAndEdit
 }) => {
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   const handleClick = useCallback(() => {
     // If Division 2 question and Division 2 is full, prevent selection
     if (isDivision2Question && summary.division2 >= 5 && !selected) {
@@ -127,27 +149,96 @@ const QuestionRow = React.memo<QuestionRowProps>(({
               </div>
             )}
           </div>
-          <button
-            className="question-edit-btn"
-            onClick={(e) => onEdit(e, question)}
-            title="Edit question properties"
-            style={{
-              background: 'var(--bg-light)',
-              border: '1px solid var(--border-light)',
-              borderRadius: 'var(--radius)',
-              padding: '0.375rem 0.5rem',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.25rem',
-              fontSize: '0.75rem',
-              color: 'var(--text-secondary-light)',
-              transition: 'var(--transition)'
-            }}
-          >
-            <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>edit</span>
-            Edit
-          </button>
+
+          <div style={{ position: 'relative' }} ref={menuRef}>
+            <button
+              className="question-edit-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowMenu(!showMenu);
+              }}
+              title="Actions"
+              style={{
+                background: 'var(--bg-light)',
+                border: '1px solid var(--border-light)',
+                borderRadius: 'var(--radius)',
+                padding: '0.375rem 0.5rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.25rem',
+                fontSize: '0.75rem',
+                color: 'var(--text-secondary-light)',
+                transition: 'var(--transition)'
+              }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>more_vert</span>
+              Actions
+            </button>
+
+            {showMenu && (
+              <div style={{
+                position: 'absolute',
+                top: '100%',
+                right: 0,
+                backgroundColor: 'white',
+                boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
+                borderRadius: '4px',
+                zIndex: 10,
+                minWidth: '150px',
+                overflow: 'hidden'
+              }}>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowMenu(false);
+                    onEdit(e, question);
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    width: '100%',
+                    padding: '0.5rem 1rem',
+                    border: 'none',
+                    background: 'none',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    fontSize: '0.875rem'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: '1.125rem' }}>edit</span>
+                  Edit Properties
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowMenu(false);
+                    onCloneAndEdit(e, question);
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    width: '100%',
+                    padding: '0.5rem 1rem',
+                    border: 'none',
+                    background: 'none',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    fontSize: '0.875rem'
+                  }}
+                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
+                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: '1.125rem' }}>content_copy</span>
+                  Clone & Edit
+                </button>
+              </div>
+            )}
+          </div>
         </div>
         <QuestionDisplay
           question={question}
@@ -179,8 +270,10 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
   const [editModal, setEditModal] = useState<EditModalState>({
     isOpen: false,
     question: null,
+    mode: 'edit',
     difficulty: 'M',
-    chapterCode: ''
+    chapterCode: '',
+    fullEditForm: {}
   });
 
   // Get valid chapters for current section - memoized
@@ -190,14 +283,52 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
     return sectionChapters.map(ch => ({ code: ch.code, name: ch.name }));
   }, [sectionName]);
 
-  // Open edit modal for a question
+  // Open edit modal for a question (Simple Edit)
   const openEditModal = (e: React.MouseEvent, question: Question) => {
     e.stopPropagation(); // Prevent question selection
     setEditModal({
       isOpen: true,
       question,
+      mode: 'edit',
       difficulty: (question.tag_3 as Difficulty) || 'M',
-      chapterCode: question.tag_2 || ''
+      chapterCode: question.tag_2 || '',
+      fullEditForm: {}
+    });
+  };
+
+  // Open clone and edit modal
+  const openCloneAndEditModal = (e: React.MouseEvent, question: Question) => {
+    e.stopPropagation();
+
+    // Generate new UUID here or let backend handle it?
+    // User wants to edit "Everything".
+    // We start with the existing question data.
+
+    setEditModal({
+      isOpen: true,
+      question: question, // Keep original as reference or just for display? Using it as reference.
+      mode: 'clone',
+      difficulty: (question.tag_3 as Difficulty) || 'M',
+      chapterCode: question.tag_2 || '',
+      fullEditForm: {
+        ...question,
+        uuid: crypto.randomUUID(), // New UUID
+        question: question.question,
+        option_a: question.option_a,
+        option_b: question.option_b,
+        option_c: question.option_c,
+        option_d: question.option_d,
+        answer: question.answer,
+        tag_1: question.tag_1,
+        tag_2: question.tag_2,
+        tag_3: question.tag_3,
+        tag_4: question.tag_4,
+        type: question.type,
+        year: question.year,
+        frequency: 0, // Reset frequency for new question
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }
     });
   };
 
@@ -206,8 +337,10 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
     setEditModal({
       isOpen: false,
       question: null,
+      mode: 'edit',
       difficulty: 'M',
-      chapterCode: ''
+      chapterCode: '',
+      fullEditForm: {}
     });
   };
 
@@ -215,38 +348,69 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
   const saveQuestionEdit = async () => {
     if (!editModal.question) return;
 
-    try {
-      // Update in database
-      await window.electronAPI.questions.updateQuestion(editModal.question.uuid, {
-        tag_3: editModal.difficulty,
-        tag_2: editModal.chapterCode
-      });
+    if (editModal.mode === 'edit') {
+        try {
+          // Update in database
+          await window.electronAPI.questions.updateQuestion(editModal.question.uuid, {
+            tag_3: editModal.difficulty,
+            tag_2: editModal.chapterCode
+          });
 
-      // Update local state
-      setAvailableQuestions(prev => prev.map(q =>
-        q.uuid === editModal.question!.uuid
-          ? { ...q, tag_3: editModal.difficulty, tag_2: editModal.chapterCode }
-          : q
-      ));
+          // Update local state
+          setAvailableQuestions(prev => prev.map(q =>
+            q.uuid === editModal.question!.uuid
+              ? { ...q, tag_3: editModal.difficulty, tag_2: editModal.chapterCode }
+              : q
+          ));
 
-      // Update selected questions if this question is selected
-      setSelectedQuestions(prev => prev.map(sq =>
-        sq.question.uuid === editModal.question!.uuid
-          ? {
-              ...sq,
-              question: { ...sq.question, tag_3: editModal.difficulty, tag_2: editModal.chapterCode },
-              difficulty: editModal.difficulty,
-              chapterCode: editModal.chapterCode,
-              chapterName: validChaptersForSection.find(ch => ch.code === editModal.chapterCode)?.name || sq.chapterName
+          // Update selected questions if this question is selected
+          setSelectedQuestions(prev => prev.map(sq =>
+            sq.question.uuid === editModal.question!.uuid
+              ? {
+                  ...sq,
+                  question: { ...sq.question, tag_3: editModal.difficulty, tag_2: editModal.chapterCode },
+                  difficulty: editModal.difficulty,
+                  chapterCode: editModal.chapterCode,
+                  chapterName: validChaptersForSection.find(ch => ch.code === editModal.chapterCode)?.name || sq.chapterName
+                }
+              : sq
+          ));
+
+          closeEditModal();
+        } catch (error) {
+          console.error('[EDIT] Error saving question edit:', error);
+          alert('Failed to save changes. Please try again.');
+        }
+    } else {
+        // CLONE mode
+        try {
+            const newQuestion = editModal.fullEditForm as Question;
+            // Create in database
+            const success = await window.electronAPI.questions.createQuestion(newQuestion);
+
+            if (success) {
+                // Add to available questions
+                setAvailableQuestions(prev => [newQuestion, ...prev]);
+                // No need to select it automatically unless desired. User just said "added in the UI".
+                closeEditModal();
+            } else {
+                alert('Failed to create cloned question.');
             }
-          : sq
-      ));
-
-      closeEditModal();
-    } catch (error) {
-      console.error('[EDIT] Error saving question edit:', error);
-      alert('Failed to save changes. Please try again.');
+        } catch (error) {
+            console.error('[CLONE] Error creating question:', error);
+            alert('Failed to create cloned question. ' + error);
+        }
     }
+  };
+
+  const handleFullEditChange = (field: keyof Question, value: any) => {
+    setEditModal(prev => ({
+        ...prev,
+        fullEditForm: {
+            ...prev.fullEditForm,
+            [field]: value
+        }
+    }));
   };
 
   // Sync selections to parent immediately when they change
@@ -624,6 +788,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
                       chapters={chapters}
                       onToggle={toggleQuestion}
                       onEdit={openEditModal}
+                      onCloneAndEdit={openCloneAndEditModal}
                     />
                   );
                 })}
@@ -655,8 +820,10 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
           <div className="edit-modal" onClick={(e) => e.stopPropagation()}>
             <div className="edit-modal-header">
               <h3>
-                <span className="material-symbols-outlined" style={{ marginRight: '0.5rem' }}>edit</span>
-                Edit Question Properties
+                <span className="material-symbols-outlined" style={{ marginRight: '0.5rem' }}>
+                    {editModal.mode === 'clone' ? 'content_copy' : 'edit'}
+                </span>
+                {editModal.mode === 'clone' ? 'Clone & Edit Question' : 'Edit Question Properties'}
               </h3>
               <button className="edit-modal-close" onClick={closeEditModal}>
                 <span className="material-symbols-outlined">close</span>
@@ -664,61 +831,149 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
             </div>
 
             <div className="edit-modal-body">
-              <div className="edit-modal-question-preview">
-                <div className="edit-modal-uuid">
-                  <span className="material-symbols-outlined" style={{ fontSize: '0.875rem' }}>tag</span>
-                  {editModal.question.uuid}
-                </div>
-                <p className="edit-modal-question-text">
-                  {editModal.question.question.length > 200
-                    ? editModal.question.question.substring(0, 200) + '...'
-                    : editModal.question.question}
-                </p>
-              </div>
+              {editModal.mode === 'edit' ? (
+                  // Simple Edit (Tag/Difficulty)
+                  <>
+                    <div className="edit-modal-question-preview">
+                        <div className="edit-modal-uuid">
+                        <span className="material-symbols-outlined" style={{ fontSize: '0.875rem' }}>tag</span>
+                        {editModal.question.uuid}
+                        </div>
+                        <p className="edit-modal-question-text">
+                        {editModal.question.question.length > 200
+                            ? editModal.question.question.substring(0, 200) + '...'
+                            : editModal.question.question}
+                        </p>
+                    </div>
 
-              <div className="edit-modal-fields">
-                <div className="edit-modal-field">
-                  <label>
-                    <span className="material-symbols-outlined" style={{ fontSize: '1rem', marginRight: '0.375rem' }}>speed</span>
-                    Difficulty
-                  </label>
-                  <div className="edit-modal-radio-group">
-                    {(['E', 'M', 'H'] as Difficulty[]).map((diff) => (
-                      <label key={diff} className={`edit-modal-radio ${editModal.difficulty === diff ? 'selected' : ''}`}>
-                        <input
-                          type="radio"
-                          name="difficulty"
-                          value={diff}
-                          checked={editModal.difficulty === diff}
-                          onChange={() => setEditModal(prev => ({ ...prev, difficulty: diff }))}
+                    <div className="edit-modal-fields">
+                        <div className="edit-modal-field">
+                        <label>
+                            <span className="material-symbols-outlined" style={{ fontSize: '1rem', marginRight: '0.375rem' }}>speed</span>
+                            Difficulty
+                        </label>
+                        <div className="edit-modal-radio-group">
+                            {(['E', 'M', 'H'] as Difficulty[]).map((diff) => (
+                            <label key={diff} className={`edit-modal-radio ${editModal.difficulty === diff ? 'selected' : ''}`}>
+                                <input
+                                type="radio"
+                                name="difficulty"
+                                value={diff}
+                                checked={editModal.difficulty === diff}
+                                onChange={() => setEditModal(prev => ({ ...prev, difficulty: diff }))}
+                                />
+                                <span className="radio-label">
+                                {diff === 'E' ? 'Easy' : diff === 'M' ? 'Medium' : 'Hard'}
+                                </span>
+                            </label>
+                            ))}
+                        </div>
+                        </div>
+
+                        <div className="edit-modal-field">
+                        <label>
+                            <span className="material-symbols-outlined" style={{ fontSize: '1rem', marginRight: '0.375rem' }}>menu_book</span>
+                            Chapter / Topic
+                        </label>
+                        <select
+                            value={editModal.chapterCode}
+                            onChange={(e) => setEditModal(prev => ({ ...prev, chapterCode: e.target.value }))}
+                            className="edit-modal-select"
+                        >
+                            <option value="">Select a chapter...</option>
+                            {validChaptersForSection.map(ch => (
+                            <option key={ch.code} value={ch.code}>
+                                {ch.code} - {ch.name}
+                            </option>
+                            ))}
+                        </select>
+                        </div>
+                    </div>
+                  </>
+              ) : (
+                  // Full Edit (Everything)
+                  <div className="full-edit-form" style={{maxHeight: '60vh', overflowY: 'auto', paddingRight: '1rem'}}>
+                    <div className="form-group" style={{marginBottom: '1rem'}}>
+                      <label style={{display: 'block', fontWeight: 600, marginBottom: '0.5rem'}}>Question Text</label>
+                      <textarea
+                        value={editModal.fullEditForm.question || ''}
+                        onChange={(e) => handleFullEditChange('question', e.target.value)}
+                        style={{width: '100%', minHeight: '100px', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)'}}
+                      />
+                    </div>
+
+                    <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem'}}>
+                        <div className="form-group">
+                            <label style={{display: 'block', fontWeight: 600, marginBottom: '0.5rem'}}>Difficulty</label>
+                            <select
+                                value={editModal.fullEditForm.tag_3 || 'M'}
+                                onChange={(e) => handleFullEditChange('tag_3', e.target.value)}
+                                style={{width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)'}}
+                            >
+                                <option value="E">Easy</option>
+                                <option value="M">Medium</option>
+                                <option value="H">Hard</option>
+                            </select>
+                        </div>
+                        <div className="form-group">
+                            <label style={{display: 'block', fontWeight: 600, marginBottom: '0.5rem'}}>Chapter</label>
+                            <select
+                                value={editModal.fullEditForm.tag_2 || ''}
+                                onChange={(e) => handleFullEditChange('tag_2', e.target.value)}
+                                style={{width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)'}}
+                            >
+                                {validChaptersForSection.map(ch => (
+                                    <option key={ch.code} value={ch.code}>{ch.code} - {ch.name}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="form-group" style={{marginBottom: '1rem'}}>
+                        <label style={{display: 'block', fontWeight: 600, marginBottom: '0.5rem'}}>Option A</label>
+                        <textarea
+                            value={editModal.fullEditForm.option_a || ''}
+                            onChange={(e) => handleFullEditChange('option_a', e.target.value)}
+                            style={{width: '100%', minHeight: '60px', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)'}}
                         />
-                        <span className="radio-label">
-                          {diff === 'E' ? 'Easy' : diff === 'M' ? 'Medium' : 'Hard'}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
+                    </div>
+                    <div className="form-group" style={{marginBottom: '1rem'}}>
+                        <label style={{display: 'block', fontWeight: 600, marginBottom: '0.5rem'}}>Option B</label>
+                        <textarea
+                            value={editModal.fullEditForm.option_b || ''}
+                            onChange={(e) => handleFullEditChange('option_b', e.target.value)}
+                            style={{width: '100%', minHeight: '60px', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)'}}
+                        />
+                    </div>
+                    <div className="form-group" style={{marginBottom: '1rem'}}>
+                        <label style={{display: 'block', fontWeight: 600, marginBottom: '0.5rem'}}>Option C</label>
+                        <textarea
+                            value={editModal.fullEditForm.option_c || ''}
+                            onChange={(e) => handleFullEditChange('option_c', e.target.value)}
+                            style={{width: '100%', minHeight: '60px', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)'}}
+                        />
+                    </div>
+                    <div className="form-group" style={{marginBottom: '1rem'}}>
+                        <label style={{display: 'block', fontWeight: 600, marginBottom: '0.5rem'}}>Option D</label>
+                        <textarea
+                            value={editModal.fullEditForm.option_d || ''}
+                            onChange={(e) => handleFullEditChange('option_d', e.target.value)}
+                            style={{width: '100%', minHeight: '60px', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)'}}
+                        />
+                    </div>
 
-                <div className="edit-modal-field">
-                  <label>
-                    <span className="material-symbols-outlined" style={{ fontSize: '1rem', marginRight: '0.375rem' }}>menu_book</span>
-                    Chapter / Topic
-                  </label>
-                  <select
-                    value={editModal.chapterCode}
-                    onChange={(e) => setEditModal(prev => ({ ...prev, chapterCode: e.target.value }))}
-                    className="edit-modal-select"
-                  >
-                    <option value="">Select a chapter...</option>
-                    {validChaptersForSection.map(ch => (
-                      <option key={ch.code} value={ch.code}>
-                        {ch.code} - {ch.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
+                    <div className="form-group" style={{marginBottom: '1rem'}}>
+                        <label style={{display: 'block', fontWeight: 600, marginBottom: '0.5rem'}}>Correct Answer</label>
+                        <input
+                            type="text"
+                            value={editModal.fullEditForm.answer || ''}
+                            onChange={(e) => handleFullEditChange('answer', e.target.value)}
+                            style={{width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)'}}
+                            placeholder="A, B, C, D or numerical value"
+                        />
+                    </div>
+                  </div>
+              )}
             </div>
 
             <div className="edit-modal-footer">
@@ -728,10 +983,10 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
               <button
                 className="btn-primary"
                 onClick={saveQuestionEdit}
-                disabled={!editModal.chapterCode}
+                disabled={editModal.mode === 'edit' && !editModal.chapterCode}
               >
-                <span className="material-symbols-outlined">save</span>
-                Save Changes
+                <span className="material-symbols-outlined">{editModal.mode === 'clone' ? 'add_circle' : 'save'}</span>
+                {editModal.mode === 'clone' ? 'Create Question' : 'Save Changes'}
               </button>
             </div>
           </div>
