@@ -885,7 +885,15 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
             />
           </div>
 
-                    <div className="question-list" ref={listContainerRef} style={{ overflowY: 'auto', overflowX: 'hidden', height: '100%', display: 'block', position: 'relative' }}>
+          <div className="question-list" ref={listContainerRef} style={{ 
+            overflowY: 'auto', 
+            overflowX: 'hidden', 
+            height: '100%', 
+            display: 'block', 
+            position: 'relative',
+            width: '100%',
+            boxSizing: 'border-box'
+          }}>
             {/* Floating Navigation Buttons */}
             {selectedQuestions.length > 0 && (
                 <div style={{
