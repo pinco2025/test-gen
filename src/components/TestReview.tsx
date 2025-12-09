@@ -55,6 +55,18 @@ const TestReview: React.FC<TestReviewProps> = ({
   });
   const [previewSolution, setPreviewSolution] = useState(solutionForm);
 
+  // Acceptance Checklist Modal State
+  const [isAcceptModalOpen, setIsAcceptModalOpen] = useState(false);
+  const [checklist, setChecklist] = useState({
+    questionContent: false,
+    optionContent: false,
+    questionFormatting: false,
+    optionFormatting: false,
+    figureFormatting: false,
+    solutionExistence: false,
+    solutionFormatting: false
+  });
+
   // Flatten questions
   const allQuestions = useMemo(() => {
     const flat: Array<{ sq: SelectedQuestion; sectionIndex: number; absoluteIndex: number }> = [];
@@ -103,14 +115,29 @@ const TestReview: React.FC<TestReviewProps> = ({
   };
 
   // Status Actions
-  const handleAccept = () => {
-    if (!currentQuestion) return;
-    setQuestionStatuses(prev => ({
-      ...prev,
-      [currentQuestion.uuid]: 'accepted'
-    }));
-    // Auto-advance
-    handleNext();
+  const handleAcceptClick = () => {
+    // Open checklist modal
+    setChecklist({
+        questionContent: false,
+        optionContent: false,
+        questionFormatting: false,
+        optionFormatting: false,
+        figureFormatting: false,
+        solutionExistence: false,
+        solutionFormatting: false
+    });
+    setIsAcceptModalOpen(true);
+  };
+
+  const confirmAccept = () => {
+      if (!currentQuestion) return;
+      setQuestionStatuses(prev => ({
+          ...prev,
+          [currentQuestion.uuid]: 'accepted'
+      }));
+      setIsAcceptModalOpen(false);
+      // Auto-advance
+      handleNext();
   };
 
   const handleMarkReview = () => {
@@ -401,7 +428,7 @@ const TestReview: React.FC<TestReviewProps> = ({
             </button>
             <button
               className={`btn-accept ${questionStatuses[currentQuestion?.uuid || ''] === 'accepted' ? 'active' : ''}`}
-              onClick={handleAccept}
+              onClick={handleAcceptClick}
             >
                <span className="material-symbols-outlined">check</span> Accept
             </button>
@@ -641,6 +668,94 @@ const TestReview: React.FC<TestReviewProps> = ({
                   <div className="modal-footer">
                       <button className="btn-secondary" onClick={() => setIsImageModalOpen(false)}>Cancel</button>
                       <button className="btn-primary" onClick={handleImageSave}>Save Images</button>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* Acceptance Checklist Modal */}
+      {isAcceptModalOpen && (
+          <div className="modal-overlay">
+              <div className="edit-modal" style={{ maxWidth: '500px', width: '90%' }}>
+                  <div className="modal-header">
+                      <h3>Review Verification</h3>
+                      <button className="icon-btn" onClick={() => setIsAcceptModalOpen(false)}>
+                          <span className="material-symbols-outlined">close</span>
+                      </button>
+                  </div>
+                  <div className="modal-content">
+                      <p style={{ marginBottom: '1rem', color: 'var(--text-secondary)' }}>
+                          Please confirm you have verified the following items. If an item does not exist (e.g., no figure), mark it as checked.
+                      </p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                          <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
+                              <input
+                                  type="checkbox"
+                                  checked={checklist.questionContent}
+                                  onChange={(e) => setChecklist(prev => ({ ...prev, questionContent: e.target.checked }))}
+                              />
+                              <span>Question Content</span>
+                          </label>
+                          <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
+                              <input
+                                  type="checkbox"
+                                  checked={checklist.optionContent}
+                                  onChange={(e) => setChecklist(prev => ({ ...prev, optionContent: e.target.checked }))}
+                              />
+                              <span>Option Content</span>
+                          </label>
+                          <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
+                              <input
+                                  type="checkbox"
+                                  checked={checklist.questionFormatting}
+                                  onChange={(e) => setChecklist(prev => ({ ...prev, questionFormatting: e.target.checked }))}
+                              />
+                              <span>Question Formatting</span>
+                          </label>
+                          <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
+                              <input
+                                  type="checkbox"
+                                  checked={checklist.optionFormatting}
+                                  onChange={(e) => setChecklist(prev => ({ ...prev, optionFormatting: e.target.checked }))}
+                              />
+                              <span>Option Formatting</span>
+                          </label>
+                          <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
+                              <input
+                                  type="checkbox"
+                                  checked={checklist.figureFormatting}
+                                  onChange={(e) => setChecklist(prev => ({ ...prev, figureFormatting: e.target.checked }))}
+                              />
+                              <span>Figure Formatting (If Exists)</span>
+                          </label>
+                          <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
+                              <input
+                                  type="checkbox"
+                                  checked={checklist.solutionExistence}
+                                  onChange={(e) => setChecklist(prev => ({ ...prev, solutionExistence: e.target.checked }))}
+                              />
+                              <span>Solution Existence</span>
+                          </label>
+                          <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
+                              <input
+                                  type="checkbox"
+                                  checked={checklist.solutionFormatting}
+                                  onChange={(e) => setChecklist(prev => ({ ...prev, solutionFormatting: e.target.checked }))}
+                              />
+                              <span>Solution Formatting (If image exists)</span>
+                          </label>
+                      </div>
+                  </div>
+                  <div className="modal-footer">
+                      <button className="btn-secondary" onClick={() => setIsAcceptModalOpen(false)}>Cancel</button>
+                      <button
+                          className="btn-primary"
+                          onClick={confirmAccept}
+                          disabled={!Object.values(checklist).every(Boolean)}
+                      >
+                          <span className="material-symbols-outlined">check</span>
+                          Confirm Accept
+                      </button>
                   </div>
               </div>
           </div>

@@ -92,16 +92,25 @@ const QuestionRow = React.memo<QuestionRowProps>(({
 
   const handleClick = useCallback(() => {
     // If Division 2 question and Division 2 is full, prevent selection
-    if (isDivision2Question && summary.division2 >= 5 && !selected) {
-      alert(`This question has numerical answer (${question.answer}) and can only be placed in Division 2 (B), which is already full (5/5).`);
-      return;
+    if (isDivision2Question) {
+      if (summary.division2 >= 5 && !selected) {
+        alert(`This question has numerical answer (${question.answer}) and can only be placed in Division 2 (B), which is already full (5/5).`);
+        return;
+      }
+    } else {
+      // If Division 1 question and Division 1 is full, prevent selection
+      if (summary.division1 >= 20 && !selected) {
+        alert(`Division 1 (A) is already full (20/20). Cannot select more Multiple Choice Questions.`);
+        return;
+      }
     }
 
     const chapterCode = question.tag_2 || chapters[0]?.code || '';
     const chapter = chapters.find(ch => ch.code === chapterCode);
     const chapterName = chapter ? chapter.name : chapters[0]?.name || '';
     const difficulty: Difficulty = (question.tag_3 as Difficulty) || 'M';
-    const division: 1 | 2 = isDivision2Question ? 2 : (summary.division1 < 20 ? 1 : 2);
+    // Strictly assign division based on type: Numerical -> 2, MCQ -> 1
+    const division: 1 | 2 = isDivision2Question ? 2 : 1;
 
     onToggle(question, chapterCode, chapterName, difficulty, division);
   }, [question, isDivision2Question, summary.division2, summary.division1, selected, chapters, onToggle]);
@@ -114,7 +123,8 @@ const QuestionRow = React.memo<QuestionRowProps>(({
         contentVisibility: 'auto',
         containIntrinsicSize: '350px',
         marginBottom: '0.5rem',
-        marginRight: '0.5rem'
+        marginRight: '0.5rem',
+        width: '100%'
       }}
     >
       <div
@@ -875,7 +885,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
             />
           </div>
 
-          <div className="question-list" ref={listContainerRef} style={{ overflowY: 'auto', height: '100%', display: 'block', position: 'relative' }}>
+          <div className="question-list" ref={listContainerRef} style={{ overflowY: 'auto', overflowX: 'hidden', height: '100%', display: 'block', position: 'relative' }}>
             {/* Floating Navigation Buttons */}
             {selectedQuestions.length > 0 && (
                 <div style={{
