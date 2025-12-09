@@ -59,106 +59,76 @@ export const QuestionDisplay = memo<QuestionDisplayProps>(({
       )}
 
       <div className="question-header" style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-        gap: '0.625rem',
-        marginBottom: '1rem',
-        padding: '0.875rem',
-        backgroundColor: 'var(--bg-light)',
-        borderRadius: 'var(--radius)',
-        border: '1px solid var(--border-light)'
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: '0.5rem',
+        marginBottom: '0.75rem',
+        alignItems: 'center'
       }}>
-        {question.tag_1 && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-            <strong style={{ color: 'var(--text-muted-light)', fontSize: '0.75rem' }}>Q#:</strong>
+        {/* Compact ID & Tags */}
+         <span style={{
+            backgroundColor: 'var(--bg-main)',
+            color: 'var(--text-muted)',
+            padding: '0.125rem 0.375rem',
+            borderRadius: 'var(--radius-sm)',
+            fontSize: '0.7rem',
+            fontFamily: 'monospace',
+            border: '1px solid var(--border-color)'
+          }}>{question.uuid.substring(0, 8)}...</span>
+
+        {question.tag_3 && (
             <span style={{
-              backgroundColor: 'var(--purple-bg)',
-              color: 'var(--purple)',
+              ...difficultyStyle,
               padding: '0.125rem 0.5rem',
-              borderRadius: 'var(--radius-sm)',
-              fontSize: '0.8125rem',
+              borderRadius: 'var(--radius-full)',
+              fontSize: '0.7rem',
               fontWeight: '600'
-            }}>{question.tag_1}</span>
-          </div>
+            }}>{question.tag_3 === 'E' ? 'Easy' : question.tag_3 === 'M' ? 'Medium' : 'Hard'}</span>
         )}
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-          <strong style={{ color: 'var(--text-muted-light)', fontSize: '0.75rem' }}>ID:</strong>
-          <span style={{
-            backgroundColor: 'var(--info-bg)',
-            color: 'var(--info)',
-            padding: '0.25rem 0.625rem',
-            borderRadius: 'var(--radius-sm)',
-            fontSize: '0.8125rem',
-            fontWeight: '600',
-            fontFamily: 'monospace'
-          }}>{question.uuid}</span>
-        </div>
+        {question.year && (
+             <span style={{
+              backgroundColor: 'var(--amber-bg)',
+              color: 'var(--amber)',
+              padding: '0.125rem 0.5rem',
+              borderRadius: 'var(--radius-full)',
+              fontSize: '0.7rem',
+              fontWeight: '600'
+            }}>{question.year}</span>
+        )}
 
-        {question.tag_2 && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-            <strong style={{ color: 'var(--text-muted-light)', fontSize: '0.75rem' }}>Chapter:</strong>
+        {question.type && (
+            <span style={{
+                backgroundColor: 'var(--primary-light)',
+                color: 'var(--primary)',
+                padding: '0.125rem 0.5rem',
+                borderRadius: 'var(--radius-full)',
+                fontSize: '0.7rem',
+                fontWeight: '600'
+            }}>{question.type}</span>
+        )}
+
+         {question.tag_2 && (
             <span style={{
               backgroundColor: 'var(--teal-bg)',
               color: 'var(--teal)',
-              padding: '0.25rem 0.5rem',
-              borderRadius: 'var(--radius-sm)',
-              fontSize: '0.8125rem',
+              padding: '0.125rem 0.5rem',
+              borderRadius: 'var(--radius-full)',
+              fontSize: '0.7rem',
               fontWeight: '600'
             }}>{question.tag_2}</span>
-          </div>
         )}
 
-        {question.tag_3 && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-            <strong style={{ color: 'var(--text-muted-light)', fontSize: '0.75rem' }}>Difficulty:</strong>
-            <span style={{
-              ...difficultyStyle,
-              padding: '0.25rem 0.5rem',
-              borderRadius: 'var(--radius-sm)',
-              fontSize: '0.8125rem',
-              fontWeight: '600'
-            }}>{question.tag_3}</span>
-          </div>
-        )}
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-          <strong style={{ color: 'var(--text-muted-light)', fontSize: '0.75rem' }}>Type:</strong>
+        {(question.frequency || 0) > 0 && (
           <span style={{
-            backgroundColor: 'var(--primary-light)',
-            color: 'var(--primary)',
-            padding: '0.25rem 0.625rem',
-            borderRadius: 'var(--radius-sm)',
-            fontSize: '0.8125rem',
+            backgroundColor: 'var(--purple-bg)',
+            color: 'var(--purple)',
+            padding: '0.125rem 0.5rem',
+            borderRadius: 'var(--radius-full)',
+            fontSize: '0.7rem',
             fontWeight: '600'
-          }}>{question.type}</span>
-        </div>
-
-        {question.year && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-            <strong style={{ color: 'var(--text-muted-light)', fontSize: '0.75rem' }}>Year:</strong>
-            <span style={{
-              backgroundColor: 'var(--amber-bg)',
-              color: 'var(--amber)',
-              padding: '0.25rem 0.625rem',
-              borderRadius: 'var(--radius-sm)',
-              fontSize: '0.8125rem',
-              fontWeight: '600'
-            }}>{question.year}</span>
-          </div>
+          }}>Used {question.frequency}x</span>
         )}
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
-          <strong style={{ color: 'var(--text-muted-light)', fontSize: '0.75rem' }}>Freq:</strong>
-          <span style={{
-            backgroundColor: (question.frequency || 0) > 0 ? 'var(--purple-bg)' : 'var(--bg-light)',
-            color: (question.frequency || 0) > 0 ? 'var(--purple)' : 'var(--text-muted-light)',
-            padding: '0.25rem 0.625rem',
-            borderRadius: 'var(--radius-sm)',
-            fontSize: '0.8125rem',
-            fontWeight: '600'
-          }}>{question.frequency || 0}</span>
-        </div>
       </div>
 
       <div className="question-content">
@@ -173,7 +143,7 @@ export const QuestionDisplay = memo<QuestionDisplayProps>(({
             <img
               src={question.question_image_url}
               alt="Question Image"
-              style={{maxWidth: '100%', maxHeight: '300px', border: '1px solid #ddd'}}
+              style={{maxWidth: '100%', maxHeight: '300px', border: '1px solid var(--border-color)'}}
             />
           </div>
         )}

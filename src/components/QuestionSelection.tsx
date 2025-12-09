@@ -10,6 +10,7 @@ import {
   Chapter
 } from '../types';
 import QuestionDisplay from './QuestionDisplay';
+import FilterMenu, { FilterState } from './FilterMenu';
 import chaptersData from '../data/chapters.json';
 
 interface QuestionSelectionProps {
@@ -121,11 +122,11 @@ const QuestionRow = React.memo<QuestionRowProps>(({
         onClick={handleClick}
         style={{
           cursor: 'pointer',
-          border: selected ? '2px solid var(--primary)' : '1px solid var(--border-light)',
+          border: selected ? '2px solid var(--primary)' : '1px solid var(--border-color)',
           borderRadius: 'var(--radius-lg)',
           padding: '1rem',
           transition: 'border-color 0.15s, background-color 0.15s',
-          backgroundColor: selected ? 'var(--primary-light)' : 'var(--bg-card-light)'
+          backgroundColor: selected ? 'var(--primary-light)' : 'var(--bg-card)'
         }}
       >
         <div className="question-card-header" style={{
@@ -162,8 +163,8 @@ const QuestionRow = React.memo<QuestionRowProps>(({
               }}
               title="Actions"
               style={{
-                background: 'var(--bg-light)',
-                border: '1px solid var(--border-light)',
+                background: 'var(--bg-main)',
+                border: '1px solid var(--border-color)',
                 borderRadius: 'var(--radius)',
                 padding: '0.375rem 0.5rem',
                 cursor: 'pointer',
@@ -171,7 +172,7 @@ const QuestionRow = React.memo<QuestionRowProps>(({
                 alignItems: 'center',
                 gap: '0.25rem',
                 fontSize: '0.75rem',
-                color: 'var(--text-secondary-light)',
+                color: 'var(--text-secondary)',
                 transition: 'var(--transition)'
               }}
             >
@@ -431,10 +432,32 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
 
   const [availableQuestions, setAvailableQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filterChapter, setFilterChapter] = useState<string>('all');
-  const [filterDifficulty, setFilterDifficulty] = useState<string>('all');
-  const [filterDivision, setFilterDivision] = useState<string>('all');
   const [searchText, setSearchText] = useState('');
+
+  const [filters, setFilters] = useState<FilterState>({
+    chapter: 'all',
+    difficulty: 'all',
+    division: 'all',
+    type: 'all',
+    year: 'all',
+    tag1: '',
+    tag4: '',
+    sort: 'default'
+  });
+
+  // Extract unique Types and Years for filters
+  const { availableTypes, availableYears } = useMemo(() => {
+    const types = new Set<string>();
+    const years = new Set<string>();
+    availableQuestions.forEach(q => {
+        if (q.type) types.add(q.type);
+        if (q.year) years.add(q.year);
+    });
+    return {
+        availableTypes: Array.from(types).sort(),
+        availableYears: Array.from(years).sort().reverse()
+    };
+  }, [availableQuestions]);
 
   // Refs for list scrolling
   const listContainerRef = useRef<HTMLDivElement>(null);
@@ -444,7 +467,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
     if (listContainerRef.current) {
       listContainerRef.current.scrollTop = 0;
     }
-  }, [filterChapter, filterDifficulty, filterDivision, searchText]);
+  }, [filters, searchText]);
 
   // Load questions based on selected chapters
   useEffect(() => {
@@ -606,22 +629,42 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
   const filteredQuestions = useMemo(() => {
     const searchLower = searchText.toLowerCase();
 
-    return availableQuestions.filter(q => {
+    let result = availableQuestions.filter(q => {
       // Filter by chapter
-      if (filterChapter !== 'all' && q.tag_2 !== filterChapter) {
+      if (filters.chapter !== 'all' && q.tag_2 !== filters.chapter) {
         return false;
       }
 
       // Filter by difficulty
-      if (filterDifficulty !== 'all' && q.tag_3 !== filterDifficulty) {
+      if (filters.difficulty !== 'all' && q.tag_3 !== filters.difficulty) {
         return false;
       }
 
       // Filter by division type (numerical vs multiple choice)
-      if (filterDivision !== 'all') {
+      if (filters.division !== 'all') {
         const isDiv2Type = isNumericalAnswer(q);
-        if (filterDivision === '1' && isDiv2Type) return false;
-        if (filterDivision === '2' && !isDiv2Type) return false;
+        if (filters.division === '1' && isDiv2Type) return false;
+        if (filters.division === '2' && !isDiv2Type) return false;
+      }
+
+      // Filter by Type
+      if (filters.type !== 'all' && q.type !== filters.type) {
+        return false;
+      }
+
+      // Filter by Year
+      if (filters.year !== 'all' && q.year !== filters.year) {
+        return false;
+      }
+
+      // Filter by Tag 1 (Partial Match)
+      if (filters.tag1 && (!q.tag_1 || !q.tag_1.toLowerCase().includes(filters.tag1.toLowerCase()))) {
+        return false;
+      }
+
+      // Filter by Tag 4 (Partial Match)
+      if (filters.tag4 && (!q.tag_4 || !q.tag_4.toLowerCase().includes(filters.tag4.toLowerCase()))) {
+        return false;
       }
 
       // Filter by search text
@@ -631,7 +674,27 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
 
       return true;
     });
-  }, [availableQuestions, filterChapter, filterDifficulty, filterDivision, searchText]);
+
+    // Apply Sorting
+    if (filters.sort !== 'default') {
+        result.sort((a, b) => {
+            switch (filters.sort) {
+                case 'year_desc':
+                    return (b.year || '').localeCompare(a.year || '');
+                case 'year_asc':
+                    return (a.year || '').localeCompare(b.year || '');
+                case 'freq_asc':
+                    return (a.frequency || 0) - (b.frequency || 0);
+                case 'freq_desc':
+                    return (b.frequency || 0) - (a.frequency || 0);
+                default:
+                    return 0;
+            }
+        });
+    }
+
+    return result;
+  }, [availableQuestions, filters, searchText]);
 
   // Memoize isSelectionValid
   const isSelectionValid = useMemo(() => {
@@ -778,45 +841,38 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
 
         {/* Right Panel - Question List */}
         <div className="questions-panel">
-          <div className="filters">
-            <input
-              type="text"
-              placeholder="Search questions..."
-              value={searchText}
-              onChange={(e) => setSearchText(e.target.value)}
-              className="search-input"
+          <div className="filters" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+             <div style={{ flex: 1, position: 'relative', marginRight: '0.75rem' }}>
+                <span className="material-symbols-outlined" style={{
+                    position: 'absolute',
+                    left: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    color: 'var(--text-secondary)',
+                    fontSize: '1.25rem'
+                }}>search</span>
+                <input
+                type="text"
+                placeholder="Search questions..."
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                className="search-input"
+                style={{
+                    paddingLeft: '2.5rem',
+                    width: '100%'
+                }}
+                />
+            </div>
+
+            <FilterMenu
+                chapters={chapters}
+                availableTypes={availableTypes}
+                availableYears={availableYears}
+                currentFilters={filters}
+                onFilterChange={(newFilters) => {
+                    setFilters(prev => ({ ...prev, ...newFilters }));
+                }}
             />
-
-            <select
-              value={filterChapter}
-              onChange={(e) => setFilterChapter(e.target.value)}
-            >
-              <option value="all">All Chapters</option>
-              {chapters.map(ch => (
-                <option key={ch.code} value={ch.code}>
-                  {ch.code} - {ch.name}
-                </option>
-              ))}
-            </select>
-
-            <select
-              value={filterDifficulty}
-              onChange={(e) => setFilterDifficulty(e.target.value)}
-            >
-              <option value="all">All Difficulties</option>
-              <option value="E">Easy</option>
-              <option value="M">Medium</option>
-              <option value="H">Hard</option>
-            </select>
-
-            <select
-              value={filterDivision}
-              onChange={(e) => setFilterDivision(e.target.value)}
-            >
-              <option value="all">All Divisions</option>
-              <option value="1">Division 1</option>
-              <option value="2">Division 2</option>
-            </select>
           </div>
 
           <div className="question-list" ref={listContainerRef} style={{ overflowY: 'auto', height: '100%', display: 'block', position: 'relative' }}>
