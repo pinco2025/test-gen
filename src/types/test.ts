@@ -5,6 +5,19 @@ export type TestType = 'Part' | 'Full';
 export type SectionName = 'Physics' | 'Chemistry' | 'Mathematics';
 export type Difficulty = 'E' | 'M' | 'H'; // Easy, Medium, Hard
 
+export type WorkflowStep =
+  | 'database-connect'
+  | 'dashboard'
+  | 'test-creation'
+  | 'section-config-physics'
+  | 'section-config-chemistry'
+  | 'section-config-math'
+  | 'question-select-physics'
+  | 'question-select-chemistry'
+  | 'question-select-math'
+  | 'test-review'
+  | 'complete';
+
 // Chapter definition
 export interface Chapter {
   code: string; // e.g., "PHY01", "CHE01", "MAT01"

@@ -10,7 +10,8 @@ import {
   Chapter,
   ConstraintConfig,
   ProjectState,
-  ProjectInfo
+  ProjectInfo,
+  WorkflowStep
 } from './types';
 import TestCreationForm from './components/TestCreationForm';
 import SectionConfiguration from './components/SectionConfiguration';
@@ -19,19 +20,6 @@ import ProjectTabs from './components/ProjectTabs';
 import TestReview from './components/TestReview';
 import TestNavigation from './components/TestNavigation';
 import './styles/App.css';
-
-type WorkflowStep =
-  | 'database-connect'
-  | 'dashboard'
-  | 'test-creation'
-  | 'section-config-physics'
-  | 'section-config-chemistry'
-  | 'section-config-math'
-  | 'question-select-physics'
-  | 'question-select-chemistry'
-  | 'question-select-math'
-  | 'test-review'
-  | 'complete';
 
 // In-memory project data
 interface ProjectData {
