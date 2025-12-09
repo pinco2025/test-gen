@@ -4,33 +4,23 @@ CREATE TABLE IF NOT EXISTS questions (
     
     -- Question content
     question TEXT NOT NULL,                     -- The question text
-    question_schematic TEXT,                    -- LaTeX code for question schematic
-    question_schematic_type TEXT,               -- Type: chemfig, circuitikz, tikz, none
-    question_schematic_packages TEXT,           -- JSON array of required packages
+    question_image_url TEXT,                    -- URL for question image
     
     -- Option A
     option_a TEXT,                              -- Option A text
-    option_a_schematic TEXT,                    -- LaTeX code for option A schematic
-    option_a_schematic_type TEXT,               -- Type: chemfig, circuitikz, tikz, none
-    option_a_schematic_packages TEXT,           -- JSON array of required packages
+    option_a_image_url TEXT,                    -- URL for option A image
     
     -- Option B
     option_b TEXT,                              -- Option B text
-    option_b_schematic TEXT,                    -- LaTeX code for option B schematic
-    option_b_schematic_type TEXT,               -- Type: chemfig, circuitikz, tikz, none
-    option_b_schematic_packages TEXT,           -- JSON array of required packages
+    option_b_image_url TEXT,                    -- URL for option B image
     
     -- Option C
     option_c TEXT,                              -- Option C text
-    option_c_schematic TEXT,                    -- LaTeX code for option C schematic
-    option_c_schematic_type TEXT,               -- Type: chemfig, circuitikz, tikz, none
-    option_c_schematic_packages TEXT,           -- JSON array of required packages
+    option_c_image_url TEXT,                    -- URL for option C image
     
     -- Option D
     option_d TEXT,                              -- Option D text
-    option_d_schematic TEXT,                    -- LaTeX code for option D schematic
-    option_d_schematic_type TEXT,               -- Type: chemfig, circuitikz, tikz, none
-    option_d_schematic_packages TEXT,           -- JSON array of required packages
+    option_d_image_url TEXT,                    -- URL for option D image
     
     -- Answer and metadata
     answer TEXT NOT NULL,                       -- Correct answer: A, B, C, or D

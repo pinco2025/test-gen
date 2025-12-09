@@ -314,12 +314,11 @@ export class DatabaseService {
 
     try {
       const allowedFields = [
-        'question',
-        'question_schematic', 'question_schematic_type', 'question_schematic_packages',
-        'option_a', 'option_a_schematic', 'option_a_schematic_type', 'option_a_schematic_packages',
-        'option_b', 'option_b_schematic', 'option_b_schematic_type', 'option_b_schematic_packages',
-        'option_c', 'option_c_schematic', 'option_c_schematic_type', 'option_c_schematic_packages',
-        'option_d', 'option_d_schematic', 'option_d_schematic_type', 'option_d_schematic_packages',
+        'question', 'question_image_url',
+        'option_a', 'option_a_image_url',
+        'option_b', 'option_b_image_url',
+        'option_c', 'option_c_image_url',
+        'option_d', 'option_d_image_url',
         'answer',
         'type', 'year',
         'tag_1', 'tag_2', 'tag_3', 'tag_4'
@@ -368,12 +367,11 @@ export class DatabaseService {
     try {
       const keys = [
         'uuid',
-        'question',
-        'question_schematic', 'question_schematic_type', 'question_schematic_packages',
-        'option_a', 'option_a_schematic', 'option_a_schematic_type', 'option_a_schematic_packages',
-        'option_b', 'option_b_schematic', 'option_b_schematic_type', 'option_b_schematic_packages',
-        'option_c', 'option_c_schematic', 'option_c_schematic_type', 'option_c_schematic_packages',
-        'option_d', 'option_d_schematic', 'option_d_schematic_type', 'option_d_schematic_packages',
+        'question', 'question_image_url',
+        'option_a', 'option_a_image_url',
+        'option_b', 'option_b_image_url',
+        'option_c', 'option_c_image_url',
+        'option_d', 'option_d_image_url',
         'answer',
         'type', 'year',
         'tag_1', 'tag_2', 'tag_3', 'tag_4',
