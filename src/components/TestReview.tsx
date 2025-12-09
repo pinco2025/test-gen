@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { SectionConfig, Question, SelectedQuestion } from '../types';
 import QuestionDisplay from './QuestionDisplay';
+import LatexRenderer from './LatexRenderer';
 import '../styles/TestReview.css';
 
 interface TestReviewProps {
@@ -45,6 +46,14 @@ const TestReview: React.FC<TestReviewProps> = ({
   });
   // Local state to trigger preview rendering (though direct input change already rerenders)
   const [previewImages, setPreviewImages] = useState(imageForm);
+
+  // Solution modal state
+  const [isSolutionModalOpen, setIsSolutionModalOpen] = useState(false);
+  const [solutionForm, setSolutionForm] = useState({
+      solution_text: '',
+      solution_image_url: ''
+  });
+  const [previewSolution, setPreviewSolution] = useState(solutionForm);
 
   // Flatten questions
   const allQuestions = useMemo(() => {
@@ -226,6 +235,50 @@ const TestReview: React.FC<TestReviewProps> = ({
       setPreviewImages({...imageForm});
   };
 
+  // Solution Handlers
+  const handleSolutionClick = async () => {
+      if (!currentQuestion || !window.electronAPI) return;
+
+      try {
+          const solution = await window.electronAPI.questions.getSolution(currentQuestion.uuid);
+          const initialForm = {
+              solution_text: solution ? solution.solution_text : '',
+              solution_image_url: solution ? solution.solution_image_url : ''
+          };
+          setSolutionForm(initialForm);
+          setPreviewSolution(initialForm);
+          setIsSolutionModalOpen(true);
+      } catch (error) {
+          console.error('Error fetching solution:', error);
+          alert('Failed to fetch solution');
+      }
+  };
+
+  const handleSolutionSave = async () => {
+      if (!currentQuestion || !window.electronAPI) return;
+
+      try {
+          const success = await window.electronAPI.questions.saveSolution(
+              currentQuestion.uuid,
+              solutionForm.solution_text,
+              solutionForm.solution_image_url
+          );
+
+          if (success) {
+              setIsSolutionModalOpen(false);
+          } else {
+              alert('Failed to save solution');
+          }
+      } catch (error) {
+          console.error('Error saving solution:', error);
+          alert('An error occurred while saving solution');
+      }
+  };
+
+  const handleSolutionPreview = () => {
+      setPreviewSolution({...solutionForm});
+  };
+
   return (
     <div className="test-review-container">
       {/* Header */}
@@ -316,6 +369,9 @@ const TestReview: React.FC<TestReviewProps> = ({
                   </button>
                   <button className="btn-text" onClick={handleImageClick}>
                     <span className="material-symbols-outlined">image</span> Image
+                  </button>
+                  <button className="btn-text" onClick={handleSolutionClick}>
+                    <span className="material-symbols-outlined">lightbulb</span> Solution
                   </button>
               </div>
             </div>
@@ -516,10 +572,12 @@ const TestReview: React.FC<TestReviewProps> = ({
                           </div>
 
                           <div className="preview-container" style={{background: 'var(--bg-light)', padding: '1rem', borderRadius: '8px'}}>
-                              <p style={{marginBottom: '0.5rem'}}>
+                              <div style={{marginBottom: '0.5rem'}}>
                                 <strong>Question Text:</strong><br/>
-                                <span style={{display: 'block', marginTop: '0.5rem'}}>{currentQuestion ? currentQuestion.question : ''}</span>
-                              </p>
+                                <div style={{marginTop: '0.5rem'}}>
+                                    <LatexRenderer content={currentQuestion ? currentQuestion.question : ''} />
+                                </div>
+                              </div>
 
                               {previewImages.question_image_url && (
                                   <div className="preview-image" style={{margin: '1rem 0', textAlign: 'center'}}>
@@ -583,6 +641,69 @@ const TestReview: React.FC<TestReviewProps> = ({
                   <div className="modal-footer">
                       <button className="btn-secondary" onClick={() => setIsImageModalOpen(false)}>Cancel</button>
                       <button className="btn-primary" onClick={handleImageSave}>Save Images</button>
+                  </div>
+              </div>
+          </div>
+      )}
+
+      {/* Solution Modal */}
+      {isSolutionModalOpen && (
+          <div className="modal-overlay">
+              <div className="edit-modal" style={{maxWidth: '800px', width: '90%'}}>
+                  <div className="modal-header">
+                      <h3>Add Solution</h3>
+                      <button className="icon-btn" onClick={() => setIsSolutionModalOpen(false)}>
+                        <span className="material-symbols-outlined">close</span>
+                      </button>
+                  </div>
+                  <div className="modal-content" style={{display: 'flex', flexDirection: 'column', gap: '1.5rem'}}>
+                      <div className="form-group">
+                          <label>Solution Text</label>
+                          <textarea
+                              value={solutionForm.solution_text}
+                              onChange={(e) => setSolutionForm({...solutionForm, solution_text: e.target.value})}
+                              placeholder="Enter solution explanation..."
+                              rows={6}
+                              style={{width: '100%', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: '4px'}}
+                          />
+                      </div>
+                      <div className="form-group">
+                          <label>Solution Image URL</label>
+                          <input
+                              type="text"
+                              value={solutionForm.solution_image_url}
+                              onChange={(e) => setSolutionForm({...solutionForm, solution_image_url: e.target.value})}
+                              placeholder="Enter solution image URL..."
+                              style={{width: '100%', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: '4px'}}
+                          />
+                      </div>
+
+                      <div className="preview-section" style={{borderTop: '1px solid var(--border-color)', paddingTop: '1rem'}}>
+                          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem'}}>
+                             <h4>Preview</h4>
+                             <button className="btn-secondary" onClick={handleSolutionPreview}>Update Preview</button>
+                          </div>
+
+                          <div className="preview-container" style={{background: 'var(--bg-light)', padding: '1rem', borderRadius: '8px'}}>
+                              <div style={{marginBottom: '1rem'}}>
+                                  <LatexRenderer content={previewSolution.solution_text} />
+                              </div>
+
+                              {previewSolution.solution_image_url && (
+                                  <div className="preview-image" style={{marginTop: '1rem', textAlign: 'center'}}>
+                                      <img
+                                        src={previewSolution.solution_image_url}
+                                        alt="Solution"
+                                        style={{maxWidth: '100%', maxHeight: '400px', border: '1px solid #ddd'}}
+                                      />
+                                  </div>
+                              )}
+                          </div>
+                      </div>
+                  </div>
+                  <div className="modal-footer">
+                      <button className="btn-secondary" onClick={() => setIsSolutionModalOpen(false)}>Cancel</button>
+                      <button className="btn-primary" onClick={handleSolutionSave}>Save Solution</button>
                   </div>
               </div>
           </div>

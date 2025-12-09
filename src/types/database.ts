@@ -50,3 +50,9 @@ export interface QuestionFilter {
   chapter?: string;
   difficulty?: 'E' | 'M' | 'H';
 }
+
+export interface Solution {
+    uuid: string;
+    solution_text: string;
+    solution_image_url: string;
+}

@@ -435,17 +435,26 @@ function App() {
   const handleSelectionChange = useCallback((selectedQuestions: SelectedQuestion[]) => {
     if (!currentProjectId) return;
 
-    const updatedSections = [...sections];
-    updatedSections[currentSectionIndex] = {
-      ...updatedSections[currentSectionIndex],
-      selectedQuestions
-    };
+    setProjectsData(prev => {
+      const projectData = prev[currentProjectId];
+      if (!projectData) return prev;
 
-    // Just update the sections, don't change step
-    updateCurrentProject({
-      sections: updatedSections
+      const updatedSections = [...projectData.sections];
+      updatedSections[projectData.currentSectionIndex] = {
+        ...updatedSections[projectData.currentSectionIndex],
+        selectedQuestions
+      };
+
+      return {
+        ...prev,
+        [currentProjectId]: {
+          ...projectData,
+          sections: updatedSections
+        }
+      };
     });
-  }, [currentProjectId, sections, currentSectionIndex, updateCurrentProject]);
+    setSaveStatus('unsaved');
+  }, [currentProjectId]);
 
   const handleQuestionSelection = (selectedQuestions: SelectedQuestion[]) => {
     if (!currentProjectId) return;
