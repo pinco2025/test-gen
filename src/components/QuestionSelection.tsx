@@ -214,6 +214,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
 
   const [availableQuestions, setAvailableQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isRendering, setIsRendering] = useState(false);
   const [searchText, setSearchText] = useState('');
 
   const [filters, setFilters] = useState<FilterState>({
@@ -269,6 +270,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
         );
 
         setAvailableQuestions(questions);
+        setIsRendering(true);
       } catch (error) {
         console.error('Failed to load questions:', error);
         setAvailableQuestions([]);
@@ -278,6 +280,16 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
     };
     loadQuestions();
   }, [sectionName, chapters]);
+
+  useEffect(() => {
+    if (!loading && isRendering) {
+      // Use setTimeout to allow the browser to paint the "Loading" state before the heavy render unblocks
+      const timer = setTimeout(() => {
+          setIsRendering(false);
+      }, 50);
+      return () => clearTimeout(timer);
+    }
+  }, [loading, isRendering]);
 
   // Auto-correct existing selections: move numerical answers from Division 1 to Division 2
   useEffect(() => {
@@ -722,14 +734,18 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
             width: '100%',
             boxSizing: 'border-box'
           }}>
-            {loading ? (
-              <div className="loading">Loading questions...</div>
-            ) : filteredQuestions.length === 0 ? (
+            {(loading || isRendering) && (
+                 <div className="loading" style={{
+                     position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 10
+                 }}>Loading questions...</div>
+             )}
+
+            {loading ? null : filteredQuestions.length === 0 ? (
               <div className="no-questions">
                 No questions available. Please adjust filters or load a database.
               </div>
             ) : (
-              <>
+              <div style={{ visibility: isRendering ? 'hidden' : 'visible' }}>
                 <div className="questions-info" style={{ marginBottom: '0.5rem' }}>
                   <p style={{ margin: 0 }}>
                     Showing {filteredQuestions.length} questions. Click to select.
@@ -753,7 +769,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
                     />
                   );
                 })}
-              </>
+              </div>
             )}
           </div>
         </div>
