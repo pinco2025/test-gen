@@ -633,47 +633,95 @@ function App() {
       case 'dashboard':
         return (
           <div className="dashboard">
-            <div className="dashboard-header">
+            <div className="dashboard-header" style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '1.5rem'
+            }}>
               <h2>Your Projects</h2>
+              <button className="btn-primary" onClick={createNewProject}>
+                <span className="material-symbols-outlined">add</span>
+                Create New Project
+              </button>
             </div>
-            <div className="project-grid">
-              {projects.map((project) => (
-                <div
-                  key={project.id}
-                  className="project-tile"
-                  onClick={() => loadProject(project.id)}
-                >
-                  <div className="project-tile-header">
-                    <h3>{project.testCode}</h3>
-                    <button
-                      className="project-delete-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteProject(project.id);
-                      }}
-                      title="Delete project permanently"
-                    >
-                      <span className="material-symbols-outlined">delete</span>
-                    </button>
-                  </div>
-                  <p className="project-description">{project.description || 'No description'}</p>
-                  <div className="project-meta">
-                    <span className="project-date">
-                      <span className="material-symbols-outlined" style={{ fontSize: '0.875rem', marginRight: '0.25rem' }}>schedule</span>
-                      {new Date(project.lastModified).toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-              ))}
-              <div
-                className="project-tile project-tile-new"
-                onClick={createNewProject}
-              >
-                <div className="new-project-icon">
-                  <span className="material-symbols-outlined" style={{ fontSize: '1.75rem' }}>add</span>
-                </div>
-                <h3>Create New Project</h3>
-              </div>
+            <div className="project-list-container" style={{
+              backgroundColor: 'var(--bg-card)',
+              borderRadius: '8px',
+              border: '1px solid var(--border-color)',
+              overflow: 'hidden'
+            }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead style={{
+                  backgroundColor: 'var(--bg-main)',
+                  borderBottom: '1px solid var(--border-color)'
+                }}>
+                  <tr>
+                    <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 600 }}>Name</th>
+                    <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 600 }}>Description</th>
+                    <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 600 }}>Date Modified</th>
+                    <th style={{ padding: '1rem', textAlign: 'right', fontWeight: 600 }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {projects.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                        No projects found. Create a new one to get started.
+                      </td>
+                    </tr>
+                  ) : (
+                    projects.map((project) => (
+                      <tr
+                        key={project.id}
+                        onClick={() => loadProject(project.id)}
+                        style={{
+                          borderBottom: '1px solid var(--border-color)',
+                          cursor: 'pointer',
+                          transition: 'background-color 0.2s'
+                        }}
+                        className="project-list-row"
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-main)'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                      >
+                        <td style={{ padding: '1rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <span className="material-symbols-outlined" style={{ color: 'var(--primary)' }}>folder</span>
+                            <span style={{ fontWeight: 500 }}>{project.testCode}</span>
+                          </div>
+                        </td>
+                        <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>
+                          {project.description || 'No description'}
+                        </td>
+                        <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>
+                          {new Date(project.lastModified).toLocaleString()}
+                        </td>
+                        <td style={{ padding: '1rem', textAlign: 'right' }}>
+                          <button
+                            className="project-delete-btn"
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              color: 'var(--text-secondary)',
+                              cursor: 'pointer',
+                              padding: '0.25rem'
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteProject(project.id);
+                            }}
+                            title="Delete project permanently"
+                            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--danger)'}
+                            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
+                          >
+                            <span className="material-symbols-outlined">delete</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         );
