@@ -20,7 +20,6 @@ import QuestionSelection from './components/QuestionSelection';
 import ProjectTabs from './components/ProjectTabs';
 import TestReview from './components/TestReview';
 import TestNavigation from './components/TestNavigation';
-import logo from './assets/logo.png';
 import './styles/App.css';
 
 // In-memory project data
@@ -762,7 +761,7 @@ function App() {
     <div className="app">
       <div className="app-header">
         <div className="header-left">
-          <img src={logo} alt="Logo" className="header-logo" onClick={goToDashboard} />
+          <img src="https://drive.google.com/thumbnail?id=1yLtX3YxubbDBsKYDj82qiaGbSkSX7aLv&sz=w1000" alt="Logo" className="header-logo" onClick={goToDashboard} />
           <h1 onClick={goToDashboard}>Test Generation System</h1>
         </div>
         <div className="header-right">
