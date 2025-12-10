@@ -71,6 +71,7 @@ export interface SelectedQuestion {
   chapterName: string; // Added for display
   difficulty: Difficulty;
   division: 1 | 2; // 1 for first 20, 2 for last 5
+  status?: 'accepted' | 'review' | 'pending';
 }
 
 // Test metadata

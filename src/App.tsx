@@ -582,6 +582,26 @@ function App() {
     updateCurrentProject({ sections: updatedSections });
   }, [currentProjectId, sections, updateCurrentProject]);
 
+  const handleQuestionStatusUpdate = useCallback((questionUuid: string, status: 'accepted' | 'review' | 'pending') => {
+    if (!currentProjectId) return;
+
+    // We need to update the status in the sections state
+    const updatedSections = sections.map(section => ({
+      ...section,
+      selectedQuestions: section.selectedQuestions.map(sq => {
+        if (sq.question.uuid === questionUuid) {
+          return {
+            ...sq,
+            status: status
+          };
+        }
+        return sq;
+      })
+    }));
+
+    updateCurrentProject({ sections: updatedSections });
+  }, [currentProjectId, sections, updateCurrentProject]);
+
   // Render different steps
   const renderStep = () => {
     // Show navigation for selection and review steps
@@ -705,6 +725,7 @@ function App() {
             onBack={handleBackFromSelection}
             onExport={handleExportTest}
             onRemoveQuestion={handleRemoveQuestion}
+            onUpdateQuestionStatus={handleQuestionStatusUpdate}
           />
         );
 
