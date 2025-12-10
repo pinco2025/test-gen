@@ -9,6 +9,25 @@ interface LatexRendererProps {
 }
 
 /**
+ * Helper to unescape JSON-like strings.
+ * Handles standard JSON escapes (\n, \t, \", \\) while preserving
+ * other backslash sequences (like \alpha) for LaTeX processing.
+ */
+const processEscapes = (str: string): string => {
+  if (!str) return str;
+  return str.replace(/\\(.)/g, (match, char) => {
+    switch (char) {
+      case 'n': return '\n';
+      case 't': return '\t';
+      case 'r': return '\r';
+      case '"': return '"';
+      case '\\': return '\\';
+      default: return match;
+    }
+  });
+};
+
+/**
  * Component to render LaTeX content using KaTeX
  * Supports both inline and block math modes
  * Memoized to prevent unnecessary re-renders
@@ -21,7 +40,9 @@ export const LatexRenderer = memo<LatexRendererProps>(({
   const parts = useMemo(() => {
     if (!content) return null;
     try {
-      return parseLatexContent(content);
+      // First, process JSON-like escapes
+      const unescaped = processEscapes(content);
+      return parseLatexContent(unescaped);
     } catch (error) {
       console.error('Error parsing LaTeX:', error);
       return null;
@@ -29,11 +50,12 @@ export const LatexRenderer = memo<LatexRendererProps>(({
   }, [content]);
 
   if (!parts) {
-    return content ? <span className={`${className} latex-error`}>{content}</span> : null;
+    return content ? <span className={`${className} latex-error`} style={{ whiteSpace: 'pre-wrap' }}>{content}</span> : null;
   }
 
+  // Use pre-wrap to preserve newlines resulting from unescaping
   return (
-    <span className={className}>
+    <span className={className} style={{ whiteSpace: 'pre-wrap' }}>
       {parts.map((part, index) => {
         if (part.type === 'latex-block') {
           return <LatexBlock key={index} content={part.content} />;
