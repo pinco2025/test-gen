@@ -540,7 +540,8 @@ function App() {
       const result = await window.electronAPI.test.export(test);
       if (result.success) {
         alert(`Test exported successfully to: ${result.path}`);
-        updateCurrentProject({ currentStep: 'complete' });
+        // Stay on the current screen (Test Review) instead of redirecting to 'complete'
+        // updateCurrentProject({ currentStep: 'complete' });
       } else {
         alert('Failed to export test: ' + result.error);
       }

@@ -173,7 +173,11 @@ ipcMain.handle('test:export', async (_, test: Test) => {
     try {
       // Transform the test data to match sample-test-001.json format
       const exportData = transformTestToExportFormat(test);
-      fs.writeFileSync(result.filePath, JSON.stringify(exportData, null, 2), 'utf-8');
+      // Replace double backslashes with single backslashes to remove "additional" backslashes
+      // Note: This might produce invalid JSON if backslashes were escaping control characters,
+      // but it aligns with the requirement to "export everything as it is".
+      const exportContent = JSON.stringify(exportData, null, 2).replace(/\\\\/g, '\\');
+      fs.writeFileSync(result.filePath, exportContent, 'utf-8');
 
       // Create solutions JSON
       const solutionsData = {
@@ -192,7 +196,8 @@ ipcMain.handle('test:export', async (_, test: Test) => {
 
       const pathObj = path.parse(result.filePath);
       const solutionsPath = path.join(pathObj.dir, `${pathObj.name}_solutions${pathObj.ext}`);
-      fs.writeFileSync(solutionsPath, JSON.stringify(solutionsData, null, 2), 'utf-8');
+      const solutionsContent = JSON.stringify(solutionsData, null, 2).replace(/\\\\/g, '\\');
+      fs.writeFileSync(solutionsPath, solutionsContent, 'utf-8');
 
       return { success: true, path: result.filePath };
     } catch (error: any) {
