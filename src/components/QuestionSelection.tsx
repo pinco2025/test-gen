@@ -687,7 +687,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
             <div style={{
               position: 'absolute',
               top: '90px',
-              right: '20px',
+              right: '40px', /* Increased from 20px to avoid covering the scrollbar */
               zIndex: 100,
               display: 'flex',
               flexDirection: 'column',
