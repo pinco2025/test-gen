@@ -15,6 +15,7 @@ declare global {
       questions: {
         getAll: (filter?: QuestionFilter) => Promise<Question[]>;
         getByUUID: (uuid: string) => Promise<Question | null>;
+        getByUUIDs: (uuids: string[]) => Promise<Question[]>;
         search: (criteria: any) => Promise<Question[]>;
         getCount: (filter?: QuestionFilter) => Promise<number>;
         getByChapterCodes: (type: string, chapterCodes: string[]) => Promise<Question[]>;

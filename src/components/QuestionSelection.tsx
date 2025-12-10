@@ -214,8 +214,8 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
 
   const [availableQuestions, setAvailableQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isRendering, setIsRendering] = useState(false);
   const [searchText, setSearchText] = useState('');
+  const [visibleCount, setVisibleCount] = useState(20);
 
   const [filters, setFilters] = useState<FilterState>({
     chapter: 'all',
@@ -245,8 +245,9 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
   // Refs for list scrolling
   const listContainerRef = useRef<HTMLDivElement>(null);
 
-  // Reset list scroll when filters change
+  // Reset list scroll and visible count when filters change
   useEffect(() => {
+    setVisibleCount(20);
     if (listContainerRef.current) {
       listContainerRef.current.scrollTop = 0;
     }
@@ -270,7 +271,6 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
         );
 
         setAvailableQuestions(questions);
-        setIsRendering(true);
       } catch (error) {
         console.error('Failed to load questions:', error);
         setAvailableQuestions([]);
@@ -280,16 +280,6 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
     };
     loadQuestions();
   }, [sectionName, chapters]);
-
-  useEffect(() => {
-    if (!loading && isRendering) {
-      // Use setTimeout to allow the browser to paint the "Loading" state before the heavy render unblocks
-      const timer = setTimeout(() => {
-          setIsRendering(false);
-      }, 50);
-      return () => clearTimeout(timer);
-    }
-  }, [loading, isRendering]);
 
   // Auto-correct existing selections: move numerical answers from Division 1 to Division 2
   useEffect(() => {
@@ -509,6 +499,19 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
     return result;
   }, [availableQuestions, filters, searchText]);
 
+  const displayedQuestions = useMemo(() => {
+      return filteredQuestions.slice(0, visibleCount);
+  }, [filteredQuestions, visibleCount]);
+
+  const handleScroll = () => {
+      if (listContainerRef.current) {
+          const { scrollTop, scrollHeight, clientHeight } = listContainerRef.current;
+          if (scrollTop + clientHeight >= scrollHeight - 200) {
+              setVisibleCount(prev => Math.min(prev + 20, filteredQuestions.length));
+          }
+      }
+  };
+
   // Memoize isSelectionValid
   const isSelectionValid = useMemo(() => {
     return summary.division1 === 20 && summary.division2 === 5;
@@ -725,16 +728,21 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
             </div>
           )}
 
-          <div className="question-list" ref={listContainerRef} style={{ 
-            overflowY: 'auto', 
-            overflowX: 'hidden',
-            flex: 1, /* Fill remaining space */
-            display: 'block', 
-            position: 'relative',
-            width: '100%',
-            boxSizing: 'border-box'
-          }}>
-            {(loading || isRendering) && (
+          <div
+            className="question-list"
+            ref={listContainerRef}
+            onScroll={handleScroll}
+            style={{
+                overflowY: 'auto',
+                overflowX: 'hidden',
+                flex: 1, /* Fill remaining space */
+                display: 'block',
+                position: 'relative',
+                width: '100%',
+                boxSizing: 'border-box'
+            }}
+          >
+            {loading && (
                  <div className="loading" style={{
                      position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 10
                  }}>Loading questions...</div>
@@ -745,14 +753,13 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
                 No questions available. Please adjust filters or load a database.
               </div>
             ) : (
-              <div style={{ visibility: isRendering ? 'hidden' : 'visible' }}>
+              <div>
                 <div className="questions-info" style={{ marginBottom: '0.5rem' }}>
                   <p style={{ margin: 0 }}>
                     Showing {filteredQuestions.length} questions. Click to select.
                   </p>
                 </div>
-                {/* Render all questions without virtualization */}
-                {filteredQuestions.map((question, index) => {
+                {displayedQuestions.map((question, index) => {
                   const isDivision2Question = isNumericalAnswer(question);
                   const selected = selectedUuids.has(question.uuid);
                   return (
@@ -769,6 +776,11 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
                     />
                   );
                 })}
+                {visibleCount < filteredQuestions.length && (
+                    <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-secondary)' }}>
+                        Loading more...
+                    </div>
+                )}
               </div>
             )}
           </div>
