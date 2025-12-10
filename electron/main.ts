@@ -106,6 +106,10 @@ ipcMain.handle('questions:getByUUID', async (_, uuid: string): Promise<Question 
   return dbService.getQuestionByUUID(uuid);
 });
 
+ipcMain.handle('questions:getByUUIDs', async (_, uuids: string[]): Promise<Question[]> => {
+  return dbService.getQuestionsByUUIDs(uuids);
+});
+
 ipcMain.handle('questions:search', async (_, criteria: any): Promise<Question[]> => {
   return dbService.searchQuestions(criteria);
 });

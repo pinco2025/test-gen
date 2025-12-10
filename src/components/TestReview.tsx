@@ -67,6 +67,32 @@ const TestReview: React.FC<TestReviewProps> = ({
     solutionFormatting: false
   });
 
+  // Store fresh questions from DB
+  const [freshQuestionsMap, setFreshQuestionsMap] = useState<Record<string, Question>>({});
+
+  // Fetch fresh question data on mount
+  useEffect(() => {
+    const fetchFreshData = async () => {
+      if (!window.electronAPI) return;
+
+      const allUuids = sections.flatMap(s => s.selectedQuestions.map(sq => sq.question.uuid));
+      if (allUuids.length === 0) return;
+
+      try {
+        const freshQuestions = await window.electronAPI.questions.getByUUIDs(allUuids);
+        const map: Record<string, Question> = {};
+        freshQuestions.forEach(q => {
+          map[q.uuid] = q;
+        });
+        setFreshQuestionsMap(map);
+      } catch (error) {
+        console.error('Failed to fetch fresh question data:', error);
+      }
+    };
+
+    fetchFreshData();
+  }, [sections]);
+
   // Flatten questions with sorted order
   const allQuestions = useMemo(() => {
     const flat: Array<{ sq: SelectedQuestion; sectionIndex: number; absoluteIndex: number }> = [];
@@ -77,15 +103,18 @@ const TestReview: React.FC<TestReviewProps> = ({
 
       sortedQuestions.forEach((sq) => {
         count++;
+        // Use fresh question data if available
+        const freshQuestion = freshQuestionsMap[sq.question.uuid] || sq.question;
+
         flat.push({
-          sq,
+          sq: { ...sq, question: freshQuestion },
           sectionIndex: sIdx,
           absoluteIndex: count
         });
       });
     });
     return flat;
-  }, [sections]);
+  }, [sections, freshQuestionsMap]);
 
   // Adjust index if out of bounds (e.g. after deletion)
   useEffect(() => {

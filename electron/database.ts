@@ -91,6 +91,23 @@ export class DatabaseService {
   }
 
   /**
+   * Get questions by UUIDs (batch)
+   */
+  getQuestionsByUUIDs(uuids: string[]): Question[] {
+    if (!this.db) throw new Error('Database not connected');
+
+    if (uuids.length === 0) {
+      return [];
+    }
+
+    const placeholders = uuids.map(() => '?').join(',');
+    const query = `SELECT * FROM questions WHERE uuid IN (${placeholders})`;
+
+    const stmt = this.db.prepare(query);
+    return stmt.all(...uuids) as Question[];
+  }
+
+  /**
    * Get questions by chapter codes (using tag_2)
    * Chapter codes are stored in tag_2 field (e.g., PHY01, CHE01, MAT01)
    * NOTE: Queries ONLY by tag_2, ignoring type field

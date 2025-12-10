@@ -19,6 +19,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   questions: {
     getAll: (filter?: QuestionFilter) => ipcRenderer.invoke('questions:getAll', filter),
     getByUUID: (uuid: string) => ipcRenderer.invoke('questions:getByUUID', uuid),
+    getByUUIDs: (uuids: string[]) => ipcRenderer.invoke('questions:getByUUIDs', uuids),
     search: (criteria: any) => ipcRenderer.invoke('questions:search', criteria),
     getCount: (filter?: QuestionFilter) => ipcRenderer.invoke('questions:getCount', filter),
     getByChapterCodes: (type: string, chapterCodes: string[]) => ipcRenderer.invoke('questions:getByChapterCodes', type, chapterCodes),
