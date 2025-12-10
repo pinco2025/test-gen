@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { Question } from '../types';
 import LatexRenderer from './LatexRenderer';
 
@@ -28,8 +28,8 @@ export const QuestionDisplay = memo<QuestionDisplayProps>(({
   questionNumber,
   highlightCorrectAnswer = false
 }) => {
-  // Silence unused variable warning since we keep it for potential future use or external interface compatibility
-  void questionNumber;
+  const [copied, setCopied] = useState(false);
+
   // Get difficulty styling
   const getDifficultyStyle = (diff?: 'E' | 'M' | 'H') => {
     switch (diff) {
@@ -45,6 +45,12 @@ export const QuestionDisplay = memo<QuestionDisplayProps>(({
   };
 
   const difficultyStyle = getDifficultyStyle(question.tag_3 as 'E' | 'M' | 'H');
+
+  const handleCopyUuid = () => {
+    navigator.clipboard.writeText(question.uuid);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   return (
     <div className={`question-card ${isSelected ? 'selected' : ''}`}>
@@ -65,16 +71,53 @@ export const QuestionDisplay = memo<QuestionDisplayProps>(({
         marginBottom: '0.75rem',
         alignItems: 'center'
       }}>
-        {/* Compact ID & Tags */}
-         <span style={{
-            backgroundColor: 'var(--bg-main)',
-            color: 'var(--text-muted)',
-            padding: '0.125rem 0.375rem',
-            borderRadius: 'var(--radius-sm)',
-            fontSize: '0.7rem',
-            fontFamily: 'monospace',
-            border: '1px solid var(--border-color)'
-          }}>{question.uuid.substring(0, 8)}...</span>
+        {/* Q# Display */}
+        {questionNumber !== undefined && (
+          <span style={{
+              backgroundColor: 'var(--bg-card)',
+              color: 'var(--text-primary)',
+              padding: '0.125rem 0.5rem',
+              borderRadius: 'var(--radius-sm)',
+              fontSize: '0.75rem',
+              fontWeight: 'bold',
+              border: '1px solid var(--border-color)',
+          }}>
+              Q{questionNumber}
+          </span>
+        )}
+
+        {/* Clickable UUID */}
+         <span
+            onClick={handleCopyUuid}
+            title="Click to copy UUID"
+            style={{
+                backgroundColor: 'var(--bg-main)',
+                color: 'var(--text-muted)',
+                padding: '0.125rem 0.375rem',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: '0.7rem',
+                fontFamily: 'monospace',
+                border: '1px solid var(--border-color)',
+                cursor: 'pointer',
+                userSelect: 'none',
+                minWidth: '60px',
+                textAlign: 'center'
+            }}
+         >
+            {copied ? 'Copied!' : `${question.uuid.substring(0, 8)}...`}
+         </span>
+
+         {/* Tag 1 */}
+        {question.tag_1 && (
+            <span style={{
+                backgroundColor: 'var(--blue-bg)',
+                color: 'var(--blue)',
+                padding: '0.125rem 0.5rem',
+                borderRadius: 'var(--radius-full)',
+                fontSize: '0.7rem',
+                fontWeight: '600'
+            }}>{question.tag_1}</span>
+        )}
 
         {question.tag_3 && (
             <span style={{
@@ -117,6 +160,18 @@ export const QuestionDisplay = memo<QuestionDisplayProps>(({
               fontSize: '0.7rem',
               fontWeight: '600'
             }}>{question.tag_2}</span>
+        )}
+
+        {/* Tag 4 */}
+        {question.tag_4 && (
+            <span style={{
+                backgroundColor: 'var(--indigo-bg)',
+                color: 'var(--indigo)',
+                padding: '0.125rem 0.5rem',
+                borderRadius: 'var(--radius-full)',
+                fontSize: '0.7rem',
+                fontWeight: '600'
+            }}>{question.tag_4}</span>
         )}
 
         {(question.frequency || 0) > 0 && (
