@@ -10,21 +10,60 @@ interface LatexRendererProps {
 
 /**
  * Helper to unescape JSON-like strings.
- * Handles standard JSON escapes (\n, \t, \", \\) while preserving
- * other backslash sequences (like \alpha) for LaTeX processing.
+ * Generalized JSON parsing to handle standard escapes while preserving
+ * LaTeX backslashes that are not valid JSON escapes.
  */
 const processEscapes = (str: string): string => {
   if (!str) return str;
-  return str.replace(/\\(.)/g, (match, char) => {
-    switch (char) {
-      case 'n': return '\n';
-      case 't': return '\t';
-      case 'r': return '\r';
-      case '"': return '"';
-      case '\\': return '\\';
-      default: return match;
+  let jsonBody = '';
+  for (let i = 0; i < str.length; i++) {
+    const char = str[i];
+    if (char === '"') {
+      // Escape all quotes as they are delimiters in JSON string
+      jsonBody += '\\"';
+    } else if (char === '\\') {
+      const nextChar = str[i + 1];
+      if (nextChar && ['"', '\\', '/', 'b', 'f', 'n', 'r', 't'].includes(nextChar)) {
+        // Valid standard escape. Keep it.
+        jsonBody += '\\' + nextChar;
+        i++;
+      } else if (nextChar === 'u') {
+        const hex = str.substring(i + 2, i + 6);
+        if (/^[0-9a-fA-F]{4}$/.test(hex)) {
+           // Valid unicode escape \uXXXX
+           jsonBody += '\\u' + hex;
+           i += 5;
+        } else {
+           // Invalid unicode escape (e.g. \usepackage), treat backslash as literal
+           jsonBody += '\\\\';
+        }
+      } else {
+        // Not a valid escape (e.g. \alpha), treat backslash as literal
+        jsonBody += '\\\\';
+      }
+    } else if (char === '\n') {
+       // Literal newline -> escaped newline
+       jsonBody += '\\n';
+    } else if (char === '\r') {
+       jsonBody += '\\r';
+    } else if (char === '\t') {
+       jsonBody += '\\t';
+    } else if (char === '\b') {
+       jsonBody += '\\b';
+    } else if (char === '\f') {
+       jsonBody += '\\f';
+    } else {
+      jsonBody += char;
     }
-  });
+  }
+
+  try {
+    return JSON.parse(`"${jsonBody}"`);
+  } catch (error) {
+    console.error('Error in generalized JSON helper:', error);
+    // Fallback to original string if parsing fails, though our construction should be valid
+    return str;
+  }
 };
 
 /**
