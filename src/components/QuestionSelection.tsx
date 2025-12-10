@@ -9,8 +9,8 @@ import {
   SelectionSummary,
   Chapter
 } from '../types';
-import QuestionDisplay from './QuestionDisplay';
 import FilterMenu, { FilterState } from './FilterMenu';
+import QuestionRow from './QuestionRow';
 import chaptersData from '../data/chapters.json';
 
 interface QuestionSelectionProps {
@@ -41,234 +41,6 @@ const isNumericalAnswer = (question: Question): boolean => {
   const answerUpper = question.answer.toUpperCase().trim();
   return !['A', 'B', 'C', 'D'].includes(answerUpper);
 };
-
-// Memoized Question Row component
-interface QuestionRowProps {
-  question: Question;
-  index: number;
-  selected: boolean;
-  isDivision2Question: boolean;
-  summary: SelectionSummary;
-  chapters: Chapter[];
-  onToggle: (
-    question: Question,
-    chapterCode: string,
-    chapterName: string,
-    difficulty: Difficulty,
-    division: 1 | 2
-  ) => void;
-  onEdit: (e: React.MouseEvent, question: Question) => void;
-  onCloneAndEdit: (e: React.MouseEvent, question: Question) => void;
-  highlightCorrectAnswer?: boolean;
-}
-
-const QuestionRow = React.memo<QuestionRowProps>(({
-  question,
-  index,
-  selected,
-  isDivision2Question,
-  summary,
-  chapters,
-  onToggle,
-  onEdit,
-  onCloneAndEdit,
-  highlightCorrectAnswer
-}) => {
-  const [showMenu, setShowMenu] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  // Close menu when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setShowMenu(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, []);
-
-  const handleClick = useCallback(() => {
-    // If Division 2 question and Division 2 is full, prevent selection
-    if (isDivision2Question) {
-      if (summary.division2 >= 5 && !selected) {
-        alert(`This question has numerical answer (${question.answer}) and can only be placed in Division 2 (B), which is already full (5/5).`);
-        return;
-      }
-    } else {
-      // If Division 1 question and Division 1 is full, prevent selection
-      if (summary.division1 >= 20 && !selected) {
-        alert(`Division 1 (A) is already full (20/20). Cannot select more Multiple Choice Questions.`);
-        return;
-      }
-    }
-
-    const chapterCode = question.tag_2 || chapters[0]?.code || '';
-    const chapter = chapters.find(ch => ch.code === chapterCode);
-    const chapterName = chapter ? chapter.name : chapters[0]?.name || '';
-    const difficulty: Difficulty = (question.tag_3 as Difficulty) || 'M';
-    // Strictly assign division based on type: Numerical -> 2, MCQ -> 1
-    const division: 1 | 2 = isDivision2Question ? 2 : 1;
-
-    onToggle(question, chapterCode, chapterName, difficulty, division);
-  }, [question, isDivision2Question, summary.division2, summary.division1, selected, chapters, onToggle]);
-
-  return (
-    <div
-      id={`question-row-${question.uuid}`}
-      className="question-row-container"
-      style={{
-        contentVisibility: 'auto',
-        containIntrinsicSize: '350px',
-        marginBottom: '0.5rem',
-        marginRight: '0.5rem',
-        width: '100%'
-      }}
-    >
-      <div
-        className={`selectable-question ${selected ? 'selected' : ''}`}
-        onClick={handleClick}
-        style={{
-          cursor: 'pointer',
-          border: selected ? '2px solid var(--primary)' : '1px solid var(--border-color)',
-          borderRadius: 'var(--radius-lg)',
-          padding: '1rem',
-          transition: 'border-color 0.15s, background-color 0.15s',
-          backgroundColor: selected ? 'var(--primary-light)' : 'var(--bg-card)'
-        }}
-      >
-        <div className="question-card-header" style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-start',
-          marginBottom: '0.5rem'
-        }}>
-          <div style={{ flex: 1 }}>
-            {isDivision2Question && (
-              <div style={{
-                background: 'var(--amber)',
-                color: 'white',
-                padding: '0.25rem 0.625rem',
-                borderRadius: 'var(--radius)',
-                fontSize: '0.75rem',
-                fontWeight: '600',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.375rem'
-              }}>
-                <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>edit_note</span>
-                NUMERICAL ANSWER ({question.answer}) - Division 2 (B) Only
-              </div>
-            )}
-          </div>
-
-          <div style={{ position: 'relative' }} ref={menuRef}>
-            <button
-              className="question-edit-btn"
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowMenu(!showMenu);
-              }}
-              title="Actions"
-              style={{
-                background: 'var(--bg-main)',
-                border: '1px solid var(--border-color)',
-                borderRadius: 'var(--radius)',
-                padding: '0.375rem 0.5rem',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.25rem',
-                fontSize: '0.75rem',
-                color: 'var(--text-secondary)',
-                transition: 'var(--transition)'
-              }}
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>more_vert</span>
-              Actions
-            </button>
-
-            {showMenu && (
-              <div style={{
-                position: 'absolute',
-                top: '100%',
-                right: 0,
-                backgroundColor: 'white',
-                boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
-                borderRadius: '4px',
-                zIndex: 10,
-                minWidth: '150px',
-                overflow: 'hidden'
-              }}>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowMenu(false);
-                    onEdit(e, question);
-                  }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    width: '100%',
-                    padding: '0.5rem 1rem',
-                    border: 'none',
-                    background: 'none',
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                    fontSize: '0.875rem'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                >
-                  <span className="material-symbols-outlined" style={{ fontSize: '1.125rem' }}>edit</span>
-                  Edit Properties
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowMenu(false);
-                    onCloneAndEdit(e, question);
-                  }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    width: '100%',
-                    padding: '0.5rem 1rem',
-                    border: 'none',
-                    background: 'none',
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                    fontSize: '0.875rem'
-                  }}
-                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
-                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                >
-                  <span className="material-symbols-outlined" style={{ fontSize: '1.125rem' }}>content_copy</span>
-                  Clone & Edit
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-        <QuestionDisplay
-          question={question}
-          showAnswer={highlightCorrectAnswer && !isDivision2Question}
-          showCheckbox={false}
-          isSelected={selected}
-          hideOptions={isDivision2Question}
-          questionNumber={index + 1}
-          highlightCorrectAnswer={highlightCorrectAnswer && !isDivision2Question}
-        />
-      </div>
-    </div>
-  );
-});
-
-QuestionRow.displayName = 'QuestionRow';
 
 export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
   sectionName,
@@ -588,14 +360,26 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
   }, [selectedQuestions]);
 
   // Memoize toggleQuestion to prevent recreation on every render
-  const toggleQuestion = useCallback(async (
-    question: Question,
-    chapterCode: string,
-    chapterName: string,
-    difficulty: Difficulty,
-    division: 1 | 2
-  ) => {
-    if (selectedUuids.has(question.uuid)) {
+  const toggleQuestion = useCallback(async (question: Question) => {
+    const isSelected = selectedUuids.has(question.uuid);
+    const isDiv2 = isNumericalAnswer(question);
+
+    // Check constraints before selecting
+    if (!isSelected) {
+        if (isDiv2) {
+          if (summary.division2 >= 5) {
+            alert(`This question has numerical answer (${question.answer}) and can only be placed in Division 2 (B), which is already full (5/5).`);
+            return;
+          }
+        } else {
+          if (summary.division1 >= 20) {
+            alert(`Division 1 (A) is already full (20/20). Cannot select more Multiple Choice Questions.`);
+            return;
+          }
+        }
+    }
+
+    if (isSelected) {
       // Deselecting - decrement frequency
       try {
         await window.electronAPI.questions.decrementFrequency(question.uuid);
@@ -613,6 +397,12 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
       );
     } else {
       // Selecting - increment frequency
+      const chapterCode = question.tag_2 || chapters[0]?.code || '';
+      const chapter = chapters.find(ch => ch.code === chapterCode);
+      const chapterName = chapter ? chapter.name : chapters[0]?.name || '';
+      const difficulty: Difficulty = (question.tag_3 as Difficulty) || 'M';
+      const division: 1 | 2 = isDiv2 ? 2 : 1;
+
       try {
         await window.electronAPI.questions.incrementFrequency(question.uuid);
         // Update the local question's frequency
@@ -633,7 +423,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
       };
       setSelectedQuestions(prev => [...prev, newSelection]);
     }
-  }, [selectedUuids]);
+  }, [selectedUuids, summary.division1, summary.division2, chapters]);
 
   // Memoize filtered questions - only recompute when filters or data changes
   const filteredQuestions = useMemo(() => {
@@ -948,8 +738,6 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
                       index={index}
                       selected={selected}
                       isDivision2Question={isDivision2Question}
-                      summary={summary}
-                      chapters={chapters}
                       onToggle={toggleQuestion}
                       onEdit={openEditModal}
                       onCloneAndEdit={openCloneAndEditModal}
