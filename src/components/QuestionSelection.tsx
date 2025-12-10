@@ -583,25 +583,12 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
     }
   };
 
-  useEffect(() => {
-    if (shouldScrollToBottom && listContainerRef.current) {
-        listContainerRef.current.scrollTo({ top: listContainerRef.current.scrollHeight, behavior: 'smooth' });
-        setShouldScrollToBottom(false);
-    }
-  }, [displayedQuestions, shouldScrollToBottom]);
-
   const scrollToList = (position: 'top' | 'bottom') => {
     if (listContainerRef.current) {
       if (position === 'top') {
         listContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
       } else {
-        // Load all questions if not already loaded
-        if (visibleCount < filteredQuestions.length) {
-            setVisibleCount(filteredQuestions.length);
-            setShouldScrollToBottom(true);
-        } else {
-            listContainerRef.current.scrollTo({ top: listContainerRef.current.scrollHeight, behavior: 'smooth' });
-        }
+        listContainerRef.current.scrollTo({ top: listContainerRef.current.scrollHeight, behavior: 'smooth' });
       }
     }
   };
