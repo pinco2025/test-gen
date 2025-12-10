@@ -78,7 +78,8 @@
 /* Main Content - Single Question */
 .review-main-single {
   flex: 1;
-  overflow-y: auto;
+  overflow-y: scroll; /* Force scrollbar to prevent layout shift */
+  overflow-x: hidden;
   padding: 2rem;
   display: flex;
   justify-content: center;
