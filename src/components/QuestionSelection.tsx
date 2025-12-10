@@ -640,8 +640,15 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
         </div>
 
         {/* Right Panel - Question List */}
-        <div className="questions-panel" style={{ position: 'relative' }}>
-          <div className="filters" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+        <div className="questions-panel" style={{
+          position: 'relative',
+          display: 'flex',
+          flexDirection: 'column',
+          maxHeight: 'calc(100vh - 220px)', /* Match constraints panel height */
+          height: '100%',
+          overflow: 'hidden'
+        }}>
+          <div className="filters" style={{ position: 'relative', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
              <div style={{ flex: 1, position: 'relative', marginRight: '0.75rem' }}>
                 <span className="material-symbols-outlined" style={{
                     position: 'absolute',
@@ -707,8 +714,8 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
 
           <div className="question-list" ref={listContainerRef} style={{ 
             overflowY: 'auto', 
-            overflowX: 'hidden', 
-            height: '100%', 
+            overflowX: 'hidden',
+            flex: 1, /* Fill remaining space */
             display: 'block', 
             position: 'relative',
             width: '100%',
