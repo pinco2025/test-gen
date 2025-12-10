@@ -174,6 +174,26 @@ ipcMain.handle('test:export', async (_, test: Test) => {
       // Transform the test data to match sample-test-001.json format
       const exportData = transformTestToExportFormat(test);
       fs.writeFileSync(result.filePath, JSON.stringify(exportData, null, 2), 'utf-8');
+
+      // Create solutions JSON
+      const solutionsData = {
+        test_id: exportData.testId,
+        questions: exportData.questions.map((q: any, index: number) => {
+          const solution = dbService.getSolution(q.uuid);
+          return {
+            id: q.id,
+            number: index + 1,
+            solution_text: solution ? solution.solution_text : '',
+            solution_image_url: solution ? solution.solution_image_url : '',
+            tags: q.tags
+          };
+        })
+      };
+
+      const pathObj = path.parse(result.filePath);
+      const solutionsPath = path.join(pathObj.dir, `${pathObj.name}_solutions${pathObj.ext}`);
+      fs.writeFileSync(solutionsPath, JSON.stringify(solutionsData, null, 2), 'utf-8');
+
       return { success: true, path: result.filePath };
     } catch (error: any) {
       return { success: false, error: error.message };
