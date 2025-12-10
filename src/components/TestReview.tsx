@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { SectionConfig, Question, SelectedQuestion } from '../types';
+import { sortQuestionsForSection } from '../utils/sorting';
 import QuestionDisplay from './QuestionDisplay';
 import LatexRenderer from './LatexRenderer';
 import '../styles/TestReview.css';
@@ -67,12 +68,15 @@ const TestReview: React.FC<TestReviewProps> = ({
     solutionFormatting: false
   });
 
-  // Flatten questions
+  // Flatten questions with sorted order
   const allQuestions = useMemo(() => {
     const flat: Array<{ sq: SelectedQuestion; sectionIndex: number; absoluteIndex: number }> = [];
     let count = 0;
     sections.forEach((section, sIdx) => {
-      section.selectedQuestions.forEach((sq) => {
+      // Sort questions: First 20 Div 1, then Last 5 Div 2
+      const sortedQuestions = sortQuestionsForSection(section.selectedQuestions);
+
+      sortedQuestions.forEach((sq) => {
         count++;
         flat.push({
           sq,
