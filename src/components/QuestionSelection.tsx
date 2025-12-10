@@ -120,11 +120,8 @@ const QuestionRow = React.memo<QuestionRowProps>(({
       id={`question-row-${question.uuid}`}
       className="question-row-container"
       style={{
-        contentVisibility: 'auto',
-        containIntrinsicSize: '350px',
-        marginBottom: '0.5rem',
-        marginRight: '0.5rem',
-        width: '100%'
+        width: '100%',
+        marginBottom: '1.5rem',
       }}
     >
       <div
@@ -132,11 +129,12 @@ const QuestionRow = React.memo<QuestionRowProps>(({
         onClick={handleClick}
         style={{
           cursor: 'pointer',
-          border: selected ? '2px solid var(--primary)' : '1px solid var(--border-color)',
-          borderRadius: 'var(--radius-lg)',
-          padding: '1rem',
-          transition: 'border-color 0.15s, background-color 0.15s',
-          backgroundColor: selected ? 'var(--primary-light)' : 'var(--bg-card)'
+          borderLeft: selected ? '4px solid var(--primary)' : '4px solid transparent',
+          borderBottom: '1px solid var(--border-color)',
+          padding: '1.5rem 0',
+          transition: 'all 0.2s ease',
+          backgroundColor: selected ? 'var(--primary-light-opacity)' : 'transparent',
+          paddingLeft: selected ? '1rem' : '0'
         }}
       >
         <div className="question-card-header" style={{
@@ -148,18 +146,19 @@ const QuestionRow = React.memo<QuestionRowProps>(({
           <div style={{ flex: 1 }}>
             {isDivision2Question && (
               <div style={{
-                background: 'var(--amber)',
-                color: 'white',
+                background: 'var(--amber-bg)',
+                color: 'var(--amber)',
                 padding: '0.25rem 0.625rem',
                 borderRadius: 'var(--radius)',
                 fontSize: '0.75rem',
                 fontWeight: '600',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '0.375rem'
+                gap: '0.375rem',
+                marginBottom: '0.5rem'
               }}>
                 <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>edit_note</span>
-                NUMERICAL ANSWER ({question.answer}) - Division 2 (B) Only
+                NUMERICAL ANSWER ({question.answer}) - Division 2
               </div>
             )}
           </div>
@@ -173,21 +172,17 @@ const QuestionRow = React.memo<QuestionRowProps>(({
               }}
               title="Actions"
               style={{
-                background: 'var(--bg-main)',
-                border: '1px solid var(--border-color)',
-                borderRadius: 'var(--radius)',
-                padding: '0.375rem 0.5rem',
+                background: 'transparent',
+                border: 'none',
+                padding: '0.375rem',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.25rem',
-                fontSize: '0.75rem',
                 color: 'var(--text-secondary)',
-                transition: 'var(--transition)'
+                borderRadius: '50%'
               }}
             >
-              <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>more_vert</span>
-              Actions
+              <span className="material-symbols-outlined">more_vert</span>
             </button>
 
             {showMenu && (
@@ -195,11 +190,12 @@ const QuestionRow = React.memo<QuestionRowProps>(({
                 position: 'absolute',
                 top: '100%',
                 right: 0,
-                backgroundColor: 'white',
-                boxShadow: '0 2px 5px rgba(0,0,0,0.2)',
-                borderRadius: '4px',
+                backgroundColor: 'var(--bg-card)',
+                boxShadow: 'var(--shadow-md)',
+                borderRadius: 'var(--radius)',
+                border: '1px solid var(--border-color)',
                 zIndex: 10,
-                minWidth: '150px',
+                minWidth: '180px',
                 overflow: 'hidden'
               }}>
                 <button
@@ -211,16 +207,17 @@ const QuestionRow = React.memo<QuestionRowProps>(({
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '0.5rem',
+                    gap: '0.75rem',
                     width: '100%',
-                    padding: '0.5rem 1rem',
+                    padding: '0.75rem 1rem',
                     border: 'none',
                     background: 'none',
                     textAlign: 'left',
                     cursor: 'pointer',
-                    fontSize: '0.875rem'
+                    fontSize: '0.875rem',
+                    color: 'var(--text-primary)'
                   }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-main)'}
                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                 >
                   <span className="material-symbols-outlined" style={{ fontSize: '1.125rem' }}>edit</span>
@@ -235,16 +232,17 @@ const QuestionRow = React.memo<QuestionRowProps>(({
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '0.5rem',
+                    gap: '0.75rem',
                     width: '100%',
-                    padding: '0.5rem 1rem',
+                    padding: '0.75rem 1rem',
                     border: 'none',
                     background: 'none',
                     textAlign: 'left',
                     cursor: 'pointer',
-                    fontSize: '0.875rem'
+                    fontSize: '0.875rem',
+                    color: 'var(--text-primary)'
                   }}
-                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
+                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-main)'}
                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                 >
                   <span className="material-symbols-outlined" style={{ fontSize: '1.125rem' }}>content_copy</span>
@@ -254,6 +252,8 @@ const QuestionRow = React.memo<QuestionRowProps>(({
             )}
           </div>
         </div>
+
+        {/* Simplified Question Display Rendering */}
         <QuestionDisplay
           question={question}
           showAnswer={highlightCorrectAnswer && !isDivision2Question}
@@ -314,14 +314,9 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
   // Open clone and edit modal
   const openCloneAndEditModal = (e: React.MouseEvent, question: Question) => {
     e.stopPropagation();
-
-    // Generate new UUID here or let backend handle it?
-    // User wants to edit "Everything".
-    // We start with the existing question data.
-
     setEditModal({
       isOpen: true,
-      question: question, // Keep original as reference or just for display? Using it as reference.
+      question: question,
       mode: 'clone',
       difficulty: (question.tag_3 as Difficulty) || 'M',
       chapterCode: question.tag_2 || '',
@@ -469,16 +464,6 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
     };
   }, [availableQuestions]);
 
-  // Refs for list scrolling
-  const listContainerRef = useRef<HTMLDivElement>(null);
-
-  // Reset list scroll when filters change
-  useEffect(() => {
-    if (listContainerRef.current) {
-      listContainerRef.current.scrollTop = 0;
-    }
-  }, [filters, searchText]);
-
   // Load questions based on selected chapters
   useEffect(() => {
     const loadQuestions = async () => {
@@ -524,7 +509,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
     }
   }, [selectedQuestions]);
 
-  // Memoize summary calculation - only recompute when selectedQuestions or alphaConstraint changes
+  // Memoize summary calculation
   const summary = useMemo((): SelectionSummary => {
     const byChapter: SelectionSummary['byChapter'] = {};
     let totalE = 0, totalM = 0, totalH = 0;
@@ -545,7 +530,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
       requiredH += ch.h;
     });
 
-    // Count current selections - single pass
+    // Count current selections
     selectedQuestions.forEach(sq => {
       if (byChapter[sq.chapterCode]) {
         if (sq.division === 1) {
@@ -556,7 +541,6 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
           div2Count++;
         }
       } else {
-        // Question not in any tracked chapter
         if (sq.division === 1) div1Count++;
         else div2Count++;
       }
@@ -587,7 +571,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
     return new Set(selectedQuestions.map(sq => sq.question.uuid));
   }, [selectedQuestions]);
 
-  // Memoize toggleQuestion to prevent recreation on every render
+  // Memoize toggleQuestion
   const toggleQuestion = useCallback(async (
     question: Question,
     chapterCode: string,
@@ -596,10 +580,8 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
     division: 1 | 2
   ) => {
     if (selectedUuids.has(question.uuid)) {
-      // Deselecting - decrement frequency
       try {
         await window.electronAPI.questions.decrementFrequency(question.uuid);
-        // Update the local question's frequency
         setAvailableQuestions(prev => prev.map(q =>
           q.uuid === question.uuid
             ? { ...q, frequency: Math.max((q.frequency || 0) - 1, 0) }
@@ -612,10 +594,8 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
         prev.filter(sq => sq.question.uuid !== question.uuid)
       );
     } else {
-      // Selecting - increment frequency
       try {
         await window.electronAPI.questions.incrementFrequency(question.uuid);
-        // Update the local question's frequency
         setAvailableQuestions(prev => prev.map(q =>
           q.uuid === question.uuid
             ? { ...q, frequency: (q.frequency || 0) + 1 }
@@ -635,7 +615,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
     }
   }, [selectedUuids]);
 
-  // Memoize filtered questions - only recompute when filters or data changes
+  // Memoize filtered questions
   const filteredQuestions = useMemo(() => {
     const searchLower = searchText.toLowerCase();
 
@@ -644,44 +624,36 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
       if (filters.chapter !== 'all' && q.tag_2 !== filters.chapter) {
         return false;
       }
-
       // Filter by difficulty
       if (filters.difficulty !== 'all' && q.tag_3 !== filters.difficulty) {
         return false;
       }
-
-      // Filter by division type (numerical vs multiple choice)
+      // Filter by division type
       if (filters.division !== 'all') {
         const isDiv2Type = isNumericalAnswer(q);
         if (filters.division === '1' && isDiv2Type) return false;
         if (filters.division === '2' && !isDiv2Type) return false;
       }
-
       // Filter by Type
       if (filters.type !== 'all' && q.type !== filters.type) {
         return false;
       }
-
       // Filter by Year
       if (filters.year !== 'all' && q.year !== filters.year) {
         return false;
       }
-
-      // Filter by Tag 1 (Partial Match)
+      // Filter by Tag 1
       if (filters.tag1 && (!q.tag_1 || !q.tag_1.toLowerCase().includes(filters.tag1.toLowerCase()))) {
         return false;
       }
-
-      // Filter by Tag 4 (Partial Match)
+      // Filter by Tag 4
       if (filters.tag4 && (!q.tag_4 || !q.tag_4.toLowerCase().includes(filters.tag4.toLowerCase()))) {
         return false;
       }
-
       // Filter by search text
       if (searchText && !q.question.toLowerCase().includes(searchLower)) {
         return false;
       }
-
       return true;
     });
 
@@ -711,278 +683,183 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
     return summary.division1 === 20 && summary.division2 === 5;
   }, [summary.division1, summary.division2]);
 
-  // Navigation handlers
-  const scrollToSelected = (direction: 'next' | 'prev') => {
-    // Determine current scroll position to find "current" question in view
-    // For simplicity, we can maintain an index state, but since the user scrolls freely,
-    // we should find the first selected question after/before the current visible area or just cycle through them.
-
-    // Let's implement a simple cycle based on the filtered list order.
-    // We need to find the indices of selected questions within the filtered list.
-    const selectedIndices = filteredQuestions
-      .map((q, index) => selectedUuids.has(q.uuid) ? index : -1)
-      .filter(index => index !== -1);
-
-    if (selectedIndices.length === 0) return;
-
-    // Find the first selected index that is visible or below the scroll top?
-    // A simpler approach: maintain a "current focused selected question" index.
-    // Or just find the next selected question relative to the current scroll position.
-
-    // Let's use the scroll position of listContainerRef
-    if (!listContainerRef.current) return;
-
-    const container = listContainerRef.current;
-    const scrollTop = container.scrollTop;
-    // const containerHeight = container.clientHeight;
-
-    // Estimate current index based on scroll position (assuming fixed height helps, but heights are variable)
-    // We can use the element offsets.
-
-    let targetIndex = -1;
-
-    // Find next selected
-    if (direction === 'next') {
-        // Find the first selected question whose element is below the top of the container
-        for (const idx of selectedIndices) {
-            const el = document.getElementById(`question-row-${filteredQuestions[idx].uuid}`);
-            if (el && el.offsetTop > scrollTop + 10) { // +10 buffer
-                targetIndex = idx;
-                break;
-            }
-        }
-        // If none found below, wrap around to first
-        if (targetIndex === -1) targetIndex = selectedIndices[0];
-    } else {
-        // Find the last selected question whose element is above or at the top
-         for (let i = selectedIndices.length - 1; i >= 0; i--) {
-            const idx = selectedIndices[i];
-            const el = document.getElementById(`question-row-${filteredQuestions[idx].uuid}`);
-            if (el && el.offsetTop < scrollTop - 10) {
-                targetIndex = idx;
-                break;
-            }
-        }
-        // If none found above, wrap around to last
-        if (targetIndex === -1) targetIndex = selectedIndices[selectedIndices.length - 1];
-    }
-
-    if (targetIndex !== -1) {
-         const el = document.getElementById(`question-row-${filteredQuestions[targetIndex].uuid}`);
-         if (el) {
-             el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-         }
-    }
-  };
-
 
   return (
-    <div className="question-selection">
-      <div className="selection-header">
-        <h2>
-          <span className="material-symbols-outlined" style={{ marginRight: '0.5rem', verticalAlign: 'middle' }}>
-            {sectionName === 'Physics' ? 'science' : sectionName === 'Chemistry' ? 'biotech' : 'calculate'}
-          </span>
-          {sectionName} - Question Selection
-        </h2>
-        <div className="selection-progress">
-          <span className={summary.division1 === 20 ? 'valid' : 'invalid'}>
-            Division 1: {summary.division1}/20
-          </span>
-          <span className={summary.division2 === 5 ? 'valid' : 'invalid'}>
-            Division 2: {summary.division2}/5
-          </span>
-          <span>Total: {summary.total}/25</span>
+    <div className="question-selection" style={{ padding: '0 2rem 2rem 2rem', maxWidth: '1600px', margin: '0 auto' }}>
+
+      {/* Header */}
+      <div style={{
+          backgroundColor: 'var(--bg-main)',
+          padding: '1rem 0',
+          borderBottom: '1px solid var(--border-color)',
+          marginBottom: '2rem'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 700 }}>{sectionName}</h2>
+                <span className="material-symbols-outlined" style={{ color: 'var(--text-secondary)' }}>chevron_right</span>
+                <span style={{ color: 'var(--text-secondary)' }}>Select Questions</span>
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                 <div className="selection-progress" style={{ marginRight: '1rem' }}>
+                    <span className={summary.division1 === 20 ? 'valid' : 'invalid'}>
+                        Div 1: {summary.division1}/20
+                    </span>
+                    <span className={summary.division2 === 5 ? 'valid' : 'invalid'}>
+                        Div 2: {summary.division2}/5
+                    </span>
+                 </div>
+
+                <button className="btn-secondary" onClick={onBack}>
+                    Back
+                </button>
+                <button
+                    className="btn-primary"
+                    onClick={() => onComplete(selectedQuestions)}
+                    disabled={!isSelectionValid}
+                >
+                    Continue <span className="material-symbols-outlined">arrow_forward</span>
+                </button>
+            </div>
         </div>
       </div>
 
       <div className="selection-layout">
-        {/* Left Panel - Constraints Summary */}
-        <div className="constraints-panel">
-          <h3>
-            <span className="material-symbols-outlined" style={{ marginRight: '0.375rem', fontSize: '1.125rem' }}>tune</span>
-            Alpha Constraints
-          </h3>
+          {/* Left Panel: Constraints (Sticky) */}
+          <div className="constraints-panel">
+               <h3>
+                <span className="material-symbols-outlined" style={{ marginRight: '0.375rem', fontSize: '1.125rem' }}>tune</span>
+                Constraints
+              </h3>
 
-          <div className="constraint-section">
-            <h4>By Chapter</h4>
-            <table className="summary-table">
-              <thead>
-                <tr>
-                  <th>Chapter</th>
-                  <th>A</th>
-                  <th>B</th>
-                </tr>
-              </thead>
-              <tbody>
-                {Object.entries(summary.byChapter).map(([chapterCode, counts]) => (
-                  <tr key={chapterCode}>
-                    <td>
-                      <span className="chapter-code-small">{chapterCode}</span>
-                      {counts.chapterName}
-                    </td>
-                    <td className={counts.a === counts.required_a ? 'valid' : 'invalid'}>
-                      {counts.a}/{counts.required_a}
-                    </td>
-                    <td className={counts.b === counts.required_b ? 'valid' : 'invalid'}>
-                      {counts.b}/{counts.required_b}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+              <div className="constraint-section">
+                <h4>By Chapter</h4>
+                <table className="summary-table">
+                  <thead>
+                    <tr>
+                      <th>Chapter</th>
+                      <th>A</th>
+                      <th>B</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(summary.byChapter).map(([chapterCode, counts]) => (
+                      <tr key={chapterCode}>
+                        <td>
+                          <span className="chapter-code-small">{chapterCode}</span>
+                          {counts.chapterName}
+                        </td>
+                        <td className={counts.a === counts.required_a ? 'valid' : 'invalid'}>
+                          {counts.a}/{counts.required_a}
+                        </td>
+                        <td className={counts.b === counts.required_b ? 'valid' : 'invalid'}>
+                          {counts.b}/{counts.required_b}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="constraint-section">
+                <h4>By Difficulty</h4>
+                <div className="difficulty-summary">
+                  <div className={summary.byDifficulty.easy === summary.byDifficulty.required_e ? 'valid' : ''}>
+                    Easy: {summary.byDifficulty.easy}/{summary.byDifficulty.required_e}
+                  </div>
+                  <div className={summary.byDifficulty.medium === summary.byDifficulty.required_m ? 'valid' : ''}>
+                    Medium: {summary.byDifficulty.medium}/{summary.byDifficulty.required_m}
+                  </div>
+                  <div className={summary.byDifficulty.hard === summary.byDifficulty.required_h ? 'valid' : ''}>
+                    Hard: {summary.byDifficulty.hard}/{summary.byDifficulty.required_h}
+                  </div>
+                </div>
+              </div>
           </div>
 
-          <div className="constraint-section">
-            <h4>By Difficulty</h4>
-            <div className="difficulty-summary">
-              <div className={summary.byDifficulty.easy === summary.byDifficulty.required_e ? 'valid' : ''}>
-                Easy: {summary.byDifficulty.easy}/{summary.byDifficulty.required_e}
-              </div>
-              <div className={summary.byDifficulty.medium === summary.byDifficulty.required_m ? 'valid' : ''}>
-                Medium: {summary.byDifficulty.medium}/{summary.byDifficulty.required_m}
-              </div>
-              <div className={summary.byDifficulty.hard === summary.byDifficulty.required_h ? 'valid' : ''}>
-                Hard: {summary.byDifficulty.hard}/{summary.byDifficulty.required_h}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Right Panel - Question List */}
-        <div className="questions-panel">
-          <div className="filters" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-             <div style={{ flex: 1, position: 'relative', marginRight: '0.75rem' }}>
-                <span className="material-symbols-outlined" style={{
-                    position: 'absolute',
-                    left: '12px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    color: 'var(--text-secondary)',
-                    fontSize: '1.25rem'
-                }}>search</span>
-                <input
-                type="text"
-                placeholder="Search questions..."
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                className="search-input"
-                style={{
-                    paddingLeft: '2.5rem',
-                    width: '100%'
-                }}
+          {/* Right Panel: Questions */}
+          <div className="questions-panel">
+            {/* Filters */}
+            <div className="filters">
+                 <div style={{ flex: 1, position: 'relative', minWidth: '250px' }}>
+                    <span className="material-symbols-outlined" style={{
+                        position: 'absolute',
+                        left: '12px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        color: 'var(--text-secondary)',
+                        fontSize: '1.25rem'
+                    }}>search</span>
+                    <input
+                    type="text"
+                    placeholder="Search questions..."
+                    value={searchText}
+                    onChange={(e) => setSearchText(e.target.value)}
+                    className="search-input"
+                    style={{
+                        paddingLeft: '2.5rem',
+                        width: '100%',
+                        backgroundColor: 'var(--bg-card)'
+                    }}
+                    />
+                </div>
+                <FilterMenu
+                    chapters={chapters}
+                    availableTypes={availableTypes}
+                    availableYears={availableYears}
+                    currentFilters={filters}
+                    onFilterChange={(newFilters) => {
+                        setFilters(prev => ({ ...prev, ...newFilters }));
+                    }}
                 />
             </div>
 
-            <FilterMenu
-                chapters={chapters}
-                availableTypes={availableTypes}
-                availableYears={availableYears}
-                currentFilters={filters}
-                onFilterChange={(newFilters) => {
-                    setFilters(prev => ({ ...prev, ...newFilters }));
-                }}
-            />
-          </div>
+            <div style={{ marginBottom: '1rem', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>
+                Showing <strong>{filteredQuestions.length}</strong> questions
+            </div>
 
-          <div className="question-list" ref={listContainerRef} style={{ 
-            overflowY: 'auto', 
-            overflowX: 'hidden', 
-            height: '100%', 
-            display: 'block', 
-            position: 'relative',
-            width: '100%',
-            boxSizing: 'border-box'
-          }}>
-            {/* Floating Navigation Buttons */}
-            {selectedQuestions.length > 0 && (
-                <div style={{
-                    position: 'absolute',
-                    top: '10px',
-                    right: '20px',
-                    zIndex: 100,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '5px'
-                }}>
-                    <button
-                        onClick={() => scrollToSelected('prev')}
-                        className="btn-primary"
-                        style={{ padding: '0.25rem', minWidth: 'auto', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                        title="Previous Selected"
-                    >
-                        <span className="material-symbols-outlined">arrow_upward</span>
-                    </button>
-                    <button
-                        onClick={() => scrollToSelected('next')}
-                        className="btn-primary"
-                        style={{ padding: '0.25rem', minWidth: 'auto', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                         title="Next Selected"
-                    >
-                        <span className="material-symbols-outlined">arrow_downward</span>
-                    </button>
+             {/* Question List */}
+             {loading ? (
+                <div className="loading" style={{ padding: '4rem 0' }}>
+                    <div style={{ marginBottom: '1rem' }}>Loading questions...</div>
                 </div>
-            )}
-
-            {loading ? (
-              <div className="loading">Loading questions...</div>
             ) : filteredQuestions.length === 0 ? (
-              <div className="no-questions">
-                No questions available. Please adjust filters or load a database.
-              </div>
-            ) : (
-              <>
-                <div className="questions-info" style={{ marginBottom: '0.5rem' }}>
-                  <p style={{ margin: 0 }}>
-                    Showing {filteredQuestions.length} questions. Click to select.
-                  </p>
+                <div className="no-questions" style={{ padding: '4rem 0', background: 'var(--bg-card)', borderRadius: 'var(--radius-lg)', border: '1px dashed var(--border-color)' }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: '3rem', color: 'var(--text-secondary)', marginBottom: '1rem', display: 'block' }}>search_off</span>
+                    No questions match your filters.
                 </div>
-                {/* Render all questions without virtualization */}
-                {filteredQuestions.map((question, index) => {
-                  const isDivision2Question = isNumericalAnswer(question);
-                  const selected = selectedUuids.has(question.uuid);
-                  return (
-                    <QuestionRow
-                      key={question.uuid}
-                      question={question}
-                      index={index}
-                      selected={selected}
-                      isDivision2Question={isDivision2Question}
-                      summary={summary}
-                      chapters={chapters}
-                      onToggle={toggleQuestion}
-                      onEdit={openEditModal}
-                      onCloneAndEdit={openCloneAndEditModal}
-                      highlightCorrectAnswer={true}
-                    />
-                  );
-                })}
-              </>
+            ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+                    {filteredQuestions.map((question, index) => {
+                      const isDivision2Question = isNumericalAnswer(question);
+                      const selected = selectedUuids.has(question.uuid);
+                      return (
+                        <QuestionRow
+                          key={question.uuid}
+                          question={question}
+                          index={index}
+                          selected={selected}
+                          isDivision2Question={isDivision2Question}
+                          summary={summary}
+                          chapters={chapters}
+                          onToggle={toggleQuestion}
+                          onEdit={openEditModal}
+                          onCloneAndEdit={openCloneAndEditModal}
+                          highlightCorrectAnswer={true}
+                        />
+                      );
+                    })}
+                </div>
             )}
           </div>
-        </div>
-      </div>
-
-      <div className="selection-actions">
-        <button className="btn-secondary" onClick={onBack}>
-          <span className="material-symbols-outlined">arrow_back</span>
-          Back to Configuration
-        </button>
-        <button
-          className="btn-primary"
-          onClick={() => onComplete(selectedQuestions)}
-          disabled={!isSelectionValid}
-        >
-          {isSelectionValid
-            ? <>Continue to Next Section <span className="material-symbols-outlined">arrow_forward</span></>
-            : `Need ${20 - summary.division1} more for Div1, ${5 - summary.division2} more for Div2`}
-        </button>
       </div>
 
       {/* Edit Question Modal */}
       {editModal.isOpen && editModal.question && (
         <div className="edit-modal-overlay" onClick={closeEditModal}>
           <div className="edit-modal" onClick={(e) => e.stopPropagation()}>
+            {/* Modal Header */}
             <div className="edit-modal-header">
               <h3>
                 <span className="material-symbols-outlined" style={{ marginRight: '0.5rem' }}>
@@ -995,6 +872,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
               </button>
             </div>
 
+            {/* Modal Body */}
             <div className="edit-modal-body">
               {editModal.mode === 'edit' ? (
                   // Simple Edit (Tag/Difficulty)
@@ -1066,28 +944,25 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
                         style={{width: '100%', minHeight: '100px', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)'}}
                       />
                     </div>
-
-                    <div className="form-group" style={{marginBottom: '1rem'}}>
+                    {/* ... (Kept fields) ... */}
+                     <div className="form-group" style={{marginBottom: '1rem'}}>
                         <label style={{display: 'block', fontWeight: 600, marginBottom: '0.5rem'}}>Question Image URL</label>
-                        <div style={{display: 'flex', gap: '0.5rem'}}>
-                            <input
+                         <input
                                 type="text"
                                 value={editModal.fullEditForm.question_image_url || ''}
                                 onChange={(e) => handleFullEditChange('question_image_url', e.target.value)}
-                                style={{flex: 1, padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)'}}
-                            />
-                            {editModal.fullEditForm.question_image_url && (
+                                style={{width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)'}}
+                        />
+                         {editModal.fullEditForm.question_image_url && (
                                 <button
                                     onClick={() => window.open(editModal.fullEditForm.question_image_url || '', '_blank')}
                                     className="btn-secondary"
-                                    style={{padding: '0.5rem'}}
+                                    style={{marginTop: '0.5rem', padding: '0.5rem'}}
                                 >
-                                    View
+                                    View Image
                                 </button>
                             )}
-                        </div>
                     </div>
-
                     <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem'}}>
                         <div className="form-group">
                             <label style={{display: 'block', fontWeight: 600, marginBottom: '0.5rem'}}>Difficulty</label>
@@ -1101,7 +976,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
                                 <option value="H">Hard</option>
                             </select>
                         </div>
-                        <div className="form-group">
+                         <div className="form-group">
                             <label style={{display: 'block', fontWeight: 600, marginBottom: '0.5rem'}}>Chapter</label>
                             <select
                                 value={editModal.fullEditForm.tag_2 || ''}
@@ -1114,7 +989,6 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
                             </select>
                         </div>
                     </div>
-
                     <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem'}}>
                         <div className="form-group">
                             <label style={{display: 'block', fontWeight: 600, marginBottom: '0.5rem'}}>Type</label>
@@ -1172,7 +1046,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
                                 style={{width: '100%', marginTop: '0.5rem', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)'}}
                         />
                     </div>
-                    <div className="form-group" style={{marginBottom: '1rem'}}>
+                     <div className="form-group" style={{marginBottom: '1rem'}}>
                         <label style={{display: 'block', fontWeight: 600, marginBottom: '0.5rem'}}>Option B</label>
                         <textarea
                             value={editModal.fullEditForm.option_b || ''}
@@ -1187,14 +1061,14 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
                                 style={{width: '100%', marginTop: '0.5rem', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)'}}
                         />
                     </div>
-                    <div className="form-group" style={{marginBottom: '1rem'}}>
+                     <div className="form-group" style={{marginBottom: '1rem'}}>
                         <label style={{display: 'block', fontWeight: 600, marginBottom: '0.5rem'}}>Option C</label>
                         <textarea
                             value={editModal.fullEditForm.option_c || ''}
                             onChange={(e) => handleFullEditChange('option_c', e.target.value)}
                             style={{width: '100%', minHeight: '60px', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)'}}
                         />
-                        <input
+                         <input
                                 type="text"
                                 placeholder="Image URL for Option C"
                                 value={editModal.fullEditForm.option_c_image_url || ''}
@@ -1202,7 +1076,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
                                 style={{width: '100%', marginTop: '0.5rem', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)'}}
                         />
                     </div>
-                    <div className="form-group" style={{marginBottom: '1rem'}}>
+                     <div className="form-group" style={{marginBottom: '1rem'}}>
                         <label style={{display: 'block', fontWeight: 600, marginBottom: '0.5rem'}}>Option D</label>
                         <textarea
                             value={editModal.fullEditForm.option_d || ''}
@@ -1218,7 +1092,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
                         />
                     </div>
 
-                    <div className="form-group" style={{marginBottom: '1rem'}}>
+                     <div className="form-group" style={{marginBottom: '1rem'}}>
                         <label style={{display: 'block', fontWeight: 600, marginBottom: '0.5rem'}}>Correct Answer</label>
                         <input
                             type="text"
