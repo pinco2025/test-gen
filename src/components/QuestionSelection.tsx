@@ -581,6 +581,15 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
     }
   };
 
+  const scrollToList = (position: 'top' | 'bottom') => {
+    if (listContainerRef.current) {
+      if (position === 'top') {
+        listContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+      } else {
+        listContainerRef.current.scrollTo({ top: listContainerRef.current.scrollHeight, behavior: 'smooth' });
+      }
+    }
+  };
 
   return (
     <div className="question-selection">
@@ -699,34 +708,54 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
           </div>
 
           {/* Floating Navigation Buttons - Fixed relative to panel */}
-          {selectedQuestions.length > 0 && (
-            <div style={{
-              position: 'absolute',
-              top: '90px',
-              right: '40px', /* Increased from 20px to avoid covering the scrollbar */
-              zIndex: 100,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '5px'
-            }}>
-              <button
-                onClick={() => scrollToSelected('prev')}
-                className="btn-primary"
-                style={{ padding: '0.25rem', minWidth: 'auto', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                title="Previous Selected"
-              >
-                <span className="material-symbols-outlined">arrow_upward</span>
-              </button>
-              <button
-                onClick={() => scrollToSelected('next')}
-                className="btn-primary"
-                style={{ padding: '0.25rem', minWidth: 'auto', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                title="Next Selected"
-              >
-                <span className="material-symbols-outlined">arrow_downward</span>
-              </button>
-            </div>
-          )}
+          <div style={{
+            position: 'absolute',
+            top: '90px',
+            right: '40px', /* Increased from 20px to avoid covering the scrollbar */
+            zIndex: 100,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '5px'
+          }}>
+            <button
+              onClick={() => scrollToList('top')}
+              className="btn-primary"
+              style={{ padding: '0.25rem', minWidth: 'auto', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              title="Scroll to Top"
+            >
+              <span className="material-symbols-outlined">vertical_align_top</span>
+            </button>
+
+            {selectedQuestions.length > 0 && (
+              <>
+                <button
+                  onClick={() => scrollToSelected('prev')}
+                  className="btn-primary"
+                  style={{ padding: '0.25rem', minWidth: 'auto', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  title="Previous Selected"
+                >
+                  <span className="material-symbols-outlined">arrow_upward</span>
+                </button>
+                <button
+                  onClick={() => scrollToSelected('next')}
+                  className="btn-primary"
+                  style={{ padding: '0.25rem', minWidth: 'auto', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  title="Next Selected"
+                >
+                  <span className="material-symbols-outlined">arrow_downward</span>
+                </button>
+              </>
+            )}
+
+            <button
+              onClick={() => scrollToList('bottom')}
+              className="btn-primary"
+              style={{ padding: '0.25rem', minWidth: 'auto', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+              title="Scroll to Bottom"
+            >
+              <span className="material-symbols-outlined">vertical_align_bottom</span>
+            </button>
+          </div>
 
           <div
             className="question-list"
