@@ -685,6 +685,27 @@ const TestReview: React.FC<TestReviewProps> = ({
                           Please confirm you have verified the following items. If an item does not exist (e.g., no figure), mark it as checked.
                       </p>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                          <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', fontWeight: 'bold' }}>
+                              <input
+                                  type="checkbox"
+                                  checked={Object.values(checklist).every(Boolean)}
+                                  onChange={(e) => {
+                                      const checked = e.target.checked;
+                                      setChecklist({
+                                          questionContent: checked,
+                                          optionContent: checked,
+                                          questionFormatting: checked,
+                                          optionFormatting: checked,
+                                          figureFormatting: checked,
+                                          solutionExistence: checked,
+                                          solutionFormatting: checked
+                                      });
+                                  }}
+                              />
+                              <span>Select All</span>
+                          </label>
+                          <hr style={{ border: 'none', borderTop: '1px solid var(--border-color)', margin: '0 0 0.5rem' }} />
+
                           <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
                               <input
                                   type="checkbox"
