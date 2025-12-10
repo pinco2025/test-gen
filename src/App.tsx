@@ -539,9 +539,9 @@ function App() {
     if (window.electronAPI) {
       const result = await window.electronAPI.test.export(test);
       if (result.success) {
-        alert(`Test exported successfully to: ${result.path}`);
+        // alert(`Test exported successfully to: ${result.path}`);
         // Stay on the current screen (Test Review) instead of redirecting to 'complete'
-        // updateCurrentProject({ currentStep: 'complete' });
+        updateCurrentProject({ currentStep: 'complete' });
       } else {
         alert('Failed to export test: ' + result.error);
       }
@@ -738,13 +738,22 @@ function App() {
             </div>
             <h2>Test Generated Successfully!</h2>
             <p>Your test has been exported as a JSON file.</p>
-            <button
-              className="btn-primary"
-              onClick={createNewProject}
-            >
-              <span className="material-symbols-outlined">add</span>
-              Create Another Test
-            </button>
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button
+                className="btn-secondary"
+                onClick={() => updateCurrentProject({ currentStep: 'test-review' })}
+              >
+                <span className="material-symbols-outlined">arrow_back</span>
+                Back to Review
+              </button>
+              <button
+                className="btn-primary"
+                onClick={createNewProject}
+              >
+                <span className="material-symbols-outlined">add</span>
+                Create Another Test
+              </button>
+            </div>
           </div>
         );
 

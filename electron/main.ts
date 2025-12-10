@@ -242,13 +242,12 @@ function transformTestToExportFormat(test: Test) {
         id: `q${questionIndex}`,
         uuid: q.uuid,
         text: q.question,
-        image: q.question_image_url ? 1 : 0,
-        imageUrl: q.question_image_url || null,
+        image: q.question_image_url || null,
         options: [
-          { id: 'a', text: q.option_a || '', imageUrl: q.option_a_image_url || null },
-          { id: 'b', text: q.option_b || '', imageUrl: q.option_b_image_url || null },
-          { id: 'c', text: q.option_c || '', imageUrl: q.option_c_image_url || null },
-          { id: 'd', text: q.option_d || '', imageUrl: q.option_d_image_url || null }
+          { id: 'a', text: q.option_a || '', image: q.option_a_image_url || null },
+          { id: 'b', text: q.option_b || '', image: q.option_b_image_url || null },
+          { id: 'c', text: q.option_c || '', image: q.option_c_image_url || null },
+          { id: 'd', text: q.option_d || '', image: q.option_d_image_url || null }
         ],
         correctAnswer: q.answer.toLowerCase(),
         marks: marksPerQuestion,
@@ -276,8 +275,7 @@ function transformTestToExportFormat(test: Test) {
         id: `q${questionIndex}`,
         uuid: q.uuid,
         text: q.question,
-        image: q.question_image_url ? 1 : 0,
-        imageUrl: q.question_image_url || null,
+        image: q.question_image_url || null,
         options: [], // Division 2 questions are numerical, no options
         correctAnswer: q.answer,
         marks: marksPerQuestion,
