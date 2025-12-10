@@ -41,27 +41,39 @@ const TestNavigation: React.FC<TestNavigationProps> = ({ currentStep, sections, 
       <div className="test-navigation">
         <button
           className={getButtonClass(currentStep === 'question-select-physics')}
-          onClick={() => onNavigate('question-select-physics', 0)}
-          disabled={!isPhysicsConstraintSet}
-          title={!isPhysicsConstraintSet ? "Constraints must be set first" : ""}
+          onClick={() => {
+            if (isPhysicsConstraintSet) {
+              onNavigate('question-select-physics', 0);
+            } else {
+              onNavigate('section-config-physics', 0);
+            }
+          }}
         >
           <span className="nav-label">Physics</span>
           <span className="nav-badge">{physicsQuestions}</span>
         </button>
         <button
           className={getButtonClass(currentStep === 'question-select-chemistry')}
-          onClick={() => onNavigate('question-select-chemistry', 1)}
-          disabled={!isChemistryConstraintSet}
-          title={!isChemistryConstraintSet ? "Constraints must be set first" : ""}
+          onClick={() => {
+            if (isChemistryConstraintSet) {
+              onNavigate('question-select-chemistry', 1);
+            } else {
+              onNavigate('section-config-chemistry', 1);
+            }
+          }}
         >
           <span className="nav-label">Chemistry</span>
           <span className="nav-badge">{chemistryQuestions}</span>
         </button>
         <button
           className={getButtonClass(currentStep === 'question-select-math')}
-          onClick={() => onNavigate('question-select-math', 2)}
-          disabled={!isMathConstraintSet}
-          title={!isMathConstraintSet ? "Constraints must be set first" : ""}
+          onClick={() => {
+            if (isMathConstraintSet) {
+              onNavigate('question-select-math', 2);
+            } else {
+              onNavigate('section-config-math', 2);
+            }
+          }}
         >
           <span className="nav-label">Maths</span>
           <span className="nav-badge">{mathQuestions}</span>
