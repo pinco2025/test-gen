@@ -850,7 +850,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
         </div>
 
         {/* Right Panel - Question List */}
-        <div className="questions-panel">
+        <div className="questions-panel" style={{ position: 'relative' }}>
           <div className="filters" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
              <div style={{ flex: 1, position: 'relative', marginRight: '0.75rem' }}>
                 <span className="material-symbols-outlined" style={{
@@ -885,6 +885,36 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
             />
           </div>
 
+          {/* Floating Navigation Buttons - Fixed relative to panel */}
+          {selectedQuestions.length > 0 && (
+            <div style={{
+              position: 'absolute',
+              top: '90px',
+              right: '20px',
+              zIndex: 100,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '5px'
+            }}>
+              <button
+                onClick={() => scrollToSelected('prev')}
+                className="btn-primary"
+                style={{ padding: '0.25rem', minWidth: 'auto', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                title="Previous Selected"
+              >
+                <span className="material-symbols-outlined">arrow_upward</span>
+              </button>
+              <button
+                onClick={() => scrollToSelected('next')}
+                className="btn-primary"
+                style={{ padding: '0.25rem', minWidth: 'auto', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                title="Next Selected"
+              >
+                <span className="material-symbols-outlined">arrow_downward</span>
+              </button>
+            </div>
+          )}
+
           <div className="question-list" ref={listContainerRef} style={{ 
             overflowY: 'auto', 
             overflowX: 'hidden', 
@@ -894,36 +924,6 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
             width: '100%',
             boxSizing: 'border-box'
           }}>
-            {/* Floating Navigation Buttons */}
-            {selectedQuestions.length > 0 && (
-                <div style={{
-                    position: 'absolute',
-                    top: '10px',
-                    right: '20px',
-                    zIndex: 100,
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '5px'
-                }}>
-                    <button
-                        onClick={() => scrollToSelected('prev')}
-                        className="btn-primary"
-                        style={{ padding: '0.25rem', minWidth: 'auto', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                        title="Previous Selected"
-                    >
-                        <span className="material-symbols-outlined">arrow_upward</span>
-                    </button>
-                    <button
-                        onClick={() => scrollToSelected('next')}
-                        className="btn-primary"
-                        style={{ padding: '0.25rem', minWidth: 'auto', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                         title="Next Selected"
-                    >
-                        <span className="material-symbols-outlined">arrow_downward</span>
-                    </button>
-                </div>
-            )}
-
             {loading ? (
               <div className="loading">Loading questions...</div>
             ) : filteredQuestions.length === 0 ? (
