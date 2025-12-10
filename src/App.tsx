@@ -13,6 +13,7 @@ import {
   ProjectInfo,
   WorkflowStep
 } from './types';
+import { sortQuestionsForSection } from './utils/sorting';
 import TestCreationForm from './components/TestCreationForm';
 import SectionConfiguration from './components/SectionConfiguration';
 import QuestionSelection from './components/QuestionSelection';
@@ -525,9 +526,15 @@ function App() {
   const handleExportTest = async () => {
     if (!testMetadata) return;
 
+    // Create a copy of sections with sorted questions
+    const sortedSections = sections.map(section => ({
+      ...section,
+      selectedQuestions: sortQuestionsForSection(section.selectedQuestions)
+    }));
+
     const test: Test = {
       metadata: testMetadata,
-      sections
+      sections: sortedSections
     };
 
     if (window.electronAPI) {
