@@ -419,7 +419,8 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
         chapterCode,
         chapterName,
         difficulty,
-        division
+        division,
+        status: 'pending'
       };
       setSelectedQuestions(prev => [...prev, newSelection]);
     }

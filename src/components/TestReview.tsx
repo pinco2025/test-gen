@@ -11,19 +11,18 @@ interface TestReviewProps {
   onBack: () => void;
   onExport: () => void;
   onRemoveQuestion: (questionUuid: string) => void;
+  onUpdateQuestionStatus: (questionUuid: string, status: 'accepted' | 'review' | 'pending') => void;
 }
-
-type QuestionStatus = 'accepted' | 'review' | 'pending';
 
 const TestReview: React.FC<TestReviewProps> = ({
   sections,
   onEditQuestion,
   onBack,
   onExport,
-  onRemoveQuestion
+  onRemoveQuestion,
+  onUpdateQuestionStatus
 }) => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  const [questionStatuses, setQuestionStatuses] = useState<{ [key: string]: QuestionStatus }>({});
   // Palette is always visible, no toggling state needed for sidebar
 
   // Edit state
@@ -135,10 +134,7 @@ const TestReview: React.FC<TestReviewProps> = ({
 
   const confirmAccept = () => {
       if (!currentQuestion) return;
-      setQuestionStatuses(prev => ({
-          ...prev,
-          [currentQuestion.uuid]: 'accepted'
-      }));
+      onUpdateQuestionStatus(currentQuestion.uuid, 'accepted');
       setIsAcceptModalOpen(false);
       // Auto-advance
       handleNext();
@@ -146,10 +142,7 @@ const TestReview: React.FC<TestReviewProps> = ({
 
   const handleMarkReview = () => {
     if (!currentQuestion) return;
-    setQuestionStatuses(prev => ({
-      ...prev,
-      [currentQuestion.uuid]: 'review'
-    }));
+    onUpdateQuestionStatus(currentQuestion.uuid, 'review');
     handleNext();
   };
 
@@ -163,8 +156,8 @@ const TestReview: React.FC<TestReviewProps> = ({
   // Export Check
   const canExport = useMemo(() => {
     if (allQuestions.length === 0) return false;
-    return allQuestions.every(item => questionStatuses[item.sq.question.uuid] === 'accepted');
-  }, [allQuestions, questionStatuses]);
+    return allQuestions.every(item => item.sq.status === 'accepted');
+  }, [allQuestions]);
 
   // Edit Handlers
   const handleEditClick = () => {
@@ -356,7 +349,7 @@ const TestReview: React.FC<TestReviewProps> = ({
                     <h4>{section.name}</h4>
                     <div className="palette-grid">
                       {sectionQuestions.map((item) => {
-                        const status = questionStatuses[item.sq.question.uuid] || 'pending';
+                        const status = item.sq.status || 'pending';
                         const isActive = currentQuestionIndex === allQuestions.findIndex(q => q.sq.question.uuid === item.sq.question.uuid);
                         return (
                           <button
@@ -425,13 +418,13 @@ const TestReview: React.FC<TestReviewProps> = ({
                <span className="material-symbols-outlined">close</span> Reject
             </button>
             <button
-              className={`btn-review ${questionStatuses[currentQuestion?.uuid || ''] === 'review' ? 'active' : ''}`}
+              className={`btn-review ${currentItem?.sq.status === 'review' ? 'active' : ''}`}
               onClick={handleMarkReview}
             >
                <span className="material-symbols-outlined">flag</span> Mark for Review
             </button>
             <button
-              className={`btn-accept ${questionStatuses[currentQuestion?.uuid || ''] === 'accepted' ? 'active' : ''}`}
+              className={`btn-accept ${currentItem?.sq.status === 'accepted' ? 'active' : ''}`}
               onClick={handleAcceptClick}
             >
                <span className="material-symbols-outlined">check</span> Accept
