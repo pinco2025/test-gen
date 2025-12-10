@@ -228,6 +228,8 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
     sort: 'default'
   });
 
+  const [shouldScrollToBottom, setShouldScrollToBottom] = useState(false);
+
   // Extract unique Types and Years for filters
   const { availableTypes, availableYears } = useMemo(() => {
     const types = new Set<string>();
@@ -792,17 +794,18 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
                   const isDivision2Question = isNumericalAnswer(question);
                   const selected = selectedUuids.has(question.uuid);
                   return (
-                    <QuestionRow
-                      key={question.uuid}
-                      question={question}
-                      index={index}
-                      selected={selected}
-                      isDivision2Question={isDivision2Question}
-                      onToggle={toggleQuestion}
-                      onEdit={openEditModal}
-                      onCloneAndEdit={openCloneAndEditModal}
-                      highlightCorrectAnswer={true}
-                    />
+                    <div key={question.uuid} style={{ contentVisibility: 'auto', containIntrinsicSize: '300px' }}>
+                        <QuestionRow
+                        question={question}
+                        index={index}
+                        selected={selected}
+                        isDivision2Question={isDivision2Question}
+                        onToggle={toggleQuestion}
+                        onEdit={openEditModal}
+                        onCloneAndEdit={openCloneAndEditModal}
+                        highlightCorrectAnswer={true}
+                        />
+                    </div>
                   );
                 })}
                 {visibleCount < filteredQuestions.length && (
