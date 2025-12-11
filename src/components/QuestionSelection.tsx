@@ -651,10 +651,6 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
     setZoomLevel(prev => Math.max(prev - 0.1, 0.5));
   };
 
-  const handleZoomReset = () => {
-    setZoomLevel(1);
-  };
-
   const itemData = useMemo(() => ({
       questions: filteredQuestions,
       selectedUuids,
@@ -805,7 +801,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
               </div>
             ) : (
                 !loading && (
-                    <AutoSizer onResize={({ width }) => {
+                    <AutoSizer onResize={() => {
                         // Clear cached sizes when container width changes (e.g. window resize)
                         if (listRef.current) {
                             sizeMap.current = {};
