@@ -1062,8 +1062,8 @@
 
 .selection-layout {
   display: grid;
-  grid-template-columns: 280px 1fr;
-  gap: 1.25rem;
+  grid-template-columns: 220px 1fr;
+  gap: 1rem;
 }
 
 /* ========================================
@@ -1071,7 +1071,7 @@
    ======================================== */
 .constraints-panel {
   background: var(--bg-card);
-  padding: 1.5rem;
+  padding: 1rem;
   border-radius: var(--radius-xl);
   border: 1px solid var(--border-color);
   height: fit-content;
@@ -1166,7 +1166,7 @@
    ======================================== */
 .questions-panel {
   background: var(--bg-card);
-  padding: 1.5rem;
+  padding: 1rem;
   border-radius: var(--radius-xl);
   border: 1px solid var(--border-color);
   box-shadow: var(--shadow-sm);
