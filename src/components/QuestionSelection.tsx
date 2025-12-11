@@ -60,10 +60,23 @@ const Row = ({ index, style, data }: ListChildComponentProps<ItemData>) => {
   const rowRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (rowRef.current) {
-      setSize(index, rowRef.current.getBoundingClientRect().height);
-    }
-  }, [setSize, index, question.uuid, question, zoomLevel]); // Remeasure if content changes
+    const element = rowRef.current;
+    if (!element) return;
+
+    // Initial measurement
+    setSize(index, element.getBoundingClientRect().height);
+
+    // Observer for changes
+    const observer = new ResizeObserver(() => {
+      setSize(index, element.getBoundingClientRect().height);
+    });
+
+    observer.observe(element);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [setSize, index]);
 
   const isDivision2Question = isNumericalAnswer(question);
   const selected = selectedUuids.has(question.uuid);
@@ -879,7 +892,13 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
               </div>
             ) : (
                 !loading && (
-                    <AutoSizer>
+                    <AutoSizer onResize={({ width }) => {
+                        // Clear cached sizes when container width changes (e.g. window resize)
+                        if (listRef.current) {
+                            sizeMap.current = {};
+                            listRef.current.resetAfterIndex(0);
+                        }
+                    }}>
                         {({ height, width }) => (
                             <List
                                 ref={listRef}
