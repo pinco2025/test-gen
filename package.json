@@ -64,7 +64,7 @@
       "dist-electron/**/*"
     ],
     "directories": {
-      "buildResources": "assets",
+      "buildResources": "build",
       "output": "release"
     },
     "mac": {
@@ -74,7 +74,6 @@
       ]
     },
     "win": {
-      "icon": "assets/icons/logo.ico",
       "target": [
         {
           "target": "portable",
