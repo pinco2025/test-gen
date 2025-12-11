@@ -1009,7 +1009,7 @@
    Question Selection
    ======================================== */
 .question-selection {
-  max-width: 1600px;
+  max-width: 100%;
   margin: 0 auto;
 }
 
@@ -1062,7 +1062,7 @@
 
 .selection-layout {
   display: grid;
-  grid-template-columns: 300px 1fr;
+  grid-template-columns: 280px 1fr;
   gap: 1.25rem;
 }
 
