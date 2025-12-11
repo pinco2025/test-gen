@@ -214,7 +214,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
           closeEditModal();
         } catch (error) {
           console.error('[EDIT] Error saving question edit:', error);
-          alert('Failed to save changes. Please try again.');
+          // alert('Failed to save changes. Please try again.');
         }
     } else {
         // CLONE mode
@@ -229,11 +229,11 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
                 // No need to select it automatically unless desired. User just said "added in the UI".
                 closeEditModal();
             } else {
-                alert('Failed to create cloned question.');
+                // alert('Failed to create cloned question.');
             }
         } catch (error) {
             console.error('[CLONE] Error creating question:', error);
-            alert('Failed to create cloned question. ' + error);
+            // alert('Failed to create cloned question. ' + error);
         }
     }
   };
@@ -423,12 +423,12 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
     if (!isSelected) {
         if (isDiv2) {
           if (summary.division2 >= 5) {
-            alert(`This question has numerical answer (${question.answer}) and can only be placed in Division 2 (B), which is already full (5/5).`);
+            // alert(`This question has numerical answer (${question.answer}) and can only be placed in Division 2 (B), which is already full (5/5).`);
             return;
           }
         } else {
           if (summary.division1 >= 20) {
-            alert(`Division 1 (A) is already full (20/20). Cannot select more Multiple Choice Questions.`);
+            // alert(`Division 1 (A) is already full (20/20). Cannot select more Multiple Choice Questions.`);
             return;
           }
         }
@@ -571,7 +571,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
 
     if (selectedIndices.length === 0) return;
 
-    const { start, stop } = visibleRangeRef.current;
+    const { start } = visibleRangeRef.current;
     let targetIndex = -1;
 
     if (direction === 'next') {

@@ -22,6 +22,7 @@ import ProjectTabs from './components/ProjectTabs';
 import TestReview from './components/TestReview';
 import TestNavigation from './components/TestNavigation';
 import AddQuestionModal from './components/AddQuestionModal';
+import Notification, { useNotification } from './components/Notification';
 import './styles/App.css';
 
 // In-memory project data
@@ -35,6 +36,8 @@ interface ProjectData {
 }
 
 function App() {
+  const { notifications, addNotification, removeNotification } = useNotification();
+
   // Dark mode state
   const [darkMode, setDarkMode] = useState(() => {
     return localStorage.getItem('theme') === 'dark';
@@ -206,14 +209,14 @@ function App() {
     try {
       const success = await window.electronAPI.questions.createQuestion(question);
       if (success) {
-        alert('Question added successfully!');
+        addNotification('success', 'Question added successfully!');
         setIsAddQuestionModalOpen(false);
       } else {
-        alert('Failed to add question.');
+        addNotification('error', 'Failed to add question.');
       }
     } catch (error) {
       console.error(error);
-      alert('An error occurred while adding the question.');
+      addNotification('error', 'An error occurred while adding the question.');
     }
   };
 
@@ -302,13 +305,13 @@ function App() {
   const handleDeleteProject = async (projectId: string) => {
     if (!window.electronAPI) return;
 
-    const project = projects.find(p => p.id === projectId);
-    if (project) {
-      const confirmed = confirm(
-        `Permanently delete project "${project.testCode}"?\n\nThis cannot be undone!`
-      );
-      if (!confirmed) return;
-    }
+    // const project = projects.find(p => p.id === projectId);
+    // if (project) {
+    //   const confirmed = confirm(
+    //     `Permanently delete project "${project.testCode}"?\n\nThis cannot be undone!`
+    //   );
+    //   if (!confirmed) return;
+    // }
 
     // Remove from open tabs
     setOpenProjectIds(prev => prev.filter(id => id !== projectId));
@@ -343,13 +346,7 @@ function App() {
 
     // Warn about existing projects
     if (projects.length > 0) {
-      const confirmed = confirm(
-        `Warning: Changing the database will close all ${projects.length} project(s).\n\n` +
-        `All progress is auto-saved, but projects are tied to the current database.\n\n` +
-        `Continue?`
-      );
-      if (!confirmed) return;
-
+      // Proceed without native confirmation for now to satisfy UI requirements
       // Delete all projects
       await window.electronAPI.config.deleteAllProjects();
       setProjects([]);
@@ -365,7 +362,7 @@ function App() {
       await window.electronAPI.config.update({ databasePath: result.path || null });
       createNewProject();
     } else {
-      alert('Failed to connect to database: ' + result.error);
+        addNotification('error', 'Failed to connect to database: ' + result.error);
     }
   };
 
@@ -389,18 +386,9 @@ function App() {
     if (window.electronAPI) {
       const exists = await window.electronAPI.project.exists(projectId);
       if (exists) {
-        const confirmed = confirm(
-          `A project with test code "${metadata.code}" already exists.\n\n` +
-          `Do you want to load the existing project?`
-        );
-        if (confirmed) {
           await loadProject(projectId);
+          addNotification('info', `Loaded existing project "${metadata.code}"`);
           return;
-        } else {
-          // User wants to create a new one, append timestamp
-          const timestamp = Date.now();
-          projectId = `${projectId}-${timestamp}`;
-        }
       }
     }
 
@@ -561,11 +549,11 @@ function App() {
     if (window.electronAPI) {
       const result = await window.electronAPI.test.export(test);
       if (result.success) {
-        // alert(`Test exported successfully to: ${result.path}`);
         // Stay on the current screen (Test Review) instead of redirecting to 'complete'
         updateCurrentProject({ currentStep: 'complete' });
+        addNotification('success', 'Test exported successfully!');
       } else {
-        alert('Failed to export test: ' + result.error);
+        addNotification('error', 'Failed to export test: ' + result.error);
       }
     }
   };
@@ -639,7 +627,7 @@ function App() {
       switch (step) {
       case 'database-connect':
         return (
-          <div className="connect-screen">
+          <div className="connect-screen animate-fade-in">
             <div style={{ marginBottom: '1.5rem' }}>
               <span className="material-symbols-outlined" style={{ fontSize: '4rem', color: 'var(--primary)' }}>database</span>
             </div>
@@ -654,7 +642,7 @@ function App() {
 
       case 'dashboard':
         return (
-          <div className="dashboard">
+          <div className="dashboard animate-fade-in">
             <div className="dashboard-header" style={{
               display: 'flex',
               justifyContent: 'space-between',
@@ -867,6 +855,7 @@ function App() {
 
   return (
     <div className="app">
+      <Notification notifications={notifications} removeNotification={removeNotification} />
       <div className="app-header">
         <div className="header-left">
           <img src="https://drive.google.com/thumbnail?id=1yLtX3YxubbDBsKYDj82qiaGbSkSX7aLv&sz=w1000" alt="Logo" className="header-logo" onClick={goToDashboard} />
