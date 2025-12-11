@@ -217,11 +217,11 @@ const TestReview: React.FC<TestReviewProps> = ({
         onEditQuestion(updatedQuestion);
         setEditingQuestion(null);
       } else {
-        alert('Failed to update question in database');
+        // alert('Failed to update question in database');
       }
     } catch (error) {
       console.error('Error updating question:', error);
-      alert('An error occurred while updating the question');
+      // alert('An error occurred while updating the question');
     }
   };
 
@@ -275,11 +275,11 @@ const TestReview: React.FC<TestReviewProps> = ({
             onEditQuestion(updatedQuestion);
             setIsImageModalOpen(false);
         } else {
-            alert('Failed to update image URLs');
+            // alert('Failed to update image URLs');
         }
       } catch (error) {
           console.error('Error updating images:', error);
-          alert('An error occurred while updating images');
+          // alert('An error occurred while updating images');
       }
   };
 
@@ -303,7 +303,7 @@ const TestReview: React.FC<TestReviewProps> = ({
           setIsSolutionModalOpen(true);
       } catch (error) {
           console.error('Error fetching solution:', error);
-          alert('Failed to fetch solution');
+          // alert('Failed to fetch solution');
       }
   };
 
@@ -320,11 +320,11 @@ const TestReview: React.FC<TestReviewProps> = ({
           if (success) {
               setIsSolutionModalOpen(false);
           } else {
-              alert('Failed to save solution');
+              // alert('Failed to save solution');
           }
       } catch (error) {
           console.error('Error saving solution:', error);
-          alert('An error occurred while saving solution');
+          // alert('An error occurred while saving solution');
       }
   };
 
@@ -469,16 +469,16 @@ const TestReview: React.FC<TestReviewProps> = ({
 
       {/* Edit Modal */}
       {editingQuestion && (
-        <div className="modal-overlay">
-          <div className="edit-modal">
-            <div className="modal-header">
+        <div className="modal-overlay animate-fade-in">
+          <div className="edit-modal animate-fade-in">
+            <div className="edit-modal-header">
               <h3>Edit Question</h3>
-              <button className="icon-btn" onClick={() => setEditingQuestion(null)}>
+              <button className="edit-modal-close" onClick={() => setEditingQuestion(null)}>
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
 
-            <div className="modal-content">
+            <div className="edit-modal-body">
               <div className="form-group">
                 <label>Question Text</label>
                 <textarea
@@ -545,7 +545,7 @@ const TestReview: React.FC<TestReviewProps> = ({
               </div>
             </div>
 
-            <div className="modal-footer">
+            <div className="edit-modal-footer">
               <button className="btn-secondary" onClick={() => setEditingQuestion(null)}>Cancel</button>
               <button className="btn-primary" onClick={handleSaveEdit}>Save Changes</button>
             </div>
@@ -555,15 +555,15 @@ const TestReview: React.FC<TestReviewProps> = ({
 
       {/* Image Management Modal */}
       {isImageModalOpen && (
-          <div className="modal-overlay">
-              <div className="edit-modal" style={{maxWidth: '800px', width: '90%'}}>
-                  <div className="modal-header">
+          <div className="modal-overlay animate-fade-in">
+              <div className="edit-modal animate-fade-in" style={{maxWidth: '800px', width: '90%'}}>
+                  <div className="edit-modal-header">
                       <h3>Image Management</h3>
-                      <button className="icon-btn" onClick={() => setIsImageModalOpen(false)}>
+                      <button className="edit-modal-close" onClick={() => setIsImageModalOpen(false)}>
                         <span className="material-symbols-outlined">close</span>
                       </button>
                   </div>
-                  <div className="modal-content" style={{display: 'flex', flexDirection: 'column', gap: '1.5rem'}}>
+                  <div className="edit-modal-body" style={{display: 'flex', flexDirection: 'column', gap: '1.5rem'}}>
                       <div className="image-inputs">
                           <h4>Image URLs</h4>
                           <div className="form-group">
@@ -691,7 +691,7 @@ const TestReview: React.FC<TestReviewProps> = ({
                           </div>
                       </div>
                   </div>
-                  <div className="modal-footer">
+                  <div className="edit-modal-footer">
                       <button className="btn-secondary" onClick={() => setIsImageModalOpen(false)}>Cancel</button>
                       <button className="btn-primary" onClick={handleImageSave}>Save Images</button>
                   </div>
@@ -701,15 +701,15 @@ const TestReview: React.FC<TestReviewProps> = ({
 
       {/* Acceptance Checklist Modal */}
       {isAcceptModalOpen && (
-          <div className="modal-overlay">
-              <div className="edit-modal" style={{ maxWidth: '500px', width: '90%' }}>
-                  <div className="modal-header">
+          <div className="modal-overlay animate-fade-in">
+              <div className="edit-modal animate-fade-in" style={{ maxWidth: '500px', width: '90%' }}>
+                  <div className="edit-modal-header">
                       <h3>Review Verification</h3>
-                      <button className="icon-btn" onClick={() => setIsAcceptModalOpen(false)}>
+                      <button className="edit-modal-close" onClick={() => setIsAcceptModalOpen(false)}>
                           <span className="material-symbols-outlined">close</span>
                       </button>
                   </div>
-                  <div className="modal-content">
+                  <div className="edit-modal-body">
                       <p style={{ marginBottom: '1rem', color: 'var(--text-secondary)' }}>
                           Please confirm you have verified the following items. If an item does not exist (e.g., no figure), mark it as checked.
                       </p>
@@ -793,7 +793,7 @@ const TestReview: React.FC<TestReviewProps> = ({
                           </label>
                       </div>
                   </div>
-                  <div className="modal-footer">
+                  <div className="edit-modal-footer">
                       <button className="btn-secondary" onClick={() => setIsAcceptModalOpen(false)}>Cancel</button>
                       <button
                           className="btn-primary"
@@ -810,15 +810,15 @@ const TestReview: React.FC<TestReviewProps> = ({
 
       {/* Solution Modal */}
       {isSolutionModalOpen && (
-          <div className="modal-overlay">
-              <div className="edit-modal" style={{maxWidth: '800px', width: '90%'}}>
-                  <div className="modal-header">
+          <div className="modal-overlay animate-fade-in">
+              <div className="edit-modal animate-fade-in" style={{maxWidth: '800px', width: '90%'}}>
+                  <div className="edit-modal-header">
                       <h3>Add Solution</h3>
-                      <button className="icon-btn" onClick={() => setIsSolutionModalOpen(false)}>
+                      <button className="edit-modal-close" onClick={() => setIsSolutionModalOpen(false)}>
                         <span className="material-symbols-outlined">close</span>
                       </button>
                   </div>
-                  <div className="modal-content" style={{display: 'flex', flexDirection: 'column', gap: '1.5rem'}}>
+                  <div className="edit-modal-body" style={{display: 'flex', flexDirection: 'column', gap: '1.5rem'}}>
                       <div className="form-group">
                           <label>Solution Text</label>
                           <textarea
@@ -863,7 +863,7 @@ const TestReview: React.FC<TestReviewProps> = ({
                           </div>
                       </div>
                   </div>
-                  <div className="modal-footer">
+                  <div className="edit-modal-footer">
                       <button className="btn-secondary" onClick={() => setIsSolutionModalOpen(false)}>Cancel</button>
                       <button className="btn-primary" onClick={handleSolutionSave}>Save Solution</button>
                   </div>
