@@ -45,6 +45,7 @@ interface ItemData {
   onEdit: (e: React.MouseEvent, question: Question) => void;
   onCloneAndEdit: (e: React.MouseEvent, question: Question) => void;
   setSize: (index: number, size: number) => void;
+  zoomLevel: number;
 }
 
 // Helper function to check if a question should go to Division 2 (B)
@@ -54,15 +55,28 @@ const isNumericalAnswer = (question: Question): boolean => {
 };
 
 const Row = ({ index, style, data }: ListChildComponentProps<ItemData>) => {
-  const { questions, selectedUuids, onToggle, onEdit, onCloneAndEdit, setSize } = data;
+  const { questions, selectedUuids, onToggle, onEdit, onCloneAndEdit, setSize, zoomLevel } = data;
   const question = questions[index];
   const rowRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (rowRef.current) {
-      setSize(index, rowRef.current.getBoundingClientRect().height);
-    }
-  }, [setSize, index, question.uuid, question]); // Remeasure if content changes
+    const element = rowRef.current;
+    if (!element) return;
+
+    // Initial measurement
+    setSize(index, element.getBoundingClientRect().height);
+
+    // Observer for changes
+    const observer = new ResizeObserver(() => {
+      setSize(index, element.getBoundingClientRect().height);
+    });
+
+    observer.observe(element);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [setSize, index]);
 
   const isDivision2Question = isNumericalAnswer(question);
   const selected = selectedUuids.has(question.uuid);
@@ -79,6 +93,7 @@ const Row = ({ index, style, data }: ListChildComponentProps<ItemData>) => {
           onEdit={onEdit}
           onCloneAndEdit={onCloneAndEdit}
           highlightCorrectAnswer={true}
+          zoomLevel={zoomLevel}
         />
       </div>
     </div>
@@ -95,6 +110,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
   onChange
 }) => {
   const [selectedQuestions, setSelectedQuestions] = useState<SelectedQuestion[]>(initialSelectedQuestions);
+  const [zoomLevel, setZoomLevel] = useState(1);
 
   // Edit modal state
   const [editModal, setEditModal] = useState<EditModalState>({
@@ -305,6 +321,14 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
       listRef.current.scrollTo(0);
     }
   }, [filters, searchText]);
+
+  // Reset size map when zoom changes
+  useEffect(() => {
+    sizeMap.current = {};
+    if (listRef.current) {
+      listRef.current.resetAfterIndex(0);
+    }
+  }, [zoomLevel]);
 
   // Load questions based on selected chapters
   useEffect(() => {
@@ -618,14 +642,28 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
     }
   };
 
+  // Zoom handlers
+  const handleZoomIn = () => {
+    setZoomLevel(prev => Math.min(prev + 0.1, 1.5));
+  };
+
+  const handleZoomOut = () => {
+    setZoomLevel(prev => Math.max(prev - 0.1, 0.5));
+  };
+
+  const handleZoomReset = () => {
+    setZoomLevel(1);
+  };
+
   const itemData = useMemo(() => ({
       questions: filteredQuestions,
       selectedUuids,
       onToggle: toggleQuestion,
       onEdit: openEditModal,
       onCloneAndEdit: openCloneAndEditModal,
-      setSize
-  }), [filteredQuestions, selectedUuids, toggleQuestion, setSize]);
+      setSize,
+      zoomLevel
+  }), [filteredQuestions, selectedUuids, toggleQuestion, setSize, zoomLevel]);
 
   return (
     <div className="question-selection">
@@ -753,6 +791,45 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
             flexDirection: 'column',
             gap: '5px'
           }}>
+            {/* Zoom Controls */}
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '5px',
+              marginBottom: '10px',
+              backgroundColor: 'var(--bg-card)',
+              borderRadius: '20px',
+              padding: '4px',
+              boxShadow: 'var(--shadow-sm)'
+            }}>
+                <button
+                onClick={handleZoomIn}
+                className="btn-primary"
+                style={{ padding: '0.25rem', minWidth: 'auto', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                title="Zoom In"
+                disabled={zoomLevel >= 1.5}
+                >
+                <span className="material-symbols-outlined">add</span>
+                </button>
+                <button
+                onClick={handleZoomReset}
+                className="btn-secondary"
+                style={{ padding: '0.25rem', minWidth: 'auto', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 'bold' }}
+                title="Reset Zoom"
+                >
+                {Math.round(zoomLevel * 100)}%
+                </button>
+                <button
+                onClick={handleZoomOut}
+                className="btn-primary"
+                style={{ padding: '0.25rem', minWidth: 'auto', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                title="Zoom Out"
+                disabled={zoomLevel <= 0.5}
+                >
+                <span className="material-symbols-outlined">remove</span>
+                </button>
+            </div>
+
             <button
               onClick={() => scrollToList('top')}
               className="btn-primary"
@@ -815,7 +892,13 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
               </div>
             ) : (
                 !loading && (
-                    <AutoSizer>
+                    <AutoSizer onResize={({ width }) => {
+                        // Clear cached sizes when container width changes (e.g. window resize)
+                        if (listRef.current) {
+                            sizeMap.current = {};
+                            listRef.current.resetAfterIndex(0);
+                        }
+                    }}>
                         {({ height, width }) => (
                             <List
                                 ref={listRef}
