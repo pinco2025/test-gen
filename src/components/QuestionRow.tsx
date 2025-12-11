@@ -11,6 +11,7 @@ interface QuestionRowProps {
   onEdit: (e: React.MouseEvent, question: Question) => void;
   onCloneAndEdit: (e: React.MouseEvent, question: Question) => void;
   highlightCorrectAnswer?: boolean;
+  zoomLevel?: number;
 }
 
 const QuestionRow: React.FC<QuestionRowProps> = React.memo(({
@@ -21,7 +22,8 @@ const QuestionRow: React.FC<QuestionRowProps> = React.memo(({
   onToggle,
   onEdit,
   onCloneAndEdit,
-  highlightCorrectAnswer
+  highlightCorrectAnswer,
+  zoomLevel = 1
 }) => {
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -50,8 +52,9 @@ const QuestionRow: React.FC<QuestionRowProps> = React.memo(({
       style={{
         marginBottom: '0.5rem',
         marginRight: '0.5rem',
-        width: '100%'
-        /* Removed contentVisibility to fix scrolling expansion issues */
+        width: '100%',
+        // @ts-ignore - zoom is a non-standard property but works in Electron/Chrome
+        zoom: zoomLevel
       }}
     >
       <div
