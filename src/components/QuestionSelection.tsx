@@ -748,6 +748,41 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
           overflow: 'hidden'
         }}>
 
+          {/* Filters moved to top */}
+          <div className="filters" style={{ position: 'relative', display: 'flex', alignItems: 'center', flexShrink: 0, marginBottom: '1rem' }}>
+             <div style={{ flex: 1, position: 'relative', marginRight: '0.75rem' }}>
+                <span className="material-symbols-outlined" style={{
+                    position: 'absolute',
+                    left: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    color: 'var(--text-secondary)',
+                    fontSize: '1.25rem'
+                }}>search</span>
+                <input
+                type="text"
+                placeholder="Search questions..."
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                className="search-input"
+                style={{
+                    paddingLeft: '2.5rem',
+                    width: '100%'
+                }}
+                />
+            </div>
+
+            <FilterMenu
+                chapters={chapters}
+                availableTypes={availableTypes}
+                availableYears={availableYears}
+                currentFilters={filters}
+                onFilterChange={(newFilters) => {
+                    setFilters(prev => ({ ...prev, ...newFilters }));
+                }}
+            />
+          </div>
+
           <div
             className="question-list"
             style={{
@@ -795,46 +830,11 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
             )}
           </div>
 
-          {/* Moved filters to bottom */}
-          <div className="filters" style={{ position: 'relative', display: 'flex', alignItems: 'center', flexShrink: 0, marginTop: '1rem' }}>
-             <div style={{ flex: 1, position: 'relative', marginRight: '0.75rem' }}>
-                <span className="material-symbols-outlined" style={{
-                    position: 'absolute',
-                    left: '12px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    color: 'var(--text-secondary)',
-                    fontSize: '1.25rem'
-                }}>search</span>
-                <input
-                type="text"
-                placeholder="Search questions..."
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                className="search-input"
-                style={{
-                    paddingLeft: '2.5rem',
-                    width: '100%'
-                }}
-                />
-            </div>
-
-            <FilterMenu
-                chapters={chapters}
-                availableTypes={availableTypes}
-                availableYears={availableYears}
-                currentFilters={filters}
-                onFilterChange={(newFilters) => {
-                    setFilters(prev => ({ ...prev, ...newFilters }));
-                }}
-            />
-          </div>
-
           {/* Floating Navigation Buttons - Fixed relative to panel */}
           <div style={{
             position: 'absolute',
-            top: '20px',
-            right: '40px', /* Increased from 20px to avoid covering the scrollbar */
+            top: '80px', /* Adjusted for filters at top */
+            right: '40px',
             zIndex: 100,
             display: 'flex',
             flexDirection: 'column',
