@@ -211,7 +211,36 @@
 }
 
 .app-content.app-content-full {
-  padding: 0.5rem; /* Minimal padding for selection view */
+  padding: 0 !important; /* Zero padding for selection view */
+  width: 100%;
+  max-width: none;
+}
+
+/* Ensure QuestionSelection fills the space */
+.app-content.app-content-full .question-selection {
+  max-width: none;
+  width: 100%;
+  padding: 0.5rem;
+}
+
+.app-content.app-content-full .selection-layout {
+  grid-template-columns: 220px minmax(0, 1fr); /* Prevent grid blowout */
+  gap: 0.5rem;
+}
+
+.app-content.app-content-full .questions-panel {
+  width: 100%;
+}
+
+.app-content.app-content-full .question-list {
+  width: 100%;
+}
+
+.app-content.app-content-full .question-row-container,
+.app-content.app-content-full .selectable-question,
+.app-content.app-content-full .question-card {
+  width: 100%;
+  max-width: none;
 }
 
 /* Test Navigation */
