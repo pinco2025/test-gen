@@ -50,7 +50,7 @@ const QuestionRow: React.FC<QuestionRowProps> = React.memo(({
       id={`question-row-${question.uuid}`}
       className="question-row-container"
       style={{
-        marginBottom: '0.5rem',
+        paddingBottom: '1.5rem',
         marginRight: '0.5rem',
         width: '100%',
         // @ts-ignore - zoom is a non-standard property but works in Electron/Chrome
