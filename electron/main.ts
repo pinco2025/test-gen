@@ -15,6 +15,8 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
+    frame: false, // Frameless window
+    titleBarStyle: 'hidden', // Hide default title bar on Mac too
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       icon: path.join(__dirname, "assets/icons/logo.png"),
@@ -61,6 +63,23 @@ app.on('window-all-closed', () => {
 });
 
 // IPC Handlers
+
+// Window Controls
+ipcMain.handle('window:minimize', () => {
+  mainWindow?.minimize();
+});
+
+ipcMain.handle('window:maximize', () => {
+  if (mainWindow?.isMaximized()) {
+    mainWindow.unmaximize();
+  } else {
+    mainWindow?.maximize();
+  }
+});
+
+ipcMain.handle('window:close', () => {
+  mainWindow?.close();
+});
 
 // Database connection
 ipcMain.handle('db:connect', async (_, dbPath?: string) => {

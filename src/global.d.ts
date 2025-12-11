@@ -41,6 +41,11 @@ declare global {
         update: (updates: Partial<AppConfig>) => Promise<{ success: boolean; error?: string }>;
         deleteAllProjects: () => Promise<{ success: boolean; count: number }>;
       };
+      window: {
+        minimize: () => Promise<void>;
+        maximize: () => Promise<void>;
+        close: () => Promise<void>;
+      };
     };
   }
 }
