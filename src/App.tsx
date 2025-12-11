@@ -11,7 +11,8 @@ import {
   ConstraintConfig,
   ProjectState,
   ProjectInfo,
-  WorkflowStep
+  WorkflowStep,
+  Question
 } from './types';
 import { sortQuestionsForSection } from './utils/sorting';
 import TestCreationForm from './components/TestCreationForm';
@@ -20,6 +21,7 @@ import QuestionSelection from './components/QuestionSelection';
 import ProjectTabs from './components/ProjectTabs';
 import TestReview from './components/TestReview';
 import TestNavigation from './components/TestNavigation';
+import AddQuestionModal from './components/AddQuestionModal';
 import './styles/App.css';
 
 // In-memory project data
@@ -72,6 +74,9 @@ function App() {
 
   // Track when creating a new project
   const [isCreatingNew, setIsCreatingNew] = useState(false);
+
+  // Add Question Modal state
+  const [isAddQuestionModalOpen, setIsAddQuestionModalOpen] = useState(false);
 
   // Save status
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
@@ -194,6 +199,23 @@ function App() {
       autoSave();
     }
   }, [currentProjectId, projectsData, autoSave]);
+
+  const handleAddQuestion = async (question: Question) => {
+    if (!window.electronAPI) return;
+
+    try {
+      const success = await window.electronAPI.questions.createQuestion(question);
+      if (success) {
+        alert('Question added successfully!');
+        setIsAddQuestionModalOpen(false);
+      } else {
+        alert('Failed to add question.');
+      }
+    } catch (error) {
+      console.error(error);
+      alert('An error occurred while adding the question.');
+    }
+  };
 
   // Load a project (from disk if not in memory, or just switch to it)
   const loadProject = async (projectId: string) => {
@@ -853,6 +875,14 @@ function App() {
         <div className="header-right">
           <button
             className="theme-toggle-btn"
+            onClick={() => setIsAddQuestionModalOpen(true)}
+            title="Add New Question"
+            style={{ marginRight: '0.5rem' }}
+          >
+            <span className="material-symbols-outlined">add_circle</span>
+          </button>
+          <button
+            className="theme-toggle-btn"
             onClick={toggleDarkMode}
             title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
           >
@@ -915,6 +945,12 @@ function App() {
       <div className={`app-content ${isSelectionStep ? 'app-content-full' : ''}`} key={currentProjectId || 'new'}>
         {renderStep()}
       </div>
+      {isAddQuestionModalOpen && (
+        <AddQuestionModal
+          onClose={() => setIsAddQuestionModalOpen(false)}
+          onSave={handleAddQuestion}
+        />
+      )}
     </div>
   );
 }
