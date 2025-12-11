@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { VariableSizeList as List, ListChildComponentProps } from 'react-window';
+import AutoSizer from 'react-virtualized-auto-sizer';
 import {
   Question,
   AlphaConstraint,
@@ -36,10 +38,51 @@ interface EditModalState {
   fullEditForm: Partial<Question>;
 }
 
+interface ItemData {
+  questions: Question[];
+  selectedUuids: Set<string>;
+  onToggle: (question: Question) => void;
+  onEdit: (e: React.MouseEvent, question: Question) => void;
+  onCloneAndEdit: (e: React.MouseEvent, question: Question) => void;
+  setSize: (index: number, size: number) => void;
+}
+
 // Helper function to check if a question should go to Division 2 (B)
 const isNumericalAnswer = (question: Question): boolean => {
   const answerUpper = question.answer.toUpperCase().trim();
   return !['A', 'B', 'C', 'D'].includes(answerUpper);
+};
+
+const Row = ({ index, style, data }: ListChildComponentProps<ItemData>) => {
+  const { questions, selectedUuids, onToggle, onEdit, onCloneAndEdit, setSize } = data;
+  const question = questions[index];
+  const rowRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (rowRef.current) {
+      setSize(index, rowRef.current.getBoundingClientRect().height);
+    }
+  }, [setSize, index, question.uuid, question]); // Remeasure if content changes
+
+  const isDivision2Question = isNumericalAnswer(question);
+  const selected = selectedUuids.has(question.uuid);
+
+  return (
+    <div style={style}>
+      <div ref={rowRef}>
+        <QuestionRow
+          question={question}
+          index={index}
+          selected={selected}
+          isDivision2Question={isDivision2Question}
+          onToggle={onToggle}
+          onEdit={onEdit}
+          onCloneAndEdit={onCloneAndEdit}
+          highlightCorrectAnswer={true}
+        />
+      </div>
+    </div>
+  );
 };
 
 export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
@@ -215,7 +258,6 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
   const [availableQuestions, setAvailableQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState('');
-  const [visibleCount, setVisibleCount] = useState(20);
 
   const [filters, setFilters] = useState<FilterState>({
     chapter: 'all',
@@ -228,7 +270,18 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
     sort: 'default'
   });
 
-  const [shouldScrollToBottom, setShouldScrollToBottom] = useState(false);
+  // Virtualization refs
+  const listRef = useRef<List>(null);
+  const sizeMap = useRef<{ [index: number]: number }>({});
+  const setSize = useCallback((index: number, size: number) => {
+    if (sizeMap.current[index] !== size) {
+      sizeMap.current[index] = size;
+      if (listRef.current) {
+        listRef.current.resetAfterIndex(index);
+      }
+    }
+  }, []);
+  const getSize = useCallback((index: number) => sizeMap.current[index] || 300, []); // Default to 300
 
   // Extract unique Types and Years for filters
   const { availableTypes, availableYears } = useMemo(() => {
@@ -244,14 +297,12 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
     };
   }, [availableQuestions]);
 
-  // Refs for list scrolling
-  const listContainerRef = useRef<HTMLDivElement>(null);
-
-  // Reset list scroll and visible count when filters change
+  // Reset list scroll when filters change
   useEffect(() => {
-    setVisibleCount(20);
-    if (listContainerRef.current) {
-      listContainerRef.current.scrollTop = 0;
+    // Clear size map on filter change as indices mean different questions now
+    sizeMap.current = {};
+    if (listRef.current) {
+      listRef.current.scrollTo(0);
     }
   }, [filters, searchText]);
 
@@ -501,97 +552,80 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
     return result;
   }, [availableQuestions, filters, searchText]);
 
-  const displayedQuestions = useMemo(() => {
-      return filteredQuestions.slice(0, visibleCount);
-  }, [filteredQuestions, visibleCount]);
-
-  const handleScroll = () => {
-      if (listContainerRef.current) {
-          const { scrollTop, scrollHeight, clientHeight } = listContainerRef.current;
-          if (scrollTop + clientHeight >= scrollHeight - 200) {
-              setVisibleCount(prev => Math.min(prev + 20, filteredQuestions.length));
-          }
-      }
-  };
-
   // Memoize isSelectionValid
   const isSelectionValid = useMemo(() => {
     return summary.division1 === 20 && summary.division2 === 5;
   }, [summary.division1, summary.division2]);
 
+  // Track visible range for scrolling logic
+  const visibleRangeRef = useRef({ start: 0, stop: 0 });
+  const onItemsRendered = ({ visibleStartIndex, visibleStopIndex }: { visibleStartIndex: number; visibleStopIndex: number }) => {
+    visibleRangeRef.current = { start: visibleStartIndex, stop: visibleStopIndex };
+  };
+
   // Navigation handlers
   const scrollToSelected = (direction: 'next' | 'prev') => {
-    // Determine current scroll position to find "current" question in view
-    // For simplicity, we can maintain an index state, but since the user scrolls freely,
-    // we should find the first selected question after/before the current visible area or just cycle through them.
-
-    // Let's implement a simple cycle based on the filtered list order.
-    // We need to find the indices of selected questions within the filtered list.
     const selectedIndices = filteredQuestions
       .map((q, index) => selectedUuids.has(q.uuid) ? index : -1)
       .filter(index => index !== -1);
 
     if (selectedIndices.length === 0) return;
 
-    // Find the first selected index that is visible or below the scroll top?
-    // A simpler approach: maintain a "current focused selected question" index.
-    // Or just find the next selected question relative to the current scroll position.
-
-    // Let's use the scroll position of listContainerRef
-    if (!listContainerRef.current) return;
-
-    const container = listContainerRef.current;
-    const scrollTop = container.scrollTop;
-    // const containerHeight = container.clientHeight;
-
-    // Estimate current index based on scroll position (assuming fixed height helps, but heights are variable)
-    // We can use the element offsets.
-
+    const { start, stop } = visibleRangeRef.current;
     let targetIndex = -1;
 
-    // Find next selected
     if (direction === 'next') {
-        // Find the first selected question whose element is below the top of the container
+        // Find first selected index greater than current start (roughly)
+        // If within view, go to next. If fully below, go to that.
+        // Actually, let's find the first selected index AFTER the current visible stop.
+        // Or if we are at the top, just the first one.
+
+        // Simple logic: find first index > start + 1 (to skip top one if slightly visible)
+        // But better: find first index > start.
         for (const idx of selectedIndices) {
-            const el = document.getElementById(`question-row-${filteredQuestions[idx].uuid}`);
-            if (el && el.offsetTop > scrollTop + 10) { // +10 buffer
+            if (idx > start) {
                 targetIndex = idx;
                 break;
             }
         }
-        // If none found below, wrap around to first
+        // Wrap around
         if (targetIndex === -1) targetIndex = selectedIndices[0];
     } else {
-        // Find the last selected question whose element is above or at the top
-         for (let i = selectedIndices.length - 1; i >= 0; i--) {
-            const idx = selectedIndices[i];
-            const el = document.getElementById(`question-row-${filteredQuestions[idx].uuid}`);
-            if (el && el.offsetTop < scrollTop - 10) {
-                targetIndex = idx;
+        // Find last index < start
+        for (let i = selectedIndices.length - 1; i >= 0; i--) {
+            if (selectedIndices[i] < start) {
+                targetIndex = selectedIndices[i];
                 break;
             }
         }
-        // If none found above, wrap around to last
+        // Wrap around
         if (targetIndex === -1) targetIndex = selectedIndices[selectedIndices.length - 1];
     }
 
-    if (targetIndex !== -1) {
-         const el = document.getElementById(`question-row-${filteredQuestions[targetIndex].uuid}`);
-         if (el) {
-             el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-         }
+    if (targetIndex !== -1 && listRef.current) {
+         listRef.current.scrollToItem(targetIndex, 'start');
     }
   };
 
   const scrollToList = (position: 'top' | 'bottom') => {
-    if (listContainerRef.current) {
+    if (listRef.current) {
       if (position === 'top') {
-        listContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+        listRef.current.scrollToItem(0);
       } else {
-        listContainerRef.current.scrollTo({ top: listContainerRef.current.scrollHeight, behavior: 'smooth' });
+        // Scroll to the last item, aligning it to the end (bottom) of the container
+        listRef.current.scrollToItem(filteredQuestions.length - 1, 'end');
       }
     }
   };
+
+  const itemData = useMemo(() => ({
+      questions: filteredQuestions,
+      selectedUuids,
+      onToggle: toggleQuestion,
+      onEdit: openEditModal,
+      onCloneAndEdit: openCloneAndEditModal,
+      setSize
+  }), [filteredQuestions, selectedUuids, toggleQuestion, setSize]);
 
   return (
     <div className="question-selection">
@@ -761,11 +795,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
 
           <div
             className="question-list"
-            ref={listContainerRef}
-            onScroll={handleScroll}
             style={{
-                overflowY: 'auto',
-                overflowX: 'hidden',
                 flex: 1, /* Fill remaining space */
                 display: 'block',
                 position: 'relative',
@@ -779,41 +809,28 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
                  }}>Loading questions...</div>
              )}
 
-            {loading ? null : filteredQuestions.length === 0 ? (
+            {!loading && filteredQuestions.length === 0 ? (
               <div className="no-questions">
                 No questions available. Please adjust filters or load a database.
               </div>
             ) : (
-              <div>
-                <div className="questions-info" style={{ marginBottom: '0.5rem' }}>
-                  <p style={{ margin: 0 }}>
-                    Showing {filteredQuestions.length} questions. Click to select.
-                  </p>
-                </div>
-                {displayedQuestions.map((question, index) => {
-                  const isDivision2Question = isNumericalAnswer(question);
-                  const selected = selectedUuids.has(question.uuid);
-                  return (
-                    <div key={question.uuid} style={{ contentVisibility: 'auto', containIntrinsicSize: '300px' }}>
-                        <QuestionRow
-                        question={question}
-                        index={index}
-                        selected={selected}
-                        isDivision2Question={isDivision2Question}
-                        onToggle={toggleQuestion}
-                        onEdit={openEditModal}
-                        onCloneAndEdit={openCloneAndEditModal}
-                        highlightCorrectAnswer={true}
-                        />
-                    </div>
-                  );
-                })}
-                {visibleCount < filteredQuestions.length && (
-                    <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-secondary)' }}>
-                        Loading more...
-                    </div>
-                )}
-              </div>
+                !loading && (
+                    <AutoSizer>
+                        {({ height, width }) => (
+                            <List
+                                ref={listRef}
+                                height={height}
+                                width={width}
+                                itemCount={filteredQuestions.length}
+                                itemSize={getSize}
+                                itemData={itemData}
+                                onItemsRendered={onItemsRendered}
+                            >
+                                {Row}
+                            </List>
+                        )}
+                    </AutoSizer>
+                )
             )}
           </div>
         </div>
