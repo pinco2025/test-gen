@@ -747,128 +747,6 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
           height: '100%',
           overflow: 'hidden'
         }}>
-          <div className="filters" style={{ position: 'relative', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-             <div style={{ flex: 1, position: 'relative', marginRight: '0.75rem' }}>
-                <span className="material-symbols-outlined" style={{
-                    position: 'absolute',
-                    left: '12px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    color: 'var(--text-secondary)',
-                    fontSize: '1.25rem'
-                }}>search</span>
-                <input
-                type="text"
-                placeholder="Search questions..."
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                className="search-input"
-                style={{
-                    paddingLeft: '2.5rem',
-                    width: '100%'
-                }}
-                />
-            </div>
-
-            <FilterMenu
-                chapters={chapters}
-                availableTypes={availableTypes}
-                availableYears={availableYears}
-                currentFilters={filters}
-                onFilterChange={(newFilters) => {
-                    setFilters(prev => ({ ...prev, ...newFilters }));
-                }}
-            />
-          </div>
-
-          {/* Floating Navigation Buttons - Fixed relative to panel */}
-          <div style={{
-            position: 'absolute',
-            top: '90px',
-            right: '40px', /* Increased from 20px to avoid covering the scrollbar */
-            zIndex: 100,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '5px'
-          }}>
-            {/* Zoom Controls */}
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '5px',
-              marginBottom: '10px',
-              backgroundColor: 'var(--bg-card)',
-              borderRadius: '20px',
-              padding: '4px',
-              boxShadow: 'var(--shadow-sm)'
-            }}>
-                <button
-                onClick={handleZoomIn}
-                className="btn-primary"
-                style={{ padding: '0.25rem', minWidth: 'auto', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                title="Zoom In"
-                disabled={zoomLevel >= 1.5}
-                >
-                <span className="material-symbols-outlined">add</span>
-                </button>
-                <button
-                onClick={handleZoomReset}
-                className="btn-secondary"
-                style={{ padding: '0.25rem', minWidth: 'auto', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 'bold' }}
-                title="Reset Zoom"
-                >
-                {Math.round(zoomLevel * 100)}%
-                </button>
-                <button
-                onClick={handleZoomOut}
-                className="btn-primary"
-                style={{ padding: '0.25rem', minWidth: 'auto', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                title="Zoom Out"
-                disabled={zoomLevel <= 0.5}
-                >
-                <span className="material-symbols-outlined">remove</span>
-                </button>
-            </div>
-
-            <button
-              onClick={() => scrollToList('top')}
-              className="btn-primary"
-              style={{ padding: '0.25rem', minWidth: 'auto', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-              title="Scroll to Top"
-            >
-              <span className="material-symbols-outlined">vertical_align_top</span>
-            </button>
-
-            {selectedQuestions.length > 0 && (
-              <>
-                <button
-                  onClick={() => scrollToSelected('prev')}
-                  className="btn-primary"
-                  style={{ padding: '0.25rem', minWidth: 'auto', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                  title="Previous Selected"
-                >
-                  <span className="material-symbols-outlined">arrow_upward</span>
-                </button>
-                <button
-                  onClick={() => scrollToSelected('next')}
-                  className="btn-primary"
-                  style={{ padding: '0.25rem', minWidth: 'auto', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                  title="Next Selected"
-                >
-                  <span className="material-symbols-outlined">arrow_downward</span>
-                </button>
-              </>
-            )}
-
-            <button
-              onClick={() => scrollToList('bottom')}
-              className="btn-primary"
-              style={{ padding: '0.25rem', minWidth: 'auto', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-              title="Scroll to Bottom"
-            >
-              <span className="material-symbols-outlined">vertical_align_bottom</span>
-            </button>
-          </div>
 
           <div
             className="question-list"
@@ -916,6 +794,112 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
                 )
             )}
           </div>
+
+          {/* Moved filters to bottom */}
+          <div className="filters" style={{ position: 'relative', display: 'flex', alignItems: 'center', flexShrink: 0, marginTop: '1rem' }}>
+             <div style={{ flex: 1, position: 'relative', marginRight: '0.75rem' }}>
+                <span className="material-symbols-outlined" style={{
+                    position: 'absolute',
+                    left: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    color: 'var(--text-secondary)',
+                    fontSize: '1.25rem'
+                }}>search</span>
+                <input
+                type="text"
+                placeholder="Search questions..."
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                className="search-input"
+                style={{
+                    paddingLeft: '2.5rem',
+                    width: '100%'
+                }}
+                />
+            </div>
+
+            <FilterMenu
+                chapters={chapters}
+                availableTypes={availableTypes}
+                availableYears={availableYears}
+                currentFilters={filters}
+                onFilterChange={(newFilters) => {
+                    setFilters(prev => ({ ...prev, ...newFilters }));
+                }}
+            />
+          </div>
+
+          {/* Floating Navigation Buttons - Fixed relative to panel */}
+          <div style={{
+            position: 'absolute',
+            top: '20px',
+            right: '40px', /* Increased from 20px to avoid covering the scrollbar */
+            zIndex: 100,
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '5px'
+          }}>
+            {/* Zoom Controls - Updated */}
+            <div className="zoom-controls">
+                <button
+                onClick={handleZoomIn}
+                className="zoom-btn"
+                title="Zoom In"
+                disabled={zoomLevel >= 1.5}
+                >
+                <span className="material-symbols-outlined">add</span>
+                </button>
+                <button
+                onClick={handleZoomOut}
+                className="zoom-btn"
+                title="Zoom Out"
+                disabled={zoomLevel <= 0.5}
+                >
+                <span className="material-symbols-outlined">remove</span>
+                </button>
+            </div>
+
+            <button
+              onClick={() => scrollToList('top')}
+              className="zoom-btn float-nav-btn"
+              style={{ background: 'var(--bg-card)', marginTop: '0.5rem' }}
+              title="Scroll to Top"
+            >
+              <span className="material-symbols-outlined">vertical_align_top</span>
+            </button>
+
+            {selectedQuestions.length > 0 && (
+              <>
+                <button
+                  onClick={() => scrollToSelected('prev')}
+                  className="zoom-btn float-nav-btn"
+                  style={{ background: 'var(--bg-card)' }}
+                  title="Previous Selected"
+                >
+                  <span className="material-symbols-outlined">arrow_upward</span>
+                </button>
+                <button
+                  onClick={() => scrollToSelected('next')}
+                  className="zoom-btn float-nav-btn"
+                  style={{ background: 'var(--bg-card)' }}
+                  title="Next Selected"
+                >
+                  <span className="material-symbols-outlined">arrow_downward</span>
+                </button>
+              </>
+            )}
+
+            <button
+              onClick={() => scrollToList('bottom')}
+              className="zoom-btn float-nav-btn"
+              style={{ background: 'var(--bg-card)' }}
+              title="Scroll to Bottom"
+            >
+              <span className="material-symbols-outlined">vertical_align_bottom</span>
+            </button>
+          </div>
+
         </div>
       </div>
 

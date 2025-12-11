@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Chapter } from '../types';
 
 export interface FilterState {
@@ -28,20 +29,44 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
   onFilterChange
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const [menuPosition, setMenuPosition] = useState<{ bottom: number; left: number } | null>(null);
 
+  // Calculate position when opening
+  useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setMenuPosition({
+        bottom: window.innerHeight - rect.top + 8, // 8px spacing
+        left: rect.left
+      });
+    }
+  }, [isOpen]);
+
+  // Handle outside clicks
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(event.target as Node) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
       }
     };
 
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside);
+      // Also close on window resize
+      window.addEventListener('resize', () => setIsOpen(false));
+      // And on scroll of main containers (trickier, just close on any scroll for now if simple)
+      // But portals stay fixed. Let's just rely on click outside.
     }
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('resize', () => setIsOpen(false));
     };
   }, [isOpen]);
 
@@ -67,9 +92,256 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
     });
   };
 
+  const menuContent = (
+    <div
+      ref={menuRef}
+      className="filter-dropdown"
+      style={{
+        position: 'fixed', // Use fixed positioning for Portal
+        bottom: menuPosition ? menuPosition.bottom : 0,
+        left: menuPosition ? menuPosition.left : 0,
+        width: '360px',
+        maxHeight: '60vh', // Limit height to avoid top clipping
+        overflowY: 'auto',
+        background: 'var(--bg-card)',
+        border: '1px solid var(--border-color)',
+        borderRadius: 'var(--radius-lg)',
+        boxShadow: 'var(--shadow-lg)',
+        padding: '1.25rem',
+        zIndex: 9999, // High z-index to stay on top
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '1.25rem'
+      }}
+    >
+      <div className="filter-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+        <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Filters & Sorting</h3>
+        {activeFilterCount > 0 && (
+          <button
+            onClick={resetFilters}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--primary)',
+              fontSize: '0.85rem',
+              cursor: 'pointer',
+              padding: 0
+            }}
+          >
+            Clear all
+          </button>
+        )}
+      </div>
+
+      {/* Sort Section */}
+      <div className="filter-group">
+        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>
+          Sort By
+        </label>
+        <select
+          value={currentFilters.sort}
+          onChange={(e) => onFilterChange({ sort: e.target.value })}
+          style={{
+            width: '100%',
+            padding: '0.5rem',
+            borderRadius: 'var(--radius)',
+            border: '1px solid var(--border-color)',
+            background: 'var(--bg-main)',
+            color: 'var(--text-primary)',
+            fontSize: '0.9rem'
+          }}
+        >
+          <option value="default">Default</option>
+          <option value="year_desc">Year (Newest First)</option>
+          <option value="year_asc">Year (Oldest First)</option>
+          <option value="freq_asc">Frequency (Low to High)</option>
+          <option value="freq_desc">Frequency (High to Low)</option>
+        </select>
+      </div>
+
+      {/* Difficulty Filter */}
+      <div className="filter-group">
+        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>
+          Difficulty
+        </label>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          {['all', 'E', 'M', 'H'].map(opt => (
+            <button
+              key={opt}
+              onClick={() => onFilterChange({ difficulty: opt })}
+              style={{
+                flex: 1,
+                padding: '0.375rem',
+                borderRadius: 'var(--radius)',
+                border: '1px solid',
+                borderColor: currentFilters.difficulty === opt ? 'var(--primary)' : 'var(--border-color)',
+                background: currentFilters.difficulty === opt ? 'var(--primary-light)' : 'var(--bg-main)',
+                color: currentFilters.difficulty === opt ? 'var(--primary)' : 'var(--text-primary)',
+                cursor: 'pointer',
+                fontSize: '0.85rem'
+              }}
+            >
+              {opt === 'all' ? 'All' : opt === 'E' ? 'Easy' : opt === 'M' ? 'Medium' : 'Hard'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Division Filter */}
+      <div className="filter-group">
+        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>
+          Division
+        </label>
+        <div style={{ display: 'flex', gap: '0.5rem' }}>
+          {[
+            { val: 'all', label: 'All' },
+            { val: '1', label: 'Div 1 (MCQ)' },
+            { val: '2', label: 'Div 2 (Num)' }
+          ].map(opt => (
+            <button
+              key={opt.val}
+              onClick={() => onFilterChange({ division: opt.val })}
+              style={{
+                flex: 1,
+                padding: '0.375rem',
+                borderRadius: 'var(--radius)',
+                border: '1px solid',
+                borderColor: currentFilters.division === opt.val ? 'var(--primary)' : 'var(--border-color)',
+                background: currentFilters.division === opt.val ? 'var(--primary-light)' : 'var(--bg-main)',
+                color: currentFilters.division === opt.val ? 'var(--primary)' : 'var(--text-primary)',
+                cursor: 'pointer',
+                fontSize: '0.85rem'
+              }}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Type Filter */}
+      <div className="filter-group">
+        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>
+          Type
+        </label>
+        <select
+          value={currentFilters.type}
+          onChange={(e) => onFilterChange({ type: e.target.value })}
+          style={{
+            width: '100%',
+            padding: '0.5rem',
+            borderRadius: 'var(--radius)',
+            border: '1px solid var(--border-color)',
+            background: 'var(--bg-main)',
+            color: 'var(--text-primary)',
+            fontSize: '0.9rem'
+          }}
+        >
+          <option value="all">All Types</option>
+          {availableTypes.map(type => (
+            <option key={type} value={type}>{type}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Year Filter */}
+      <div className="filter-group">
+        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>
+          Year
+        </label>
+        <select
+          value={currentFilters.year}
+          onChange={(e) => onFilterChange({ year: e.target.value })}
+          style={{
+            width: '100%',
+            padding: '0.5rem',
+            borderRadius: 'var(--radius)',
+            border: '1px solid var(--border-color)',
+            background: 'var(--bg-main)',
+            color: 'var(--text-primary)',
+            fontSize: '0.9rem'
+          }}
+        >
+          <option value="all">All Years</option>
+          {availableYears.map(year => (
+            <option key={year} value={year}>{year}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Chapter Filter */}
+      <div className="filter-group">
+        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>
+          Chapter
+        </label>
+        <select
+          value={currentFilters.chapter}
+          onChange={(e) => onFilterChange({ chapter: e.target.value })}
+          style={{
+            width: '100%',
+            padding: '0.5rem',
+            borderRadius: 'var(--radius)',
+            border: '1px solid var(--border-color)',
+            background: 'var(--bg-main)',
+            color: 'var(--text-primary)',
+            fontSize: '0.9rem'
+          }}
+        >
+          <option value="all">All Chapters</option>
+          {chapters.map(ch => (
+            <option key={ch.code} value={ch.code}>
+              {ch.code} - {ch.name}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Tags Filter */}
+      <div className="filter-group">
+        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>
+          Additional Tags
+        </label>
+        <div style={{ display: 'flex', gap: '0.75rem', flexDirection: 'column' }}>
+            <input
+                type="text"
+                placeholder="Tag 1 (e.g. Topic)"
+                value={currentFilters.tag1}
+                onChange={(e) => onFilterChange({ tag1: e.target.value })}
+                style={{
+                    width: '100%',
+                    padding: '0.5rem',
+                    borderRadius: 'var(--radius)',
+                    border: '1px solid var(--border-color)',
+                    background: 'var(--bg-main)',
+                    color: 'var(--text-primary)',
+                    fontSize: '0.9rem'
+                }}
+            />
+            <input
+                type="text"
+                placeholder="Tag 4 (e.g. Sub-topic)"
+                value={currentFilters.tag4}
+                onChange={(e) => onFilterChange({ tag4: e.target.value })}
+                style={{
+                    width: '100%',
+                    padding: '0.5rem',
+                    borderRadius: 'var(--radius)',
+                    border: '1px solid var(--border-color)',
+                    background: 'var(--bg-main)',
+                    color: 'var(--text-primary)',
+                    fontSize: '0.9rem'
+                }}
+            />
+        </div>
+      </div>
+
+    </div>
+  );
+
   return (
-    <div className="filter-menu-container" ref={menuRef} style={{ position: 'relative' }}>
+    <div className="filter-menu-container" style={{ position: 'relative' }}>
       <button
+        ref={buttonRef}
         className={`btn-secondary ${activeFilterCount > 0 ? 'active' : ''}`}
         onClick={() => setIsOpen(!isOpen)}
         style={{
@@ -103,247 +375,7 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
         )}
       </button>
 
-      {isOpen && (
-        <div className="filter-dropdown" style={{
-          position: 'absolute',
-          top: 'calc(100% + 0.5rem)',
-          right: 0,
-          width: '360px',
-          maxHeight: '80vh',
-          overflowY: 'auto',
-          background: 'var(--bg-card)',
-          border: '1px solid var(--border-color)',
-          borderRadius: 'var(--radius-lg)',
-          boxShadow: 'var(--shadow-lg)',
-          padding: '1.25rem',
-          zIndex: 1000,
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '1.25rem'
-        }}>
-          <div className="filter-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
-            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Filters & Sorting</h3>
-            {activeFilterCount > 0 && (
-              <button
-                onClick={resetFilters}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--primary)',
-                  fontSize: '0.85rem',
-                  cursor: 'pointer',
-                  padding: 0
-                }}
-              >
-                Clear all
-              </button>
-            )}
-          </div>
-
-          {/* Sort Section */}
-          <div className="filter-group">
-            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>
-              Sort By
-            </label>
-            <select
-              value={currentFilters.sort}
-              onChange={(e) => onFilterChange({ sort: e.target.value })}
-              style={{
-                width: '100%',
-                padding: '0.5rem',
-                borderRadius: 'var(--radius)',
-                border: '1px solid var(--border-color)',
-                background: 'var(--bg-main)',
-                color: 'var(--text-primary)',
-                fontSize: '0.9rem'
-              }}
-            >
-              <option value="default">Default</option>
-              <option value="year_desc">Year (Newest First)</option>
-              <option value="year_asc">Year (Oldest First)</option>
-              <option value="freq_asc">Frequency (Low to High)</option>
-              <option value="freq_desc">Frequency (High to Low)</option>
-            </select>
-          </div>
-
-          {/* Difficulty Filter */}
-          <div className="filter-group">
-            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>
-              Difficulty
-            </label>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              {['all', 'E', 'M', 'H'].map(opt => (
-                <button
-                  key={opt}
-                  onClick={() => onFilterChange({ difficulty: opt })}
-                  style={{
-                    flex: 1,
-                    padding: '0.375rem',
-                    borderRadius: 'var(--radius)',
-                    border: '1px solid',
-                    borderColor: currentFilters.difficulty === opt ? 'var(--primary)' : 'var(--border-color)',
-                    background: currentFilters.difficulty === opt ? 'var(--primary-light)' : 'var(--bg-main)',
-                    color: currentFilters.difficulty === opt ? 'var(--primary)' : 'var(--text-primary)',
-                    cursor: 'pointer',
-                    fontSize: '0.85rem'
-                  }}
-                >
-                  {opt === 'all' ? 'All' : opt === 'E' ? 'Easy' : opt === 'M' ? 'Medium' : 'Hard'}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Division Filter */}
-          <div className="filter-group">
-            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>
-              Division
-            </label>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              {[
-                { val: 'all', label: 'All' },
-                { val: '1', label: 'Div 1 (MCQ)' },
-                { val: '2', label: 'Div 2 (Num)' }
-              ].map(opt => (
-                <button
-                  key={opt.val}
-                  onClick={() => onFilterChange({ division: opt.val })}
-                  style={{
-                    flex: 1,
-                    padding: '0.375rem',
-                    borderRadius: 'var(--radius)',
-                    border: '1px solid',
-                    borderColor: currentFilters.division === opt.val ? 'var(--primary)' : 'var(--border-color)',
-                    background: currentFilters.division === opt.val ? 'var(--primary-light)' : 'var(--bg-main)',
-                    color: currentFilters.division === opt.val ? 'var(--primary)' : 'var(--text-primary)',
-                    cursor: 'pointer',
-                    fontSize: '0.85rem'
-                  }}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Type Filter */}
-          <div className="filter-group">
-            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>
-              Type
-            </label>
-            <select
-              value={currentFilters.type}
-              onChange={(e) => onFilterChange({ type: e.target.value })}
-              style={{
-                width: '100%',
-                padding: '0.5rem',
-                borderRadius: 'var(--radius)',
-                border: '1px solid var(--border-color)',
-                background: 'var(--bg-main)',
-                color: 'var(--text-primary)',
-                fontSize: '0.9rem'
-              }}
-            >
-              <option value="all">All Types</option>
-              {availableTypes.map(type => (
-                <option key={type} value={type}>{type}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Year Filter */}
-          <div className="filter-group">
-            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>
-              Year
-            </label>
-            <select
-              value={currentFilters.year}
-              onChange={(e) => onFilterChange({ year: e.target.value })}
-              style={{
-                width: '100%',
-                padding: '0.5rem',
-                borderRadius: 'var(--radius)',
-                border: '1px solid var(--border-color)',
-                background: 'var(--bg-main)',
-                color: 'var(--text-primary)',
-                fontSize: '0.9rem'
-              }}
-            >
-              <option value="all">All Years</option>
-              {availableYears.map(year => (
-                <option key={year} value={year}>{year}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Chapter Filter */}
-          <div className="filter-group">
-            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>
-              Chapter
-            </label>
-            <select
-              value={currentFilters.chapter}
-              onChange={(e) => onFilterChange({ chapter: e.target.value })}
-              style={{
-                width: '100%',
-                padding: '0.5rem',
-                borderRadius: 'var(--radius)',
-                border: '1px solid var(--border-color)',
-                background: 'var(--bg-main)',
-                color: 'var(--text-primary)',
-                fontSize: '0.9rem'
-              }}
-            >
-              <option value="all">All Chapters</option>
-              {chapters.map(ch => (
-                <option key={ch.code} value={ch.code}>
-                  {ch.code} - {ch.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Tags Filter */}
-          <div className="filter-group">
-            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>
-              Additional Tags
-            </label>
-            <div style={{ display: 'flex', gap: '0.75rem', flexDirection: 'column' }}>
-                <input
-                    type="text"
-                    placeholder="Tag 1 (e.g. Topic)"
-                    value={currentFilters.tag1}
-                    onChange={(e) => onFilterChange({ tag1: e.target.value })}
-                    style={{
-                        width: '100%',
-                        padding: '0.5rem',
-                        borderRadius: 'var(--radius)',
-                        border: '1px solid var(--border-color)',
-                        background: 'var(--bg-main)',
-                        color: 'var(--text-primary)',
-                        fontSize: '0.9rem'
-                    }}
-                />
-                <input
-                    type="text"
-                    placeholder="Tag 4 (e.g. Sub-topic)"
-                    value={currentFilters.tag4}
-                    onChange={(e) => onFilterChange({ tag4: e.target.value })}
-                    style={{
-                        width: '100%',
-                        padding: '0.5rem',
-                        borderRadius: 'var(--radius)',
-                        border: '1px solid var(--border-color)',
-                        background: 'var(--bg-main)',
-                        color: 'var(--text-primary)',
-                        fontSize: '0.9rem'
-                    }}
-                />
-            </div>
-          </div>
-
-        </div>
-      )}
+      {isOpen && createPortal(menuContent, document.body)}
     </div>
   );
 };

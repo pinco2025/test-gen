@@ -23,6 +23,7 @@ import TestReview from './components/TestReview';
 import TestNavigation from './components/TestNavigation';
 import AddQuestionModal from './components/AddQuestionModal';
 import Notification, { useNotification } from './components/Notification';
+import TitleBar from './components/TitleBar';
 import './styles/App.css';
 
 // In-memory project data
@@ -855,6 +856,7 @@ function App() {
 
   return (
     <div className="app">
+      <TitleBar />
       <Notification notifications={notifications} removeNotification={removeNotification} />
       <div className="app-header">
         <div className="header-left">

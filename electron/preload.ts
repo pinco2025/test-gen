@@ -50,5 +50,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     get: () => ipcRenderer.invoke('config:get'),
     update: (updates: Partial<AppConfig>) => ipcRenderer.invoke('config:update', updates),
     deleteAllProjects: () => ipcRenderer.invoke('config:deleteAllProjects')
+  },
+
+  // Window operations
+  window: {
+    minimize: () => ipcRenderer.invoke('window:minimize'),
+    maximize: () => ipcRenderer.invoke('window:maximize'),
+    close: () => ipcRenderer.invoke('window:close')
   }
 });
