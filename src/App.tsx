@@ -836,6 +836,13 @@ function App() {
     })
     .filter(Boolean) as ProjectInfo[];
 
+  // Check if we are in a question selection step to adjust layout
+  const isSelectionStep = [
+    'question-select-physics',
+    'question-select-chemistry',
+    'question-select-math'
+  ].includes(step);
+
   return (
     <div className="app">
       <div className="app-header">
@@ -905,7 +912,7 @@ function App() {
           onDashboard={goToDashboard}
         />
       )}
-      <div className="app-content" key={currentProjectId || 'new'}>
+      <div className={`app-content ${isSelectionStep ? 'app-content-full' : ''}`} key={currentProjectId || 'new'}>
         {renderStep()}
       </div>
     </div>
