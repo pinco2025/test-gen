@@ -258,7 +258,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
   const [availableQuestions, setAvailableQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState('');
-
+  
   const [filters, setFilters] = useState<FilterState>({
     chapter: 'all',
     difficulty: 'all',
@@ -579,7 +579,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
         // If within view, go to next. If fully below, go to that.
         // Actually, let's find the first selected index AFTER the current visible stop.
         // Or if we are at the top, just the first one.
-
+        
         // Simple logic: find first index > start + 1 (to skip top one if slightly visible)
         // But better: find first index > start.
         for (const idx of selectedIndices) {
