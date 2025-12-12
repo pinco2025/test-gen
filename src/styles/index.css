@@ -1,216 +1,24 @@
-/* CSS Reset and Base Styles */
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
-:root {
-  /* Primary Colors */
-  --primary: #3b82f6;
-  --primary-hover: #2563eb;
-  --primary-light: rgba(59, 130, 246, 0.1);
-  --primary-medium: rgba(59, 130, 246, 0.2);
-
-  /* Background Colors */
-  --bg-light: #f6f6f8;
-  --bg-dark: #121121;
-  --bg-card-light: #ffffff;
-  --bg-card-dark: #1f2937; /* Slightly lighter than pure dark for cards */
-
-  /* Text Colors */
-  --text-primary-light: #121117;
-  --text-primary-dark: #ffffff;
-  --text-secondary-light: #666487;
-  --text-secondary-dark: #9ca3af;
-  --text-muted-light: #888888;
-  --text-muted-dark: #6b7280;
-
-  /* Border Colors */
-  --border-light: #e5e7eb;
-  --border-dark: #374151;
-
-  /* Status Colors */
-  --success: #27ae60;
-  --success-bg: rgba(39, 174, 96, 0.15);
-  --warning: #f1c40f;
-  --warning-bg: rgba(241, 196, 15, 0.15);
-  --error: #e74c3c;
-  --error-bg: rgba(231, 76, 60, 0.15);
-  --info: #3b82f6;
-  --info-bg: rgba(59, 130, 246, 0.1);
-
-  /* Accent Colors */
-  --teal: #14b8a6;
-  --teal-bg: rgba(20, 184, 166, 0.1);
-  --purple: #8b5cf6;
-  --purple-bg: rgba(139, 92, 246, 0.1);
-  --amber: #f59e0b;
-  --amber-bg: rgba(245, 158, 11, 0.1);
-
-  /* Shadows */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-
-  /* Border Radius */
-  --radius-sm: 0.25rem;
-  --radius: 0.5rem;
-  --radius-lg: 0.75rem;
-  --radius-xl: 1rem;
-  --radius-full: 9999px;
-
-  /* Transitions */
-  --transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  --transition-slow: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-
-  /* Semantic Variables (Default to Light Mode) */
-  --bg-main: var(--bg-light);
-  --bg-card: var(--bg-card-light);
-  --text-primary: var(--text-primary-light);
-  --text-secondary: var(--text-secondary-light);
-  --text-muted: var(--text-muted-light);
-  --border-color: var(--border-light);
-
-  --scrollbar-thumb: #d1d5db;
-  --scrollbar-thumb-hover: #9ca3af;
-}
-
-/* Dark Mode Overrides */
-.dark {
-  --bg-main: var(--bg-dark);
-  --bg-card: var(--bg-card-dark);
-  --text-primary: var(--text-primary-dark);
-  --text-secondary: var(--text-secondary-dark);
-  --text-muted: var(--text-muted-dark);
-  --border-color: var(--border-dark);
-
-  --scrollbar-thumb: #4b5563;
-  --scrollbar-thumb-hover: #6b7280;
-
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
-  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px -1px rgba(0, 0, 0, 0.3);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.3);
-}
-
-body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  background: var(--bg-main);
-  color: var(--text-primary);
-  line-height: 1.5;
-  transition: background-color 0.3s ease, color 0.3s ease;
-}
-
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New', monospace;
-}
-
-#root {
-  width: 100%;
-  height: 100vh;
-  overflow: hidden;
-}
-
-/* Material Icons Styling */
-.material-symbols-outlined {
-  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-  vertical-align: middle;
-}
-
-/* Custom checkbox styling */
-input[type="checkbox"] {
-  --checkbox-tick-svg: url('data:image/svg+xml,%3csvg viewBox=%270 0 16 16%27 fill=%27rgb(255,255,255)%27 xmlns=%27http://www.w3.org/2000/svg%27%3e%3cpath d=%27M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z%27/%3e%3c/svg%3e');
-  appearance: none;
-  -webkit-appearance: none;
-  width: 1.25rem;
-  height: 1.25rem;
-  border: 2px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  background: transparent;
-  cursor: pointer;
-  transition: var(--transition);
-  flex-shrink: 0;
-}
-
-input[type="checkbox"]:checked {
-  background-color: var(--primary);
-  border-color: var(--primary);
-  background-image: var(--checkbox-tick-svg);
-  background-size: 100% 100%;
-  background-position: center;
-  background-repeat: no-repeat;
-}
-
-input[type="checkbox"]:focus {
-  outline: none;
-  border-color: var(--primary);
-}
-
-input[type="checkbox"]:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* Sleek Scrollbar */
+/* Custom scrollbar for cleaner look in the editor pane */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+    width: 8px;
 }
-
 ::-webkit-scrollbar-track {
-  background: transparent;
+    background: transparent;
 }
-
 ::-webkit-scrollbar-thumb {
-  background: var(--scrollbar-thumb);
-  border-radius: var(--radius-full);
+    background-color: #cbd5e1;
+    border-radius: 4px;
 }
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--scrollbar-thumb-hover);
+.dark ::-webkit-scrollbar-thumb {
+    background-color: #475569;
 }
-
-/* Selection */
-::selection {
-  background: var(--primary-medium);
-  color: var(--text-primary);
-}
-
-/* Focus visible for accessibility */
-:focus-visible {
-  outline: 2px solid var(--primary);
-  outline-offset: 2px;
-}
-
-/* Animations */
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.animate-fade-in {
-  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(4px);
-  z-index: 2000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  animation: fadeIn 0.3s ease;
-}
-
-.modal-content {
-  animation: fadeIn 0.4s ease;
+/* Hide number input spinners */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
 }
