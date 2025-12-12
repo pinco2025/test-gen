@@ -1,5 +1,9 @@
 import React, { useState } from 'react';
 import { Question } from '../types';
+import Editor from 'react-simple-code-editor';
+import { highlight, languages } from 'prismjs';
+import 'prismjs/components/prism-json';
+import 'prismjs/themes/prism-dark.css';
 
 interface AddQuestionModalProps {
   onClose: () => void;
@@ -18,11 +22,9 @@ const AddQuestionModal: React.FC<AddQuestionModalProps> = ({ onClose, onSave }) 
     } catch (err) {
       console.error('Failed to read clipboard', err);
       // Fallback if permission denied
-      const textArea = document.querySelector('textarea');
-      if (textArea) {
-         textArea.focus();
-         document.execCommand('paste');
-      }
+      // We cannot programmatically focus and paste without user interaction in the same way with the Editor component
+      // But we can prompt the user or try to focus the editor container if we had a ref
+      // For now, just rely on standard paste if clipboard API fails
     }
   };
 
@@ -39,9 +41,9 @@ const AddQuestionModal: React.FC<AddQuestionModalProps> = ({ onClose, onSave }) 
       }
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      setJsonInput(e.target.value);
-      validateJson(e.target.value);
+  const handleEditorChange = (code: string) => {
+      setJsonInput(code);
+      validateJson(code);
   };
 
   const handleSave = async () => {
@@ -127,7 +129,7 @@ const AddQuestionModal: React.FC<AddQuestionModalProps> = ({ onClose, onSave }) 
 
         <div className="edit-modal-body" style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '0' }}>
             <div style={{ padding: '1rem', flex: 1, display: 'flex', gap: '1rem' }}>
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                         <label style={{ fontWeight: 'bold' }}>JSON Input</label>
                         <button
@@ -139,26 +141,34 @@ const AddQuestionModal: React.FC<AddQuestionModalProps> = ({ onClose, onSave }) 
                              Paste
                         </button>
                     </div>
-                    <textarea
-                        value={jsonInput}
-                        onChange={handleChange}
-                        placeholder="Paste question JSON here..."
-                        style={{
-                            flex: 1,
-                            fontFamily: 'monospace',
-                            fontSize: '14px',
-                            padding: '1rem',
-                            backgroundColor: '#1e1e1e',
-                            color: '#d4d4d4',
-                            border: error ? '1px solid #ff4d4f' : '1px solid var(--border-color)',
-                            borderRadius: 'var(--radius)',
-                            resize: 'none',
-                            outline: 'none',
-                            whiteSpace: 'pre',
-                            overflow: 'auto'
-                        }}
-                        spellCheck="false"
-                    />
+
+                    <div style={{
+                        flex: 1,
+                        border: error ? '1px solid #ff4d4f' : '1px solid var(--border-color)',
+                        borderRadius: 'var(--radius)',
+                        overflow: 'hidden',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        backgroundColor: '#1e1e1e' // Match VS Code dark theme somewhat
+                    }}>
+                        <div style={{ flex: 1, overflow: 'auto', padding: '10px' }}>
+                            <Editor
+                                value={jsonInput}
+                                onValueChange={handleEditorChange}
+                                highlight={code => highlight(code, languages.json, 'json')}
+                                padding={10}
+                                style={{
+                                    fontFamily: '"Fira code", "Fira Mono", monospace',
+                                    fontSize: 14,
+                                    backgroundColor: '#1e1e1e',
+                                    color: '#d4d4d4',
+                                    minHeight: '100%'
+                                }}
+                                textareaClassName="code-editor-textarea"
+                            />
+                        </div>
+                    </div>
+
                     {error && <div style={{ color: '#ff4d4f', marginTop: '0.5rem', fontSize: '0.9rem' }}>{error}</div>}
                 </div>
 
