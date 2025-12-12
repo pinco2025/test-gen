@@ -7,6 +7,7 @@ import '../styles/TestReview.css';
 
 interface TestReviewProps {
   sections: SectionConfig[];
+  onStartEditing: (question: Question) => void;
   onEditQuestion: (updatedQuestion: Question) => void;
   onBack: () => void;
   onExport: () => void;
@@ -16,6 +17,7 @@ interface TestReviewProps {
 
 const TestReview: React.FC<TestReviewProps> = ({
   sections,
+  onStartEditing,
   onEditQuestion,
   onBack,
   onExport,
@@ -25,35 +27,7 @@ const TestReview: React.FC<TestReviewProps> = ({
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   // Palette is always visible, no toggling state needed for sidebar
 
-  // Edit state
-  const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
-  const [editForm, setEditForm] = useState<Partial<Question>>({});
-
-  // Image modal state
-  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
-  const [imageForm, setImageForm] = useState<{
-    question_image_url: string;
-    option_a_image_url: string;
-    option_b_image_url: string;
-    option_c_image_url: string;
-    option_d_image_url: string;
-  }>({
-    question_image_url: '',
-    option_a_image_url: '',
-    option_b_image_url: '',
-    option_c_image_url: '',
-    option_d_image_url: ''
-  });
-  // Local state to trigger preview rendering (though direct input change already rerenders)
-  const [previewImages, setPreviewImages] = useState(imageForm);
-
-  // Solution modal state
-  const [isSolutionModalOpen, setIsSolutionModalOpen] = useState(false);
-  const [solutionForm, setSolutionForm] = useState({
-      solution_text: '',
-      solution_image_url: ''
-  });
-  const [previewSolution, setPreviewSolution] = useState(solutionForm);
+  // All editing state and modals are removed in favor of the global QuestionEditor
 
   // Acceptance Checklist Modal State
   const [isAcceptModalOpen, setIsAcceptModalOpen] = useState(false);
@@ -188,148 +162,10 @@ const TestReview: React.FC<TestReviewProps> = ({
     return allQuestions.every(item => item.sq.status === 'accepted');
   }, [allQuestions]);
 
-  // Edit Handlers
   const handleEditClick = () => {
-    if (!currentQuestion) return;
-    setEditingQuestion(currentQuestion);
-    setEditForm({
-      question: currentQuestion.question,
-      option_a: currentQuestion.option_a,
-      option_b: currentQuestion.option_b,
-      option_c: currentQuestion.option_c,
-      option_d: currentQuestion.option_d,
-      answer: currentQuestion.answer
-    });
-  };
-
-  const handleSaveEdit = async () => {
-    if (!editingQuestion || !window.electronAPI) return;
-
-    try {
-      const success = await window.electronAPI.questions.updateQuestion(editingQuestion.uuid, editForm);
-
-      if (success) {
-        const updatedQuestion = {
-          ...editingQuestion,
-          ...editForm,
-          updated_at: new Date().toISOString()
-        };
-        onEditQuestion(updatedQuestion);
-        setEditingQuestion(null);
-      } else {
-        // alert('Failed to update question in database');
-      }
-    } catch (error) {
-      console.error('Error updating question:', error);
-      // alert('An error occurred while updating the question');
+    if (currentQuestion) {
+      onStartEditing(currentQuestion);
     }
-  };
-
-  const handleInputChange = (field: keyof Question, value: string) => {
-    setEditForm(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
-  // Image Management Handlers
-  const handleImageClick = () => {
-      if (!currentQuestion) return;
-      setImageForm({
-          question_image_url: currentQuestion.question_image_url || '',
-          option_a_image_url: currentQuestion.option_a_image_url || '',
-          option_b_image_url: currentQuestion.option_b_image_url || '',
-          option_c_image_url: currentQuestion.option_c_image_url || '',
-          option_d_image_url: currentQuestion.option_d_image_url || ''
-      });
-      setPreviewImages({
-          question_image_url: currentQuestion.question_image_url || '',
-          option_a_image_url: currentQuestion.option_a_image_url || '',
-          option_b_image_url: currentQuestion.option_b_image_url || '',
-          option_c_image_url: currentQuestion.option_c_image_url || '',
-          option_d_image_url: currentQuestion.option_d_image_url || ''
-      });
-      setIsImageModalOpen(true);
-  };
-
-  const handleImageSave = async () => {
-      if (!currentQuestion || !window.electronAPI) return;
-
-      try {
-        const updates = {
-            question_image_url: imageForm.question_image_url || null,
-            option_a_image_url: imageForm.option_a_image_url || null,
-            option_b_image_url: imageForm.option_b_image_url || null,
-            option_c_image_url: imageForm.option_c_image_url || null,
-            option_d_image_url: imageForm.option_d_image_url || null
-        };
-
-        const success = await window.electronAPI.questions.updateQuestion(currentQuestion.uuid, updates);
-
-        if (success) {
-            const updatedQuestion = {
-                ...currentQuestion,
-                ...updates,
-                updated_at: new Date().toISOString()
-            };
-            onEditQuestion(updatedQuestion);
-            setIsImageModalOpen(false);
-        } else {
-            // alert('Failed to update image URLs');
-        }
-      } catch (error) {
-          console.error('Error updating images:', error);
-          // alert('An error occurred while updating images');
-      }
-  };
-
-  const handlePreview = () => {
-      // Just update the state to trigger re-render of preview in modal
-      setPreviewImages({...imageForm});
-  };
-
-  // Solution Handlers
-  const handleSolutionClick = async () => {
-      if (!currentQuestion || !window.electronAPI) return;
-
-      try {
-          const solution = await window.electronAPI.questions.getSolution(currentQuestion.uuid);
-          const initialForm = {
-              solution_text: solution ? solution.solution_text : '',
-              solution_image_url: solution ? solution.solution_image_url : ''
-          };
-          setSolutionForm(initialForm);
-          setPreviewSolution(initialForm);
-          setIsSolutionModalOpen(true);
-      } catch (error) {
-          console.error('Error fetching solution:', error);
-          // alert('Failed to fetch solution');
-      }
-  };
-
-  const handleSolutionSave = async () => {
-      if (!currentQuestion || !window.electronAPI) return;
-
-      try {
-          const success = await window.electronAPI.questions.saveSolution(
-              currentQuestion.uuid,
-              solutionForm.solution_text,
-              solutionForm.solution_image_url
-          );
-
-          if (success) {
-              setIsSolutionModalOpen(false);
-          } else {
-              // alert('Failed to save solution');
-          }
-      } catch (error) {
-          console.error('Error saving solution:', error);
-          // alert('An error occurred while saving solution');
-      }
-  };
-
-  const handleSolutionPreview = () => {
-      setPreviewSolution({...solutionForm});
   };
 
   return (
@@ -565,49 +401,6 @@ const TestReview: React.FC<TestReviewProps> = ({
                           <span className="material-symbols-outlined">check</span>
                           Confirm Accept
                       </button>
-                  </div>
-              </div>
-          </div>
-      )}
-    </div>
-  );
-};
-                          <label>Solution Image URL</label>
-                          <input
-                              type="text"
-                              value={solutionForm.solution_image_url}
-                              onChange={(e) => setSolutionForm({...solutionForm, solution_image_url: e.target.value})}
-                              placeholder="Enter solution image URL..."
-                              style={{width: '100%', padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: '4px'}}
-                          />
-                      </div>
-
-                      <div className="preview-section" style={{borderTop: '1px solid var(--border-color)', paddingTop: '1rem'}}>
-                          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem'}}>
-                             <h4>Preview</h4>
-                             <button className="btn-secondary" onClick={handleSolutionPreview}>Update Preview</button>
-                          </div>
-
-                          <div className="preview-container" style={{background: 'var(--bg-light)', padding: '1rem', borderRadius: '8px'}}>
-                              <div style={{marginBottom: '1rem'}}>
-                                  <LatexRenderer content={previewSolution.solution_text} />
-                              </div>
-
-                              {previewSolution.solution_image_url && (
-                                  <div className="preview-image" style={{marginTop: '1rem', textAlign: 'center'}}>
-                                      <img
-                                        src={previewSolution.solution_image_url}
-                                        alt="Solution"
-                                        style={{maxWidth: '100%', maxHeight: '400px', border: '1px solid #ddd'}}
-                                      />
-                                  </div>
-                              )}
-                          </div>
-                      </div>
-                  </div>
-                  <div className="edit-modal-footer">
-                      <button className="btn-secondary" onClick={() => setIsSolutionModalOpen(false)}>Cancel</button>
-                      <button className="btn-primary" onClick={handleSolutionSave}>Save Solution</button>
                   </div>
               </div>
           </div>
