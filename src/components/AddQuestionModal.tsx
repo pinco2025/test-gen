@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Question } from '../types';
-import LatexRenderer from './LatexRenderer';
 
 interface AddQuestionModalProps {
   onClose: () => void;
@@ -8,290 +7,191 @@ interface AddQuestionModalProps {
 }
 
 const AddQuestionModal: React.FC<AddQuestionModalProps> = ({ onClose, onSave }) => {
-  const [form, setForm] = useState<Partial<Question>>({
-    question: '',
-    question_image_url: '',
-    option_a: '',
-    option_a_image_url: '',
-    option_b: '',
-    option_b_image_url: '',
-    option_c: '',
-    option_c_image_url: '',
-    option_d: '',
-    option_d_image_url: '',
-    answer: 'A',
-    type: 'MCQ',
-    year: new Date().getFullYear().toString(),
-    tag_1: '',
-    tag_2: '',
-    tag_3: '',
-    tag_4: '',
-    frequency: 0
-  });
+  const [jsonInput, setJsonInput] = useState<string>('');
+  const [error, setError] = useState<string | null>(null);
 
-  const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const handlePaste = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      setJsonInput(text);
+      validateJson(text);
+    } catch (err) {
+      console.error('Failed to read clipboard', err);
+      // Fallback if permission denied
+      const textArea = document.querySelector('textarea');
+      if (textArea) {
+         textArea.focus();
+         document.execCommand('paste');
+      }
+    }
+  };
 
-  const handleChange = (field: keyof Question, value: any) => {
-    setForm(prev => ({ ...prev, [field]: value }));
+  const validateJson = (text: string) => {
+      try {
+          if (!text.trim()) {
+              setError(null);
+              return;
+          }
+          JSON.parse(text);
+          setError(null);
+      } catch (e: any) {
+          setError(e.message);
+      }
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      setJsonInput(e.target.value);
+      validateJson(e.target.value);
   };
 
   const handleSave = async () => {
-    // Basic validation
-    if (!form.question) {
-      // Notification handled by parent or a toast could be added here if context was available
-      // For now, we rely on the button not doing anything or showing a simple validation message
-      // But wait, the requirement says "All alerts can be replaced with a UI centric popup"
-      // Since I can't easily inject the notification context here without prop drilling or context,
-      // I'll assume the parent component handles success/failure notifications.
-      // But for validation, I should probably show a message.
-      // Since I added useNotification to App.tsx, I should probably pass it down or use context.
-      // But to keep it simple and given the time constraints, I will use a simple inline error or just return.
-      // Actually, let's just use a window.alert for now? NO, "All alerts can be replaced".
-      // I'll leave it as a silent return for now, effectively disabling the action.
-      // Better yet, I will assume the user sees the empty fields.
-      return;
-    }
-    if (!form.answer) {
-      return;
-    }
+    try {
+        const data = JSON.parse(jsonInput);
 
-    const newQuestion: Question = {
-      uuid: crypto.randomUUID(),
-      question: form.question || '',
-      question_image_url: form.question_image_url || null,
-      option_a: form.option_a || null,
-      option_a_image_url: form.option_a_image_url || null,
-      option_b: form.option_b || null,
-      option_b_image_url: form.option_b_image_url || null,
-      option_c: form.option_c || null,
-      option_c_image_url: form.option_c_image_url || null,
-      option_d: form.option_d || null,
-      option_d_image_url: form.option_d_image_url || null,
-      answer: form.answer as any,
-      type: form.type || 'MCQ',
-      year: form.year || null,
-      tag_1: form.tag_1 || null,
-      tag_2: form.tag_2 || null,
-      tag_3: form.tag_3 || null,
-      tag_4: form.tag_4 || null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      frequency: 0
-    };
+        // Basic validation of required fields
+        if (!data.question || !data.answer) {
+            setError('Missing required fields: question, answer');
+            return;
+        }
 
-    await onSave(newQuestion);
+        const newQuestion: Question = {
+            uuid: crypto.randomUUID(),
+            question: data.question,
+            question_image_url: data.question_image_url || null,
+            option_a: data.options?.A?.text || data.options?.A || null,
+            option_a_image_url: data.options?.A?.image || null,
+            option_b: data.options?.B?.text || data.options?.B || null,
+            option_b_image_url: data.options?.B?.image || null,
+            option_c: data.options?.C?.text || data.options?.C || null,
+            option_c_image_url: data.options?.C?.image || null,
+            option_d: data.options?.D?.text || data.options?.D || null,
+            option_d_image_url: data.options?.D?.image || null,
+            answer: data.answer,
+            type: data.type || (data.options ? 'MCQ' : 'Integer'),
+            year: data.year || new Date().getFullYear().toString(),
+            tag_1: data.tags?.chapter || data.tags?.tag_1 || null,
+            tag_2: data.tags?.topic || data.tags?.tag_2 || null,
+            tag_3: data.tags?.difficulty || data.tags?.tag_3 || null,
+            tag_4: data.tags?.other || data.tags?.tag_4 || null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            frequency: 0
+        };
+
+        await onSave(newQuestion);
+        onClose(); // Close modal on success
+    } catch (e: any) {
+        setError('Invalid JSON: ' + e.message);
+    }
   };
 
+  const sampleJsonMCQ = `{
+  "question": "What is the speed of light?",
+  "question_image_url": null,
+  "options": {
+    "A": "3x10^8 m/s",
+    "B": "3x10^6 m/s",
+    "C": "300 km/h",
+    "D": "Infinite"
+  },
+  "answer": "A",
+  "type": "MCQ",
+  "tags": {
+    "chapter": "PHY01",
+    "difficulty": "E"
+  }
+}`;
+
+  const sampleJsonInteger = `{
+  "question": "Calculate 25 * 4",
+  "answer": "100",
+  "type": "Integer",
+  "tags": {
+    "chapter": "MATH01",
+    "difficulty": "E"
+  }
+}`;
+
   return (
-    <div className="modal-overlay animate-fade-in">
-      <div className="edit-modal animate-fade-in" style={{ maxWidth: '900px', width: '95%', maxHeight: '90vh', overflowY: 'auto' }}>
+    <div className="modal-overlay animate-fade-in" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="edit-modal animate-fade-in" style={{ maxWidth: '900px', width: '90%', height: '85vh', display: 'flex', flexDirection: 'column' }}>
         <div className="edit-modal-header">
           <h3>
-             <span className="material-symbols-outlined" style={{ marginRight: '0.5rem' }}>add_circle</span>
-             Add New Question
+             <span className="material-symbols-outlined" style={{ marginRight: '0.5rem' }}>data_object</span>
+             Add New Question (JSON)
           </h3>
           <button className="edit-modal-close" onClick={onClose}>
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>
 
-        <div className="edit-modal-body">
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
-                <button
-                    className="btn-secondary"
-                    onClick={() => setIsPreviewMode(!isPreviewMode)}
-                    type="button"
-                >
-                    <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>
-                        {isPreviewMode ? 'edit' : 'visibility'}
-                    </span>
-                    {isPreviewMode ? 'Edit Mode' : 'Preview Mode'}
-                </button>
-            </div>
-
-          {isPreviewMode ? (
-             <div className="preview-container" style={{background: 'var(--bg-main)', padding: '1.5rem', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)'}}>
-                <div style={{marginBottom: '0.5rem'}}>
-                  <strong>Question:</strong><br/>
-                  <div style={{marginTop: '0.5rem'}}>
-                      <LatexRenderer content={form.question || ''} />
-                  </div>
-                  {form.question_image_url && (
-                    <img src={form.question_image_url} alt="Question" style={{maxWidth: '100%', maxHeight: '300px', marginTop: '10px'}} />
-                  )}
-                </div>
-
-                <div className="options-preview" style={{display: 'grid', gap: '0.5rem', marginTop: '1rem'}}>
-                    {['A', 'B', 'C', 'D'].map(opt => {
-                        const key = `option_${opt.toLowerCase()}` as keyof Question;
-                        const imgKey = `option_${opt.toLowerCase()}_image_url` as keyof Question;
-                        const text = form[key] as string;
-                        const img = form[imgKey] as string;
-
-                        if (!text && !img) return null;
-
-                        return (
-                            <div key={opt} style={{display: 'flex', gap: '0.5rem', alignItems: 'flex-start'}}>
-                                <strong>{opt})</strong>
-                                <div style={{flex: 1}}>
-                                    <LatexRenderer content={text || ''} />
-                                    {img && (
-                                        <div style={{marginTop: '0.5rem'}}>
-                                          <img src={img} alt={`Option ${opt}`} style={{maxWidth: '100px', maxHeight: '100px'}} />
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
-
-                <div style={{marginTop: '1rem'}}>
-                    <strong>Correct Answer:</strong> {form.answer}
-                </div>
-             </div>
-          ) : (
-            <div className="form-grid" style={{ display: 'grid', gap: '1rem' }}>
-
-              {/* Question */}
-              <div className="form-group">
-                <label>Question Text</label>
-                <textarea
-                  value={form.question || ''}
-                  onChange={(e) => handleChange('question', e.target.value)}
-                  rows={4}
-                  placeholder="Enter question text (LaTeX supported)"
-                />
-              </div>
-              <div className="form-group">
-                <label>Question Image URL</label>
-                <input
-                  type="text"
-                  value={form.question_image_url || ''}
-                  onChange={(e) => handleChange('question_image_url', e.target.value)}
-                  placeholder="http://..."
-                />
-              </div>
-
-              {/* Options */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                {['A', 'B', 'C', 'D'].map((opt) => (
-                  <div key={opt} style={{ border: '1px solid var(--border-color)', padding: '0.5rem', borderRadius: '4px' }}>
-                    <div className="form-group">
-                        <label>Option {opt} Text</label>
-                        <textarea
-                        value={(form[`option_${opt.toLowerCase()}` as keyof Question] as string) || ''}
-                        onChange={(e) => handleChange(`option_${opt.toLowerCase()}` as keyof Question, e.target.value)}
-                        rows={2}
-                        />
+        <div className="edit-modal-body" style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '0' }}>
+            <div style={{ padding: '1rem', flex: 1, display: 'flex', gap: '1rem' }}>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                        <label style={{ fontWeight: 'bold' }}>JSON Input</label>
+                        <button
+                            className="btn-secondary"
+                            onClick={handlePaste}
+                            style={{ padding: '2px 8px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '4px' }}
+                        >
+                             <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>content_paste</span>
+                             Paste
+                        </button>
                     </div>
-                    <div className="form-group">
-                        <label>Option {opt} Image URL</label>
-                        <input
-                        type="text"
-                        value={(form[`option_${opt.toLowerCase()}_image_url` as keyof Question] as string) || ''}
-                        onChange={(e) => handleChange(`option_${opt.toLowerCase()}_image_url` as keyof Question, e.target.value)}
-                        />
+                    <textarea
+                        value={jsonInput}
+                        onChange={handleChange}
+                        placeholder="Paste question JSON here..."
+                        style={{
+                            flex: 1,
+                            fontFamily: 'monospace',
+                            fontSize: '14px',
+                            padding: '1rem',
+                            backgroundColor: '#1e1e1e',
+                            color: '#d4d4d4',
+                            border: error ? '1px solid #ff4d4f' : '1px solid var(--border-color)',
+                            borderRadius: 'var(--radius)',
+                            resize: 'none',
+                            outline: 'none',
+                            whiteSpace: 'pre',
+                            overflow: 'auto'
+                        }}
+                        spellCheck="false"
+                    />
+                    {error && <div style={{ color: '#ff4d4f', marginTop: '0.5rem', fontSize: '0.9rem' }}>{error}</div>}
+                </div>
+
+                <div style={{ width: '300px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <div style={{ padding: '1rem', backgroundColor: 'var(--bg-light)', borderRadius: 'var(--radius)', border: '1px solid var(--border-color)', overflowY: 'auto' }}>
+                        <h4 style={{ marginTop: 0, marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>Sample MCQ</h4>
+                        <pre style={{ margin: 0, fontSize: '0.75rem', overflowX: 'auto', padding: '0.5rem', background: 'var(--bg-card)', borderRadius: '4px' }}>
+                            {sampleJsonMCQ}
+                        </pre>
+
+                        <h4 style={{ marginTop: '1rem', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>Sample Integer</h4>
+                        <pre style={{ margin: 0, fontSize: '0.75rem', overflowX: 'auto', padding: '0.5rem', background: 'var(--bg-card)', borderRadius: '4px' }}>
+                            {sampleJsonInteger}
+                        </pre>
+
+                        <div style={{ marginTop: '1rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                            <p><strong>Note:</strong></p>
+                            <ul style={{ paddingLeft: '1.2rem', margin: '0.5rem 0' }}>
+                                <li>Use <code>options</code> object for MCQ (A, B, C, D).</li>
+                                <li>For images in options, use object <code>{`{ "text": "...", "image": "..." }`}</code>.</li>
+                                <li>For Integer, omit options and provide answer value.</li>
+                            </ul>
+                        </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Metadata */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
-                 <div className="form-group">
-                    <label>Correct Answer</label>
-                    <select
-                        value={form.answer}
-                        onChange={(e) => handleChange('answer', e.target.value)}
-                    >
-                        <option value="A">A</option>
-                        <option value="B">B</option>
-                        <option value="C">C</option>
-                        <option value="D">D</option>
-                        {/* Allow custom input for integer type questions if needed? The schema enforces A/B/C/D but user might want integer */}
-                    </select>
-                    {/* If we want to support integer answers for Division 2, we might need a text input toggled by type */}
-                    <input
-                        type="text"
-                        placeholder="Or type value..."
-                        value={form.answer}
-                        onChange={(e) => handleChange('answer', e.target.value)}
-                        style={{ marginTop: '5px' }}
-                    />
-                 </div>
-                 <div className="form-group">
-                    <label>Type</label>
-                    <input
-                        type="text"
-                        value={form.type || ''}
-                        onChange={(e) => handleChange('type', e.target.value)}
-                        list="type-suggestions"
-                    />
-                    <datalist id="type-suggestions">
-                        <option value="MCQ" />
-                        <option value="Integer" />
-                    </datalist>
-                 </div>
-                 <div className="form-group">
-                    <label>Year</label>
-                    <input
-                        type="text"
-                        value={form.year || ''}
-                        onChange={(e) => handleChange('year', e.target.value)}
-                    />
-                 </div>
-              </div>
-
-              {/* Tags */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div className="form-group">
-                    <label>Tag 1 (Chapter Code)</label>
-                    <input
-                        type="text"
-                        value={form.tag_1 || ''}
-                        onChange={(e) => handleChange('tag_1', e.target.value)}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>Tag 2 (e.g. Topic)</label>
-                    <input
-                        type="text"
-                        value={form.tag_2 || ''}
-                        onChange={(e) => handleChange('tag_2', e.target.value)}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label>Tag 3 (Difficulty)</label>
-                    <select
-                        value={form.tag_3 || ''}
-                        onChange={(e) => handleChange('tag_3', e.target.value)}
-                    >
-                        <option value="">Select...</option>
-                        <option value="E">Easy</option>
-                        <option value="M">Medium</option>
-                        <option value="H">Hard</option>
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label>Tag 4 (Other)</label>
-                    <input
-                        type="text"
-                        value={form.tag_4 || ''}
-                        onChange={(e) => handleChange('tag_4', e.target.value)}
-                    />
-                  </div>
-              </div>
-
+                </div>
             </div>
-          )}
         </div>
 
         <div className="edit-modal-footer">
           <button className="btn-secondary" onClick={onClose}>Cancel</button>
-          <button className="btn-primary" onClick={handleSave}>
+          <button className="btn-primary" onClick={handleSave} disabled={!!error || !jsonInput.trim()}>
             <span className="material-symbols-outlined">save</span>
-            Save Question
+            Add Question
           </button>
         </div>
       </div>

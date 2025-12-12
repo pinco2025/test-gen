@@ -25,7 +25,8 @@ export interface Question {
   option_d_image_url: string | null;
 
   // Answer and metadata
-  answer: 'A' | 'B' | 'C' | 'D';
+  // Expanded to allow string for Integer type questions
+  answer: string;
   type: string;
   year: string | null;
 
