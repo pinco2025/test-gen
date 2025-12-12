@@ -13,7 +13,6 @@ import {
 } from '../types';
 import FilterMenu, { FilterState } from './FilterMenu';
 import QuestionRow from './QuestionRow';
-import chaptersData from '../data/chapters.json';
 
 interface QuestionSelectionProps {
   sectionName: SectionName;
@@ -22,20 +21,9 @@ interface QuestionSelectionProps {
   betaConstraint: BetaConstraint;
   onComplete: (selectedQuestions: SelectedQuestion[]) => void;
   onBack: () => void;
+  onStartEditing: (question: Question) => void;
   initialSelectedQuestions?: SelectedQuestion[];
   onChange?: (selectedQuestions: SelectedQuestion[]) => void;
-}
-
-// Edit modal state interface
-interface EditModalState {
-  isOpen: boolean;
-  question: Question | null;
-  mode: 'edit' | 'clone';
-  // Form fields for "edit" mode (only Difficulty/Chapter)
-  difficulty: Difficulty;
-  chapterCode: string;
-  // Form fields for "clone" mode (Everything)
-  fullEditForm: Partial<Question>;
 }
 
 interface ItemData {
@@ -43,7 +31,6 @@ interface ItemData {
   selectedUuids: Set<string>;
   onToggle: (question: Question) => void;
   onEdit: (e: React.MouseEvent, question: Question) => void;
-  onCloneAndEdit: (e: React.MouseEvent, question: Question) => void;
   setSize: (index: number, size: number) => void;
   zoomLevel: number;
 }
@@ -55,7 +42,7 @@ const isNumericalAnswer = (question: Question): boolean => {
 };
 
 const Row = ({ index, style, data }: ListChildComponentProps<ItemData>) => {
-  const { questions, selectedUuids, onToggle, onEdit, onCloneAndEdit, setSize, zoomLevel } = data;
+  const { questions, selectedUuids, onToggle, onEdit, setSize, zoomLevel } = data;
   const question = questions[index];
   const rowRef = useRef<HTMLDivElement>(null);
 
@@ -91,7 +78,6 @@ const Row = ({ index, style, data }: ListChildComponentProps<ItemData>) => {
           isDivision2Question={isDivision2Question}
           onToggle={onToggle}
           onEdit={onEdit}
-          onCloneAndEdit={onCloneAndEdit}
           highlightCorrectAnswer={true}
           zoomLevel={zoomLevel}
         />
@@ -106,171 +92,12 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
   alphaConstraint,
   onComplete,
   onBack,
+  onStartEditing,
   initialSelectedQuestions = [],
   onChange
 }) => {
   const [selectedQuestions, setSelectedQuestions] = useState<SelectedQuestion[]>(initialSelectedQuestions);
   const [zoomLevel, setZoomLevel] = useState(1);
-
-  // Edit modal state
-  const [editModal, setEditModal] = useState<EditModalState>({
-    isOpen: false,
-    question: null,
-    mode: 'edit',
-    difficulty: 'M',
-    chapterCode: '',
-    fullEditForm: {}
-  });
-
-  // Get valid chapters for current section - memoized
-  const validChaptersForSection = useMemo(() => {
-    const sectionKey = sectionName as keyof typeof chaptersData;
-    const sectionChapters = chaptersData[sectionKey] || [];
-    return sectionChapters.map(ch => ({ code: ch.code, name: ch.name }));
-  }, [sectionName]);
-
-  // Open edit modal for a question (Simple Edit)
-  const openEditModal = (e: React.MouseEvent, question: Question) => {
-    e.stopPropagation(); // Prevent question selection
-    setEditModal({
-      isOpen: true,
-      question,
-      mode: 'edit',
-      difficulty: (question.tag_3 as Difficulty) || 'M',
-      chapterCode: question.tag_2 || '',
-      fullEditForm: {}
-    });
-  };
-
-  // Open clone and edit modal
-  const openCloneAndEditModal = (e: React.MouseEvent, question: Question) => {
-    e.stopPropagation();
-
-    // Generate new UUID here or let backend handle it?
-    // User wants to edit "Everything".
-    // We start with the existing question data.
-
-    setEditModal({
-      isOpen: true,
-      question: question, // Keep original as reference or just for display? Using it as reference.
-      mode: 'clone',
-      difficulty: (question.tag_3 as Difficulty) || 'M',
-      chapterCode: question.tag_2 || '',
-      fullEditForm: {
-        ...question,
-        uuid: crypto.randomUUID(), // New UUID
-        question: question.question,
-        option_a: question.option_a,
-        option_b: question.option_b,
-        option_c: question.option_c,
-        option_d: question.option_d,
-        answer: question.answer,
-        tag_1: question.tag_1,
-        tag_2: question.tag_2,
-        tag_3: question.tag_3,
-        tag_4: question.tag_4,
-        type: question.type,
-        year: question.year,
-        question_image_url: question.question_image_url,
-        option_a_image_url: question.option_a_image_url,
-        option_b_image_url: question.option_b_image_url,
-        option_c_image_url: question.option_c_image_url,
-        option_d_image_url: question.option_d_image_url,
-        frequency: 0, // Reset frequency for new question
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }
-    });
-  };
-
-  // Close edit modal
-  const closeEditModal = () => {
-    setEditModal({
-      isOpen: false,
-      question: null,
-      mode: 'edit',
-      difficulty: 'M',
-      chapterCode: '',
-      fullEditForm: {}
-    });
-  };
-
-  // Save question edits to database
-  const saveQuestionEdit = async () => {
-    if (!editModal.question) return;
-
-    if (editModal.mode === 'edit') {
-        try {
-          // Update in database
-          await window.electronAPI.questions.updateQuestion(editModal.question.uuid, {
-            tag_3: editModal.difficulty,
-            tag_2: editModal.chapterCode
-          });
-
-          // Update local state
-          setAvailableQuestions(prev => prev.map(q =>
-            q.uuid === editModal.question!.uuid
-              ? { ...q, tag_3: editModal.difficulty, tag_2: editModal.chapterCode }
-              : q
-          ));
-
-          // Update selected questions if this question is selected
-          setSelectedQuestions(prev => prev.map(sq =>
-            sq.question.uuid === editModal.question!.uuid
-              ? {
-                  ...sq,
-                  question: { ...sq.question, tag_3: editModal.difficulty, tag_2: editModal.chapterCode },
-                  difficulty: editModal.difficulty,
-                  chapterCode: editModal.chapterCode,
-                  chapterName: validChaptersForSection.find(ch => ch.code === editModal.chapterCode)?.name || sq.chapterName
-                }
-              : sq
-          ));
-
-          closeEditModal();
-        } catch (error) {
-          console.error('[EDIT] Error saving question edit:', error);
-          // alert('Failed to save changes. Please try again.');
-        }
-    } else {
-        // CLONE mode
-        try {
-            const newQuestion = editModal.fullEditForm as Question;
-            // Create in database
-            const success = await window.electronAPI.questions.createQuestion(newQuestion);
-
-            if (success) {
-                // Add to available questions
-                setAvailableQuestions(prev => [newQuestion, ...prev]);
-                // No need to select it automatically unless desired. User just said "added in the UI".
-                closeEditModal();
-            } else {
-                // alert('Failed to create cloned question.');
-            }
-        } catch (error) {
-            console.error('[CLONE] Error creating question:', error);
-            // alert('Failed to create cloned question. ' + error);
-        }
-    }
-  };
-
-  const handleFullEditChange = (field: keyof Question, value: any) => {
-    setEditModal(prev => ({
-        ...prev,
-        fullEditForm: {
-            ...prev.fullEditForm,
-            [field]: value
-        }
-    }));
-  };
-
-  // Sync selections to parent immediately when they change
-  useEffect(() => {
-    if (onChange) {
-      onChange(selectedQuestions);
-    }
-  }, [selectedQuestions, onChange]);
-
   const [availableQuestions, setAvailableQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState('');
@@ -285,6 +112,19 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
     tag4: '',
     sort: 'default'
   });
+
+  const handleEdit = (e: React.MouseEvent, question: Question) => {
+    e.stopPropagation();
+    onStartEditing(question);
+  };
+
+  // Sync selections to parent immediately when they change
+  useEffect(() => {
+    if (onChange) {
+      onChange(selectedQuestions);
+    }
+  }, [selectedQuestions, onChange]);
+
 
   // Virtualization refs
   const listRef = useRef<List>(null);
@@ -655,8 +495,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
       questions: filteredQuestions,
       selectedUuids,
       onToggle: toggleQuestion,
-      onEdit: openEditModal,
-      onCloneAndEdit: openCloneAndEditModal,
+      onEdit: handleEdit,
       setSize,
       zoomLevel
   }), [filteredQuestions, selectedUuids, toggleQuestion, setSize, zoomLevel]);
@@ -915,275 +754,6 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
         </button>
       </div>
 
-      {/* Edit Question Modal */}
-      {editModal.isOpen && editModal.question && (
-        <div className="edit-modal-overlay" onClick={closeEditModal}>
-          <div className="edit-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="edit-modal-header">
-              <h3>
-                <span className="material-symbols-outlined" style={{ marginRight: '0.5rem' }}>
-                    {editModal.mode === 'clone' ? 'content_copy' : 'edit'}
-                </span>
-                {editModal.mode === 'clone' ? 'Clone & Edit Question' : 'Edit Question Properties'}
-              </h3>
-              <button className="edit-modal-close" onClick={closeEditModal}>
-                <span className="material-symbols-outlined">close</span>
-              </button>
-            </div>
-
-            <div className="edit-modal-body">
-              {editModal.mode === 'edit' ? (
-                  // Simple Edit (Tag/Difficulty)
-                  <>
-                    <div className="edit-modal-question-preview">
-                        <div className="edit-modal-uuid">
-                        <span className="material-symbols-outlined" style={{ fontSize: '0.875rem' }}>tag</span>
-                        {editModal.question.uuid}
-                        </div>
-                        <p className="edit-modal-question-text">
-                        {editModal.question.question.length > 200
-                            ? editModal.question.question.substring(0, 200) + '...'
-                            : editModal.question.question}
-                        </p>
-                    </div>
-
-                    <div className="edit-modal-fields">
-                        <div className="edit-modal-field">
-                        <label>
-                            <span className="material-symbols-outlined" style={{ fontSize: '1rem', marginRight: '0.375rem' }}>speed</span>
-                            Difficulty
-                        </label>
-                        <div className="edit-modal-radio-group">
-                            {(['E', 'M', 'H'] as Difficulty[]).map((diff) => (
-                            <label key={diff} className={`edit-modal-radio ${editModal.difficulty === diff ? 'selected' : ''}`}>
-                                <input
-                                type="radio"
-                                name="difficulty"
-                                value={diff}
-                                checked={editModal.difficulty === diff}
-                                onChange={() => setEditModal(prev => ({ ...prev, difficulty: diff }))}
-                                />
-                                <span className="radio-label">
-                                {diff === 'E' ? 'Easy' : diff === 'M' ? 'Medium' : 'Hard'}
-                                </span>
-                            </label>
-                            ))}
-                        </div>
-                        </div>
-
-                        <div className="edit-modal-field">
-                        <label>
-                            <span className="material-symbols-outlined" style={{ fontSize: '1rem', marginRight: '0.375rem' }}>menu_book</span>
-                            Chapter / Topic
-                        </label>
-                        <select
-                            value={editModal.chapterCode}
-                            onChange={(e) => setEditModal(prev => ({ ...prev, chapterCode: e.target.value }))}
-                            className="edit-modal-select"
-                        >
-                            <option value="">Select a chapter...</option>
-                            {validChaptersForSection.map(ch => (
-                            <option key={ch.code} value={ch.code}>
-                                {ch.code} - {ch.name}
-                            </option>
-                            ))}
-                        </select>
-                        </div>
-                    </div>
-                  </>
-              ) : (
-                  // Full Edit (Everything)
-                  <div className="full-edit-form" style={{maxHeight: '60vh', overflowY: 'auto', paddingRight: '1rem'}}>
-                    <div className="form-group" style={{marginBottom: '1rem'}}>
-                      <label style={{display: 'block', fontWeight: 600, marginBottom: '0.5rem'}}>Question Text</label>
-                      <textarea
-                        value={editModal.fullEditForm.question || ''}
-                        onChange={(e) => handleFullEditChange('question', e.target.value)}
-                        style={{width: '100%', minHeight: '100px', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)'}}
-                      />
-                    </div>
-
-                    <div className="form-group" style={{marginBottom: '1rem'}}>
-                        <label style={{display: 'block', fontWeight: 600, marginBottom: '0.5rem'}}>Question Image URL</label>
-                        <div style={{display: 'flex', gap: '0.5rem'}}>
-                            <input
-                                type="text"
-                                value={editModal.fullEditForm.question_image_url || ''}
-                                onChange={(e) => handleFullEditChange('question_image_url', e.target.value)}
-                                style={{flex: 1, padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)'}}
-                            />
-                            {editModal.fullEditForm.question_image_url && (
-                                <button
-                                    onClick={() => window.open(editModal.fullEditForm.question_image_url || '', '_blank')}
-                                    className="btn-secondary"
-                                    style={{padding: '0.5rem'}}
-                                >
-                                    View
-                                </button>
-                            )}
-                        </div>
-                    </div>
-
-                    <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem'}}>
-                        <div className="form-group">
-                            <label style={{display: 'block', fontWeight: 600, marginBottom: '0.5rem'}}>Difficulty</label>
-                            <select
-                                value={editModal.fullEditForm.tag_3 || 'M'}
-                                onChange={(e) => handleFullEditChange('tag_3', e.target.value)}
-                                style={{width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)'}}
-                            >
-                                <option value="E">Easy</option>
-                                <option value="M">Medium</option>
-                                <option value="H">Hard</option>
-                            </select>
-                        </div>
-                        <div className="form-group">
-                            <label style={{display: 'block', fontWeight: 600, marginBottom: '0.5rem'}}>Chapter</label>
-                            <select
-                                value={editModal.fullEditForm.tag_2 || ''}
-                                onChange={(e) => handleFullEditChange('tag_2', e.target.value)}
-                                style={{width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)'}}
-                            >
-                                {validChaptersForSection.map(ch => (
-                                    <option key={ch.code} value={ch.code}>{ch.code} - {ch.name}</option>
-                                ))}
-                            </select>
-                        </div>
-                    </div>
-
-                    <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem'}}>
-                        <div className="form-group">
-                            <label style={{display: 'block', fontWeight: 600, marginBottom: '0.5rem'}}>Type</label>
-                            <input
-                                type="text"
-                                value={editModal.fullEditForm.type || ''}
-                                onChange={(e) => handleFullEditChange('type', e.target.value)}
-                                style={{width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)'}}
-                            />
-                        </div>
-                        <div className="form-group">
-                            <label style={{display: 'block', fontWeight: 600, marginBottom: '0.5rem'}}>Year</label>
-                            <input
-                                type="text"
-                                value={editModal.fullEditForm.year || ''}
-                                onChange={(e) => handleFullEditChange('year', e.target.value)}
-                                style={{width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)'}}
-                            />
-                        </div>
-                    </div>
-
-                    <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem'}}>
-                        <div className="form-group">
-                            <label style={{display: 'block', fontWeight: 600, marginBottom: '0.5rem'}}>Tag 1</label>
-                            <input
-                                type="text"
-                                value={editModal.fullEditForm.tag_1 || ''}
-                                onChange={(e) => handleFullEditChange('tag_1', e.target.value)}
-                                style={{width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)'}}
-                            />
-                        </div>
-                        <div className="form-group">
-                            <label style={{display: 'block', fontWeight: 600, marginBottom: '0.5rem'}}>Tag 4</label>
-                            <input
-                                type="text"
-                                value={editModal.fullEditForm.tag_4 || ''}
-                                onChange={(e) => handleFullEditChange('tag_4', e.target.value)}
-                                style={{width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)'}}
-                            />
-                        </div>
-                    </div>
-
-                    <div className="form-group" style={{marginBottom: '1rem'}}>
-                        <label style={{display: 'block', fontWeight: 600, marginBottom: '0.5rem'}}>Option A</label>
-                        <textarea
-                            value={editModal.fullEditForm.option_a || ''}
-                            onChange={(e) => handleFullEditChange('option_a', e.target.value)}
-                            style={{width: '100%', minHeight: '60px', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)'}}
-                        />
-                         <input
-                                type="text"
-                                placeholder="Image URL for Option A"
-                                value={editModal.fullEditForm.option_a_image_url || ''}
-                                onChange={(e) => handleFullEditChange('option_a_image_url', e.target.value)}
-                                style={{width: '100%', marginTop: '0.5rem', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)'}}
-                        />
-                    </div>
-                    <div className="form-group" style={{marginBottom: '1rem'}}>
-                        <label style={{display: 'block', fontWeight: 600, marginBottom: '0.5rem'}}>Option B</label>
-                        <textarea
-                            value={editModal.fullEditForm.option_b || ''}
-                            onChange={(e) => handleFullEditChange('option_b', e.target.value)}
-                            style={{width: '100%', minHeight: '60px', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)'}}
-                        />
-                         <input
-                                type="text"
-                                placeholder="Image URL for Option B"
-                                value={editModal.fullEditForm.option_b_image_url || ''}
-                                onChange={(e) => handleFullEditChange('option_b_image_url', e.target.value)}
-                                style={{width: '100%', marginTop: '0.5rem', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)'}}
-                        />
-                    </div>
-                    <div className="form-group" style={{marginBottom: '1rem'}}>
-                        <label style={{display: 'block', fontWeight: 600, marginBottom: '0.5rem'}}>Option C</label>
-                        <textarea
-                            value={editModal.fullEditForm.option_c || ''}
-                            onChange={(e) => handleFullEditChange('option_c', e.target.value)}
-                            style={{width: '100%', minHeight: '60px', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)'}}
-                        />
-                        <input
-                                type="text"
-                                placeholder="Image URL for Option C"
-                                value={editModal.fullEditForm.option_c_image_url || ''}
-                                onChange={(e) => handleFullEditChange('option_c_image_url', e.target.value)}
-                                style={{width: '100%', marginTop: '0.5rem', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)'}}
-                        />
-                    </div>
-                    <div className="form-group" style={{marginBottom: '1rem'}}>
-                        <label style={{display: 'block', fontWeight: 600, marginBottom: '0.5rem'}}>Option D</label>
-                        <textarea
-                            value={editModal.fullEditForm.option_d || ''}
-                            onChange={(e) => handleFullEditChange('option_d', e.target.value)}
-                            style={{width: '100%', minHeight: '60px', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)'}}
-                        />
-                         <input
-                                type="text"
-                                placeholder="Image URL for Option D"
-                                value={editModal.fullEditForm.option_d_image_url || ''}
-                                onChange={(e) => handleFullEditChange('option_d_image_url', e.target.value)}
-                                style={{width: '100%', marginTop: '0.5rem', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)'}}
-                        />
-                    </div>
-
-                    <div className="form-group" style={{marginBottom: '1rem'}}>
-                        <label style={{display: 'block', fontWeight: 600, marginBottom: '0.5rem'}}>Correct Answer</label>
-                        <input
-                            type="text"
-                            value={editModal.fullEditForm.answer || ''}
-                            onChange={(e) => handleFullEditChange('answer', e.target.value)}
-                            style={{width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border-color)'}}
-                            placeholder="A, B, C, D or numerical value"
-                        />
-                    </div>
-                  </div>
-              )}
-            </div>
-
-            <div className="edit-modal-footer">
-              <button className="btn-secondary" onClick={closeEditModal}>
-                Cancel
-              </button>
-              <button
-                className="btn-primary"
-                onClick={saveQuestionEdit}
-                disabled={editModal.mode === 'edit' && !editModal.chapterCode}
-              >
-                <span className="material-symbols-outlined">{editModal.mode === 'clone' ? 'add_circle' : 'save'}</span>
-                {editModal.mode === 'clone' ? 'Create Question' : 'Save Changes'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

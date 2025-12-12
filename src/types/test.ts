@@ -16,6 +16,7 @@ export type WorkflowStep =
   | 'question-select-chemistry'
   | 'question-select-math'
   | 'test-review'
+  | 'edit-question'
   | 'complete';
 
 // Chapter definition

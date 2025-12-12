@@ -21,6 +21,7 @@ import SectionConfiguration from './components/SectionConfiguration';
 import QuestionSelection from './components/QuestionSelection';
 import ProjectTabs from './components/ProjectTabs';
 import TestReview from './components/TestReview';
+import QuestionEditor from './components/QuestionEditor';
 import TestNavigation from './components/TestNavigation';
 import AddQuestionModal from './components/AddQuestionModal';
 import Notification, { useNotification } from './components/Notification';
@@ -82,6 +83,10 @@ function App() {
 
   // Add Question Modal state
   const [isAddQuestionModalOpen, setIsAddQuestionModalOpen] = useState(false);
+
+  // State for the question editor
+  const [editingQuestion, setEditingQuestion] = useState<{ question: Question, solution?: Solution } | null>(null);
+  const [previousStep, setPreviousStep] = useState<WorkflowStep | null>(null);
 
   // Save status
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
@@ -629,6 +634,42 @@ function App() {
     updateCurrentProject({ sections: updatedSections });
   }, [currentProjectId, sections, updateCurrentProject]);
 
+  const handleStartEditing = (question: Question) => {
+    if (!currentProject) return;
+    setEditingQuestion({ question });
+    setPreviousStep(currentProject.currentStep);
+    updateCurrentProject({ currentStep: 'edit-question' });
+  };
+
+  const handleFinishEditing = (updatedQuestion: Question, updatedSolution?: Solution) => {
+    if (!updatedQuestion) {
+      // Cancelled
+      if (previousStep) {
+        updateCurrentProject({ currentStep: previousStep });
+      }
+      setEditingQuestion(null);
+      return;
+    }
+
+    // Save the changes
+    handleQuestionUpdate(updatedQuestion);
+
+    // Also save solution
+    if (updatedSolution && window.electronAPI) {
+        window.electronAPI.questions.saveSolution(
+            updatedSolution.uuid,
+            updatedSolution.solution_text || '',
+            updatedSolution.solution_image_url || ''
+        );
+    }
+
+
+    if (previousStep) {
+      updateCurrentProject({ currentStep: previousStep });
+    }
+    setEditingQuestion(null);
+  };
+
   // Render different steps
   const renderStep = () => {
     // Show navigation for selection and review steps
@@ -787,6 +828,7 @@ function App() {
             betaConstraint={currentSection.betaConstraint}
             onComplete={handleQuestionSelection}
             onBack={handleBackFromSelection}
+            onStartEditing={handleStartEditing}
             initialSelectedQuestions={currentSection.selectedQuestions}
             onChange={handleSelectionChange}
           />
@@ -797,11 +839,24 @@ function App() {
           <TestReview
             sections={sections}
             onEditQuestion={handleQuestionUpdate}
+            onStartEditing={handleStartEditing}
             onBack={handleBackFromSelection}
             onExport={handleExportTest}
             onRemoveQuestion={handleRemoveQuestion}
             onUpdateQuestionStatus={handleQuestionStatusUpdate}
           />
+        );
+
+      case 'edit-question':
+        if (!editingQuestion) return <div>Error: No question selected for editing.</div>;
+        return (
+            <QuestionEditor
+                question={editingQuestion.question}
+                solution={editingQuestion.solution}
+                sectionName={sections[currentSectionIndex]?.name}
+                onSave={handleFinishEditing}
+                onCancel={() => handleFinishEditing(null)}
+            />
         );
 
       case 'complete':
