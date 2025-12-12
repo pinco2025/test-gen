@@ -1,23 +1,18 @@
 import { memo, useState } from 'react';
-import { Question } from '../types';
+import { Question, Solution } from '../types';
 import LatexRenderer from './LatexRenderer';
 
 interface QuestionDisplayProps {
-  question: Question;
+  question: Question & { solution?: Solution }; // Allow optional solution for preview
   showAnswer?: boolean;
   onSelect?: () => void;
   isSelected?: boolean;
   showCheckbox?: boolean;
   hideOptions?: boolean;
   questionNumber?: number;
-  difficulty?: 'E' | 'M' | 'H';
   highlightCorrectAnswer?: boolean;
 }
 
-/**
- * Component to display a question with LaTeX rendering
- * Wrapped in React.memo to prevent unnecessary re-renders
- */
 export const QuestionDisplay = memo<QuestionDisplayProps>(({
   question,
   showAnswer = false,
@@ -30,226 +25,108 @@ export const QuestionDisplay = memo<QuestionDisplayProps>(({
 }) => {
   const [copied, setCopied] = useState(false);
 
-  // Get difficulty styling
-  const getDifficultyStyle = (diff?: 'E' | 'M' | 'H') => {
-    switch (diff) {
-      case 'E':
-        return { background: 'var(--success-bg)', color: 'var(--success)' };
-      case 'M':
-        return { background: 'var(--warning-bg)', color: '#f57c00' };
-      case 'H':
-        return { background: 'var(--error-bg)', color: 'var(--error)' };
-      default:
-        return { background: 'var(--bg-light)', color: 'var(--text-muted-light)' };
-    }
-  };
-
-  const difficultyStyle = getDifficultyStyle(question.tag_3 as 'E' | 'M' | 'H');
-
   const handleCopyUuid = () => {
     navigator.clipboard.writeText(question.uuid);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const getDifficultyClass = (diff?: 'E' | 'M' | 'H') => {
+    switch (diff) {
+      case 'E': return 'bg-green-100 text-green-700 border-green-200';
+      case 'M': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+      case 'H': return 'bg-red-100 text-red-700 border-red-200';
+      default: return 'bg-gray-100 text-gray-700 border-gray-200';
+    }
+  };
+
   return (
-    <div className={`question-card ${isSelected ? 'selected' : ''}`}>
-      {showCheckbox && (
-        <div className="question-checkbox">
-          <input
+    <div className={`flex flex-col gap-6 relative ${isSelected ? 'ring-2 ring-primary' : ''}`}>
+       {showCheckbox && (
+         <input
             type="checkbox"
             checked={isSelected}
             onChange={onSelect}
+            className="absolute top-4 left-4 size-5 accent-primary"
           />
-        </div>
-      )}
+       )}
 
-      <div className="question-header" style={{
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: '0.5rem',
-        marginBottom: '0.75rem',
-        alignItems: 'center'
-      }}>
-        {/* Q# Display */}
-        {questionNumber !== undefined && (
-          <span style={{
-              backgroundColor: 'var(--bg-card)',
-              color: 'var(--text-primary)',
-              padding: '0.125rem 0.5rem',
-              borderRadius: 'var(--radius-sm)',
-              fontSize: '0.75rem',
-              fontWeight: 'bold',
-              border: '1px solid var(--border-color)',
-          }}>
-              Q{questionNumber}
+      {/* Header with Metadata */}
+      <div className="flex flex-wrap items-center gap-2">
+         {questionNumber !== undefined && (
+          <span className="text-xs font-medium px-2 py-1 rounded bg-gray-100 dark:bg-white/5 text-text-secondary border border-border-light dark:border-border-dark">
+            Q. {questionNumber}
           </span>
-        )}
-
-        {/* Clickable UUID */}
-         <span
-            onClick={handleCopyUuid}
-            title="Click to copy UUID"
-            style={{
-                backgroundColor: 'var(--bg-main)',
-                color: 'var(--text-muted)',
-                padding: '0.125rem 0.375rem',
-                borderRadius: 'var(--radius-sm)',
-                fontSize: '0.7rem',
-                fontFamily: 'monospace',
-                border: '1px solid var(--border-color)',
-                cursor: 'pointer',
-                userSelect: 'none',
-                minWidth: '60px',
-                textAlign: 'center'
-            }}
-         >
-            {copied ? 'Copied!' : `${question.uuid.substring(0, 8)}...`}
+         )}
+         {question.tag_1 && <span className="text-xs font-medium px-2 py-1 rounded-full bg-blue-50 dark:bg-primary/20 text-primary">{question.tag_1}</span>}
+         {question.tag_3 && <span className={`text-xs font-medium px-2 py-1 rounded-full ${getDifficultyClass(question.tag_3 as 'E' | 'M' | 'H')}`}>{question.tag_3 === 'E' ? 'Easy' : question.tag_3 === 'M' ? 'Medium' : 'Hard'}</span>}
+         {question.year && <span className="text-xs font-medium px-2 py-1 rounded-full bg-yellow-50 text-yellow-600">{question.year}</span>}
+         <span onClick={handleCopyUuid} title="Click to copy UUID" className="text-xs font-mono px-2 py-1 rounded bg-gray-100 dark:bg-white/10 text-text-secondary cursor-pointer hover:bg-gray-200 dark:hover:bg-white/20 transition-colors">
+            {copied ? 'Copied!' : `#${question.uuid.substring(0, 8)}`}
          </span>
-
-         {/* Tag 1 */}
-        {question.tag_1 && (
-            <span style={{
-                backgroundColor: 'var(--blue-bg)',
-                color: 'var(--blue)',
-                padding: '0.125rem 0.5rem',
-                borderRadius: 'var(--radius-full)',
-                fontSize: '0.7rem',
-                fontWeight: '600'
-            }}>{question.tag_1}</span>
-        )}
-
-        {question.tag_3 && (
-            <span style={{
-              ...difficultyStyle,
-              padding: '0.125rem 0.5rem',
-              borderRadius: 'var(--radius-full)',
-              fontSize: '0.7rem',
-              fontWeight: '600'
-            }}>{question.tag_3 === 'E' ? 'Easy' : question.tag_3 === 'M' ? 'Medium' : 'Hard'}</span>
-        )}
-
-        {question.year && (
-             <span style={{
-              backgroundColor: 'var(--amber-bg)',
-              color: 'var(--amber)',
-              padding: '0.125rem 0.5rem',
-              borderRadius: 'var(--radius-full)',
-              fontSize: '0.7rem',
-              fontWeight: '600'
-            }}>{question.year}</span>
-        )}
-
-        {question.type && (
-            <span style={{
-                backgroundColor: 'var(--primary-light)',
-                color: 'var(--primary)',
-                padding: '0.125rem 0.5rem',
-                borderRadius: 'var(--radius-full)',
-                fontSize: '0.7rem',
-                fontWeight: '600'
-            }}>{question.type}</span>
-        )}
-
-         {question.tag_2 && (
-            <span style={{
-              backgroundColor: 'var(--teal-bg)',
-              color: 'var(--teal)',
-              padding: '0.125rem 0.5rem',
-              borderRadius: 'var(--radius-full)',
-              fontSize: '0.7rem',
-              fontWeight: '600'
-            }}>{question.tag_2}</span>
-        )}
-
-        {/* Tag 4 */}
-        {question.tag_4 && (
-            <span style={{
-                backgroundColor: 'var(--indigo-bg)',
-                color: 'var(--indigo)',
-                padding: '0.125rem 0.5rem',
-                borderRadius: 'var(--radius-full)',
-                fontSize: '0.7rem',
-                fontWeight: '600'
-            }}>{question.tag_4}</span>
-        )}
-
-        {(question.frequency || 0) > 0 && (
-          <span style={{
-            backgroundColor: 'var(--purple-bg)',
-            color: 'var(--purple)',
-            padding: '0.125rem 0.5rem',
-            borderRadius: 'var(--radius-full)',
-            fontSize: '0.7rem',
-            fontWeight: '600'
-          }}>Used {question.frequency}x</span>
-        )}
       </div>
 
-      <div className="question-content">
-        <div className="question-text">
-          <strong>Question: </strong>
-          <LatexRenderer content={question.question} />
+      {/* Question Body */}
+      <div className="space-y-4">
+        <div className="text-text-main dark:text-gray-200 text-base leading-relaxed">
+            <LatexRenderer content={question.question} />
         </div>
-
-        {/* Render Question Image if present */}
         {question.question_image_url && (
-          <div className="question-image" style={{margin: '1rem 0', textAlign: 'center'}}>
-            <img
-              src={question.question_image_url}
-              alt="Question Image"
-              style={{maxWidth: '100%', maxHeight: '300px', border: '1px solid var(--border-color)'}}
-            />
-          </div>
+            <div className="w-full h-auto bg-gray-50 dark:bg-black/20 rounded-lg flex items-center justify-center border border-dashed border-border-light dark:border-border-dark p-2">
+                <img src={question.question_image_url} alt="Question Diagram" className="max-w-full h-auto rounded" />
+            </div>
         )}
       </div>
 
-      {!hideOptions && (
-        <div className="question-options">
-          {['a', 'b', 'c', 'd'].map((option) => {
-            const optionKey = `option_${option}` as keyof Question;
-            const imageKey = `option_${option}_image_url` as keyof Question;
-            const optionText = question[optionKey] as string | null;
-            const optionImageUrl = question[imageKey] as string | null;
+      {/* Options */}
+       {!hideOptions && (
+        <div className="grid grid-cols-1 gap-3">
+            {(['a', 'b', 'c', 'd'] as const).map(opt => {
+                const optionText = question[`option_${opt}`];
+                const optionImage = question[`option_${opt}_image_url`];
+                if (!optionText && !optionImage) return null;
 
-            if (!optionText && !optionImageUrl) return null;
+                const isCorrect = (showAnswer || highlightCorrectAnswer) && question.answer.toUpperCase() === opt.toUpperCase();
 
-            // Highlight if showAnswer is true OR highlightCorrectAnswer is true
-            // AND match the answer
-            const isCorrect = (showAnswer || highlightCorrectAnswer) &&
-                              question.answer.toLowerCase() === option;
+                const baseClasses = "group flex items-center p-3 rounded-lg border transition-all cursor-pointer";
+                const hoverClasses = "hover:border-primary/50 hover:bg-primary/5";
+                const correctClasses = "border-2 border-green-500 bg-green-500/5";
 
-            return (
-              <div
-                key={option}
-                className={`option ${isCorrect ? 'correct-answer' : ''}`}
-                style={isCorrect && highlightCorrectAnswer ? {
-                    backgroundColor: 'rgba(76, 175, 80, 0.1)', // Light green
-                    borderColor: 'var(--success)'
-                } : undefined}
-              >
-                <span className="option-label">{option.toUpperCase()})</span>
-                <div className="option-content">
-                  {optionText && <LatexRenderer content={optionText} />}
-                  {optionImageUrl && (
-                    <div style={{marginTop: '0.5rem'}}>
-                      <img
-                        src={optionImageUrl}
-                        alt={`Option ${option.toUpperCase()}`}
-                        style={{maxWidth: '100%', maxHeight: '150px'}}
-                      />
+                let finalClasses = `${baseClasses} ${hoverClasses}`;
+                if (isCorrect) {
+                  finalClasses = `${baseClasses} ${correctClasses}`;
+                } else if (isSelected) {
+                  // This part can be tricky, if you want to show selection state as well
+                  // finalClasses = `${baseClasses} ${selectedClasses}`;
+                }
+
+                return (
+                    <div key={opt} className={finalClasses}>
+                        <div className={`size-6 rounded-full flex items-center justify-center mr-4 text-xs font-bold shrink-0 ${isCorrect ? 'bg-green-500 text-white' : 'border-2 border-border-light dark:border-border-dark group-hover:border-primary text-text-secondary group-hover:text-primary'}`}>
+                           {opt.toUpperCase()}
+                        </div>
+                        <span className="text-text-main dark:text-gray-300">
+                           {optionText && <LatexRenderer content={optionText} />}
+                           {optionImage && <img src={optionImage} alt={`Option ${opt}`} className="max-w-full mt-2 rounded"/>}
+                        </span>
+                        {isCorrect && <span className="ml-auto material-symbols-outlined text-green-500 text-lg">check_circle</span>}
                     </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+                );
+            })}
         </div>
-      )}
+       )}
 
-      {showAnswer && (
-        <div className="question-answer">
-          <strong>Answer: {question.answer}</strong>
+      {/* Solution Section (only in editor preview) */}
+      {question.solution && (question.solution.solution_text || question.solution.solution_image_url) && (
+        <div className="border-t border-border-light dark:border-border-dark pt-4">
+            <div className="flex items-center gap-2 text-primary font-semibold mb-2 text-sm uppercase tracking-wide">
+                <span className="material-symbols-outlined text-lg">lightbulb</span>
+                Solution
+            </div>
+            <div className="text-sm text-text-secondary dark:text-gray-400 leading-relaxed space-y-3">
+               {question.solution.solution_text && <LatexRenderer content={question.solution.solution_text} />}
+               {question.solution.solution_image_url && <img src={question.solution.solution_image_url} alt="Solution" className="max-w-full mt-2 rounded border border-border-light dark:border-border-dark" />}
+            </div>
         </div>
       )}
     </div>

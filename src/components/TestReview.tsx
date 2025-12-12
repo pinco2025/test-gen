@@ -2,13 +2,11 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { SectionConfig, Question, SelectedQuestion } from '../types';
 import { sortQuestionsForSection } from '../utils/sorting';
 import QuestionDisplay from './QuestionDisplay';
-import LatexRenderer from './LatexRenderer';
 import '../styles/TestReview.css';
 
 interface TestReviewProps {
   sections: SectionConfig[];
   onStartEditing: (question: Question) => void;
-  onEditQuestion: (updatedQuestion: Question) => void;
   onBack: () => void;
   onExport: () => void;
   onRemoveQuestion: (questionUuid: string) => void;
@@ -18,7 +16,6 @@ interface TestReviewProps {
 const TestReview: React.FC<TestReviewProps> = ({
   sections,
   onStartEditing,
-  onEditQuestion,
   onBack,
   onExport,
   onRemoveQuestion,

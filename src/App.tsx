@@ -838,7 +838,6 @@ function App() {
         return (
           <TestReview
             sections={sections}
-            onEditQuestion={handleQuestionUpdate}
             onStartEditing={handleStartEditing}
             onBack={handleBackFromSelection}
             onExport={handleExportTest}

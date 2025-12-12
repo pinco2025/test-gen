@@ -1,14 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Question, Solution, Difficulty, SectionName } from '../types';
+import { Question, Solution, SectionName } from '../types';
 import QuestionDisplay from './QuestionDisplay';
-import LatexRenderer from './LatexRenderer';
-import '../styles/QuestionEditor.css';
-import chaptersData from '../data/chapters.json'; // For chapter dropdown
+// Removed: import '../styles/QuestionEditor.css';
+import chaptersData from '../data/chapters.json';
 
 interface QuestionEditorProps {
   question: Question;
   solution?: Solution;
-  sectionName: SectionName; // Needed for chapter dropdown
+  sectionName: SectionName;
   onSave: (updatedQuestion: Question, updatedSolution?: Solution) => void;
   onCancel: () => void;
 }
@@ -17,7 +16,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, sec
   const [editedQuestion, setEditedQuestion] = useState<Question>(question);
   const [editedSolution, setEditedSolution] = useState<Solution | undefined>(solution);
 
-  // Derive valid chapters for the current section
   const validChaptersForSection = useMemo(() => {
     const sectionKey = sectionName as keyof typeof chaptersData;
     const sectionChapters = chaptersData[sectionKey] || [];
@@ -27,7 +25,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, sec
 
   useEffect(() => {
     setEditedQuestion(question);
-    // If solution is not provided, fetch it
     const fetchSolution = async () => {
         if (!solution && window.electronAPI) {
             try {
@@ -60,203 +57,243 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, sec
     onSave(editedQuestion, editedSolution);
   };
 
-  // Create a combined question object for the preview to ensure it updates instantly
   const previewQuestion = {
       ...editedQuestion,
       solution: editedSolution
   };
 
   return (
-    <div className="question-editor-layout animate-fade-in">
-      {/* Left Pane: Preview */}
-      <aside className="editor-preview-pane">
-        <h3 className="pane-title">
-          <span className="material-symbols-outlined">visibility</span>
-          Student Preview
-        </h3>
-        <div className="preview-card-container">
-          <QuestionDisplay question={previewQuestion} showAnswer={true} />
-        </div>
-      </aside>
-
-      {/* Right Pane: Editor */}
-      <section className="editor-form-pane">
-        <div className="editor-header">
-          <h2 className="pane-title">Editing Interface</h2>
-        </div>
-        <div className="editor-form-body">
-          {/* Section: Question Text */}
-          <div className="form-section">
-            <label className="form-section-title">Question Statement</label>
-            <textarea
-              className="form-control"
-              rows={5}
-              value={editedQuestion.question || ''}
-              onChange={(e) => handleQuestionChange('question', e.target.value)}
-              placeholder="Type your question here... Use LaTeX for math like $x^2$."
-            />
-             <input
-              type="text"
-              className="form-control"
-              value={editedQuestion.question_image_url || ''}
-              onChange={(e) => handleQuestionChange('question_image_url', e.target.value)}
-              placeholder="Question Image URL (optional)"
-            />
-          </div>
-
-          {/* Section: Options */}
-          <div className="form-section">
-            <label className="form-section-title">Options</label>
-            <div className="options-grid">
-              {(['a', 'b', 'c', 'd'] as const).map(opt => (
-                <div key={opt} className="option-input-group">
-                  <input
-                    type="radio"
-                    name="correct_answer"
-                    checked={editedQuestion.answer === opt.toUpperCase()}
-                    onChange={() => handleQuestionChange('answer', opt.toUpperCase())}
-                  />
-                  <div className="option-input">
-                    <input
-                      type="text"
-                      className="form-control"
-                      placeholder={`Option ${opt.toUpperCase()} text`}
-                      value={editedQuestion[`option_${opt}`] || ''}
-                      onChange={(e) => handleQuestionChange(`option_${opt}`, e.target.value)}
-                    />
-                    <input
-                      type="text"
-                      className="form-control"
-                      placeholder={`Option ${opt.toUpperCase()} Image URL (optional)`}
-                       value={editedQuestion[`option_${opt}_image_url`] || ''}
-                       onChange={(e) => handleQuestionChange(`option_${opt}_image_url`, e.target.value)}
-                    />
-                  </div>
-                </div>
-              ))}
-               {/* For numerical answers */}
-              <div className="option-input-group">
-                <input
-                    type="radio"
-                    name="correct_answer"
-                    checked={!['A', 'B', 'C', 'D'].includes(editedQuestion.answer.toUpperCase())}
-                    onChange={() => handleQuestionChange('answer', '')} // Clear to allow numerical input
-                />
-                 <div className="option-input">
-                    <input
-                        type="text"
-                        className="form-control"
-                        placeholder="Numerical Answer"
-                        value={!['A', 'B', 'C', 'D'].includes(editedQuestion.answer.toUpperCase()) ? editedQuestion.answer : ''}
-                        onChange={(e) => handleQuestionChange('answer', e.target.value)}
-                    />
-                 </div>
-              </div>
+    <main className="flex-1 w-full max-w-[1600px] mx-auto p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 h-[calc(100vh-65px)] overflow-hidden">
+        {/* Left Pane: Preview */}
+        <aside className="lg:col-span-5 flex flex-col gap-4 h-full overflow-hidden">
+            <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold text-text-main dark:text-white flex items-center gap-2">
+                    <span className="material-symbols-outlined text-primary">visibility</span>
+                    Student Preview
+                </h3>
             </div>
-          </div>
-
-          {/* Section: Solution */}
-          <div className="form-section">
-            <label className="form-section-title">Detailed Solution</label>
-             <textarea
-              className="form-control"
-              rows={4}
-              value={editedSolution?.solution_text || ''}
-              onChange={(e) => handleSolutionChange('solution_text', e.target.value)}
-              placeholder="Explain the logic behind the correct answer..."
-            />
-            <input
-              type="text"
-              className="form-control"
-              placeholder="Solution Image URL (optional)"
-              value={editedSolution?.solution_image_url || ''}
-              onChange={(e) => handleSolutionChange('solution_image_url', e.target.value)}
-            />
-          </div>
-
-          {/* Section: Properties */}
-          <div className="form-section">
-            <h4 className="form-section-title">Properties</h4>
-            <div className="properties-grid">
-                <div className="form-group">
-                    <label>Topic (Tag 1)</label>
-                    <input
-                        type="text"
-                        className="form-control"
-                        value={editedQuestion.tag_1 || ''}
-                        onChange={(e) => handleQuestionChange('tag_1', e.target.value)}
-                        placeholder="e.g. Mechanics, Thermodynamics"
-                    />
+            <div className="flex-1 overflow-y-auto pr-2">
+                <div className="bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-xl shadow-sm p-6 lg:p-8 flex flex-col gap-6 relative">
+                   <QuestionDisplay question={previewQuestion} showAnswer={true} highlightCorrectAnswer={true} />
                 </div>
-                 <div className="form-group">
-                    <label>Chapter (Tag 2)</label>
-                    <select
-                        className="form-control"
-                        value={editedQuestion.tag_2 || ''}
-                        onChange={(e) => handleQuestionChange('tag_2', e.target.value)}
-                    >
-                        <option value="">Select a chapter...</option>
-                        {validChaptersForSection.map(ch => (
-                            <option key={ch.code} value={ch.code}>
-                                {ch.code} - {ch.name}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-                <div className="form-group">
-                    <label>Difficulty (Tag 3)</label>
-                    <select
-                        className="form-control"
-                        value={editedQuestion.tag_3 || 'M'}
-                        onChange={(e) => handleQuestionChange('tag_3', e.target.value as Difficulty)}
-                    >
-                        <option value="E">Easy</option>
-                        <option value="M">Medium</option>
-                        <option value="H">Hard</option>
-                    </select>
-                </div>
-                 <div className="form-group">
-                    <label>Tags (Tag 4)</label>
-                    <input
-                        type="text"
-                        className="form-control"
-                        value={editedQuestion.tag_4 || ''}
-                        onChange={(e) => handleQuestionChange('tag_4', e.target.value)}
-                         placeholder="e.g. Conceptual, Formula-based"
-                    />
-                </div>
-                 <div className="form-group">
-                    <label>Question Type</label>
-                    <input
-                        type="text"
-                        className="form-control"
-                        value={editedQuestion.type || ''}
-                        onChange={(e) => handleQuestionChange('type', e.target.value)}
-                        placeholder="e.g. Single Correct MCQ"
-                    />
-                </div>
-                <div className="form-group">
-                    <label>Exam Year / Reference</label>
-                    <input
-                        type="text"
-                        className="form-control"
-                        value={editedQuestion.year || ''}
-                        onChange={(e) => handleQuestionChange('year', e.target.value)}
-                        placeholder="e.g. JEE Main 2023"
-                    />
+                 <div className="mt-4 p-4 rounded-lg bg-blue-50 dark:bg-primary/10 border border-blue-100 dark:border-primary/20 flex items-start gap-3">
+                    <span className="material-symbols-outlined text-primary mt-0.5">info</span>
+                    <div>
+                        <p className="text-sm font-medium text-text-main dark:text-white">Rendering Note</p>
+                        <p className="text-xs text-text-secondary mt-1">Mathematical expressions are rendered using KaTeX. The preview updates automatically as you type in the editor.</p>
+                    </div>
                 </div>
             </div>
-          </div>
-        </div>
-        <div className="editor-footer">
-          <button className="btn-secondary" onClick={onCancel}>Cancel</button>
-          <button className="btn-primary" onClick={handleSave}>
-            <span className="material-symbols-outlined">save</span>
-            Save Changes
-          </button>
-        </div>
-      </section>
-    </div>
+        </aside>
+
+        {/* Right Pane: Editor */}
+        <section className="lg:col-span-7 flex flex-col h-full overflow-hidden bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm">
+            <div className="px-6 py-4 border-b border-border-light dark:border-border-dark flex items-center justify-between">
+                <h2 className="text-lg font-bold text-text-main dark:text-white">Editing Interface</h2>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6 space-y-8">
+                {/* Section: Question Text */}
+                <div className="space-y-3">
+                    <label className="block text-sm font-semibold text-text-main dark:text-gray-200">Question Statement</label>
+                    <div className="border border-border-light dark:border-border-dark rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-all">
+                        <div className="bg-gray-50 dark:bg-white/5 border-b border-border-light dark:border-border-dark px-2 py-1.5 flex flex-wrap gap-1">
+                             <input
+                                type="text"
+                                className="w-full p-2 bg-transparent border-none focus:ring-0 text-text-main dark:text-gray-200 text-sm"
+                                value={editedQuestion.question_image_url || ''}
+                                onChange={(e) => handleQuestionChange('question_image_url', e.target.value)}
+                                placeholder="Question Image URL (optional)"
+                            />
+                        </div>
+                        <textarea
+                            className="w-full p-4 min-h-[120px] bg-transparent border-none focus:ring-0 text-text-main dark:text-gray-200 text-sm leading-relaxed resize-y"
+                            placeholder="Type your question here... Use LaTeX for math like $x^2$."
+                            value={editedQuestion.question}
+                            onChange={(e) => handleQuestionChange('question', e.target.value)}
+                        />
+                    </div>
+                </div>
+
+                {/* Section: Options */}
+                <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                        <label className="block text-sm font-semibold text-text-main dark:text-gray-200">Options</label>
+                        <span className="text-xs text-text-secondary">Select the radio button for the correct answer</span>
+                    </div>
+                    <div className="space-y-3">
+                        {(['a', 'b', 'c', 'd'] as const).map(opt => {
+                            const isChecked = editedQuestion.answer === opt.toUpperCase();
+                            return (
+                                <div key={opt} className="flex items-start gap-3">
+                                    <div className="pt-2.5">
+                                        <input
+                                            className="size-5 border-gray-300 text-primary focus:ring-primary dark:bg-white/5 dark:border-gray-600 cursor-pointer"
+                                            name="correct_answer"
+                                            type="radio"
+                                            checked={isChecked}
+                                            onChange={() => handleQuestionChange('answer', opt.toUpperCase())}
+                                        />
+                                    </div>
+                                    <div className="flex-1 flex flex-col gap-2">
+                                        <div className="relative flex-1 group">
+                                            <div className={`absolute left-0 top-0 bottom-0 w-10 flex items-center justify-center border border-r-0 rounded-l-lg font-semibold text-sm ${isChecked ? 'bg-primary text-white border-primary' : 'bg-gray-50 dark:bg-white/5 border-border-light dark:border-border-dark text-text-secondary'}`}>
+                                                {opt.toUpperCase()}
+                                            </div>
+                                            <input
+                                                className={`w-full pl-12 pr-4 py-2.5 bg-surface-light dark:bg-surface-dark border rounded-lg focus:ring-2 focus:ring-primary/20 text-sm text-text-main dark:text-white transition-all ${isChecked ? 'border-primary font-medium' : 'border-border-light dark:border-border-dark focus:border-primary'}`}
+                                                placeholder={`Option ${opt.toUpperCase()} text`}
+                                                type="text"
+                                                value={editedQuestion[`option_${opt}`] || ''}
+                                                onChange={(e) => handleQuestionChange(`option_${opt}`, e.target.value)}
+                                            />
+                                        </div>
+                                         <input
+                                            type="text"
+                                            className="w-full py-1 px-2 text-xs bg-gray-50 dark:bg-white/5 border border-border-light dark:border-border-dark rounded-md focus:ring-1 focus:ring-primary focus:border-primary"
+                                            placeholder={`Image URL for Option ${opt.toUpperCase()} (optional)`}
+                                            value={editedQuestion[`option_${opt}_image_url`] || ''}
+                                            onChange={(e) => handleQuestionChange(`option_${opt}_image_url`, e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+                 {/* Section: Solution */}
+                <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                        <label className="block text-sm font-semibold text-text-main dark:text-gray-200">Detailed Solution</label>
+                    </div>
+                    <div className="border border-border-light dark:border-border-dark rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-all">
+                         <input
+                            type="text"
+                            className="w-full p-2 bg-gray-50 dark:bg-white/5 border-b border-border-light dark:border-border-dark focus:ring-0 text-text-main dark:text-gray-200 text-sm"
+                            placeholder="Solution Image URL (optional)"
+                            value={editedSolution?.solution_image_url || ''}
+                            onChange={(e) => handleSolutionChange('solution_image_url', e.target.value)}
+                        />
+                        <textarea
+                            className="w-full p-4 min-h-[100px] bg-transparent border-none focus:ring-0 text-text-main dark:text-gray-200 text-sm leading-relaxed resize-y"
+                            placeholder="Explain the logic behind the correct answer..."
+                            value={editedSolution?.solution_text || ''}
+                            onChange={(e) => handleSolutionChange('solution_text', e.target.value)}
+                        />
+                    </div>
+                </div>
+
+                {/* Section: Properties */}
+                <div className="pt-6 border-t border-border-light dark:border-border-dark">
+                    <h4 className="text-base font-bold text-text-main dark:text-white mb-4">Properties</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                       <div className="space-y-1.5">
+                            <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Topic (Tag 1)</label>
+                            <input
+                                type="text"
+                                className="w-full bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-main dark:text-white text-sm rounded-lg focus:ring-primary focus:border-primary p-2.5"
+                                value={editedQuestion.tag_1 || ''}
+                                onChange={(e) => handleQuestionChange('tag_1', e.target.value)}
+                                placeholder="e.g. Mechanics, Thermodynamics"
+                            />
+                        </div>
+
+                         <div className="space-y-1.5">
+                            <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Chapter (Tag 2)</label>
+                            <div className="relative">
+                                <select
+                                    className="w-full bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-main dark:text-white text-sm rounded-lg focus:ring-primary focus:border-primary p-2.5 appearance-none"
+                                    value={editedQuestion.tag_2 || ''}
+                                    onChange={(e) => handleQuestionChange('tag_2', e.target.value)}
+                                >
+                                    <option value="">Select a chapter...</option>
+                                    {validChaptersForSection.map(ch => (
+                                        <option key={ch.code} value={ch.code}>
+                                            {ch.code} - {ch.name}
+                                        </option>
+                                    ))}
+                                </select>
+                                <span className="material-symbols-outlined absolute right-3 top-2.5 text-text-secondary pointer-events-none">expand_more</span>
+                            </div>
+                        </div>
+
+                         <div className="space-y-1.5">
+                            <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Difficulty (Tag 3)</label>
+                             <div className="flex gap-2">
+                                {(['E', 'M', 'H'] as const).map(d => {
+                                    const isChecked = editedQuestion.tag_3 === d;
+                                    const label = d === 'E' ? 'Easy' : d === 'M' ? 'Medium' : 'Hard';
+                                    const colors = d === 'E' ? 'green' : d === 'M' ? 'yellow' : 'red';
+                                    return (
+                                    <label key={d} className="cursor-pointer">
+                                        <input
+                                            className="peer sr-only"
+                                            name="difficulty"
+                                            type="radio"
+                                            checked={isChecked}
+                                            onChange={() => handleQuestionChange('tag_3', d)}
+                                        />
+                                        <div className={`px-3 py-2 rounded-lg border text-xs font-medium transition-colors ${isChecked ? `bg-${colors}-50 text-${colors}-600 border-${colors}-200 dark:bg-${colors}-900/20 dark:border-${colors}-800` : 'border-border-light dark:border-border-dark text-text-secondary'}`}>
+                                            {label}
+                                        </div>
+                                    </label>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Tags (Tag 4)</label>
+                             <input
+                                type="text"
+                                className="w-full bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-main dark:text-white text-sm rounded-lg focus:ring-primary focus:border-primary p-2.5"
+                                value={editedQuestion.tag_4 || ''}
+                                onChange={(e) => handleQuestionChange('tag_4', e.target.value)}
+                                placeholder="e.g. Conceptual, Formula-based"
+                            />
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Question Type</label>
+                             <input
+                                type="text"
+                                className="w-full bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-main dark:text-white text-sm rounded-lg focus:ring-primary focus:border-primary p-2.5"
+                                value={editedQuestion.type || ''}
+                                onChange={(e) => handleQuestionChange('type', e.target.value)}
+                                placeholder="e.g. Single Correct MCQ"
+                            />
+                        </div>
+                         <div className="space-y-1.5">
+                            <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Exam Year / Reference</label>
+                            <input
+                                className="w-full bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-main dark:text-white text-sm rounded-lg focus:ring-primary focus:border-primary p-2.5"
+                                placeholder="e.g. JEE Main 2024"
+                                type="text"
+                                value={editedQuestion.year || ''}
+                                onChange={(e) => handleQuestionChange('year', e.target.value)}
+                            />
+                        </div>
+                    </div>
+                </div>
+                <div className="h-8"></div>
+            </div>
+
+            <div className="px-6 py-4 border-t border-border-light dark:border-border-dark bg-gray-50 dark:bg-surface-dark/50 flex items-center justify-between shrink-0">
+                <button
+                    onClick={onCancel}
+                    className="px-5 py-2.5 rounded-lg border border-border-light dark:border-border-dark text-text-secondary hover:text-text-main dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 text-sm font-semibold transition-all">
+                    Cancel
+                </button>
+                <div className="flex gap-3">
+                    <button
+                        onClick={handleSave}
+                        className="px-6 py-2.5 rounded-lg bg-primary text-white shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 hover:bg-primary/90 text-sm font-bold transition-all flex items-center gap-2">
+                        <span className="material-symbols-outlined text-[18px]">save</span>
+                        Save Changes
+                    </button>
+                </div>
+            </div>
+        </section>
+    </main>
   );
 };
 
