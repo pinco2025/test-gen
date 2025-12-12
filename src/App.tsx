@@ -12,7 +12,8 @@ import {
   ProjectState,
   ProjectInfo,
   WorkflowStep,
-  Question
+  Question,
+  Solution
 } from './types';
 import { sortQuestionsForSection } from './utils/sorting';
 import TestCreationForm from './components/TestCreationForm';
@@ -204,12 +205,26 @@ function App() {
     }
   }, [currentProjectId, projectsData, autoSave]);
 
-  const handleAddQuestion = async (question: Question) => {
+  const handleAddQuestion = async (question: Question, solution?: Partial<Solution>) => {
     if (!window.electronAPI) return;
 
     try {
       const success = await window.electronAPI.questions.createQuestion(question);
       if (success) {
+        if (solution && (solution.solution_text || solution.solution_image_url)) {
+            const solutionSuccess = await window.electronAPI.questions.saveSolution(
+                question.uuid,
+                solution.solution_text || '',
+                solution.solution_image_url || ''
+            );
+
+            if (!solutionSuccess) {
+                 addNotification('warning', 'Question added, but failed to save solution.');
+                 setIsAddQuestionModalOpen(false);
+                 return;
+            }
+        }
+
         addNotification('success', 'Question added successfully!');
         setIsAddQuestionModalOpen(false);
       } else {
