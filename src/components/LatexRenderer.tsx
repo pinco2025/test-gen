@@ -10,18 +10,27 @@ interface LatexRendererProps {
 
 /**
  * Helper to unescape JSON-like strings.
- * Handles standard JSON escapes (\n, \t, \", \\) while preserving
- * other backslash sequences (like \alpha) for LaTeX processing.
+ * Handles standard JSON escapes (\", \\) while preserving
+ * other backslash sequences (like \alpha, \text, \nu) for LaTeX processing.
+ *
+ * Note: We intentionally avoid unescaping \n, \t, \r to prevent breaking
+ * LaTeX commands that start with these letters (e.g., \nu, \text, \rho)
+ * if they are not properly escaped in the input.
  */
 const processEscapes = (str: string): string => {
   if (!str) return str;
-  return str.replace(/\\(.)/g, (match, char) => {
+  return str.replace(/\\(.)/g, (match, char, index, fullStr) => {
     switch (char) {
-      case 'n': return '\n';
-      case 't': return '\t';
-      case 'r': return '\r';
       case '"': return '"';
-      case '\\': return '\\';
+      case '\\':
+        // Handle double backslash (\\)
+        // If followed by a letter, it's likely an escaped LaTeX command (e.g. \\text -> \text)
+        // If followed by non-letter (or end), it's likely a LaTeX newline (\\) -> preserve as \\
+        const nextChar = fullStr[index + 2];
+        if (nextChar && /[a-zA-Z]/.test(nextChar)) {
+            return '\\';
+        }
+        return '\\\\';
       default: return match;
     }
   });
