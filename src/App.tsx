@@ -641,7 +641,7 @@ function App() {
     updateCurrentProject({ currentStep: 'edit-question' });
   };
 
-  const handleFinishEditing = (updatedQuestion: Question, updatedSolution?: Solution) => {
+  const handleFinishEditing = (updatedQuestion: Question | null, updatedSolution?: Solution) => {
     if (!updatedQuestion) {
       // Cancelled
       if (previousStep) {
