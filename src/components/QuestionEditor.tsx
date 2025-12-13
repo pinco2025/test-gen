@@ -15,6 +15,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
   const [editedSolution, setEditedSolution] = useState<Solution | undefined>(solution);
   const [availableTypes, setAvailableTypes] = useState<string[]>([]);
   const [availableYears, setAvailableYears] = useState<string[]>([]);
+  const [availableChapters, setAvailableChapters] = useState<{ [type: string]: string[] }>({});
 
   useEffect(() => {
     setEditedQuestion(question);
@@ -43,12 +44,14 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
     const fetchMetadata = async () => {
       if (!window.electronAPI) return;
       try {
-        const [types, years] = await Promise.all([
+        const [types, years, chaptersByType] = await Promise.all([
           window.electronAPI.db.getTypes(),
-          window.electronAPI.db.getYears()
+          window.electronAPI.db.getYears(),
+          window.electronAPI.db.getChaptersByType()
         ]);
         setAvailableTypes(types);
         setAvailableYears(years);
+        setAvailableChapters(chaptersByType);
       } catch (error) {
         console.error('Failed to fetch metadata:', error);
       }
@@ -185,9 +188,9 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
                 {/* Section: Properties (Metadata) */}
                 <div className="pt-6 border-t border-border-light dark:border-border-dark">
                     <h4 className="text-base font-bold text-text-main dark:text-white mb-4">Properties</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-1.5">
-                            <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Topic / Chapter</label>
+                            <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Topic</label>
                             <input
                                 className="w-full bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-main dark:text-white text-sm rounded-lg focus:ring-primary focus:border-primary p-2.5"
                                 placeholder="e.g. Gravitation, Electromagnetism"
@@ -197,40 +200,57 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
                             />
                         </div>
                         <div className="space-y-1.5">
-                            <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Question Type</label>
-                            <div className="relative">
-                                <select
-                                    className="w-full bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-main dark:text-white text-sm rounded-lg focus:ring-primary focus:border-primary p-2.5 appearance-none"
-                                    value={editedQuestion.type || ''}
-                                    onChange={(e) => handleQuestionChange('type', e.target.value)}
-                                >
-                                    <option value="">Select Type</option>
-                                    {availableTypes.map(type => (
-                                        <option key={type} value={type}>{type}</option>
-                                    ))}
-                                </select>
-                                <span className="material-symbols-outlined absolute right-3 top-2.5 text-text-secondary pointer-events-none">expand_more</span>
-                            </div>
+                            <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Chapter Code</label>
+                            <select
+                                className="w-full bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-main dark:text-white text-sm rounded-lg focus:ring-primary focus:border-primary p-2.5"
+                                value={editedQuestion.tag_2 || ''}
+                                onChange={(e) => handleQuestionChange('tag_2', e.target.value)}
+                            >
+                                <option value="">Select Chapter</option>
+                                {Object.entries(availableChapters).flatMap(([type, chapters]) =>
+                                    chapters.map(chapter => (
+                                        <option key={`${type}-${chapter}`} value={chapter}>
+                                            {chapter}
+                                        </option>
+                                    ))
+                                )}
+                            </select>
                         </div>
                         <div className="space-y-1.5">
-                            <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Exam Year / Reference</label>
-                            <div className="relative">
-                                <select
-                                    className="w-full bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-main dark:text-white text-sm rounded-lg focus:ring-primary focus:border-primary p-2.5 appearance-none"
-                                    value={editedQuestion.year || ''}
-                                    onChange={(e) => handleQuestionChange('year', e.target.value)}
-                                >
-                                    <option value="">Select Year</option>
-                                    {availableYears.map(year => (
-                                        <option key={year} value={year}>{year}</option>
-                                    ))}
-                                </select>
-                                <span className="material-symbols-outlined absolute right-3 top-2.5 text-text-secondary pointer-events-none">expand_more</span>
-                            </div>
+                            <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Question Type</label>
+                            <input
+                                className="w-full bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-main dark:text-white text-sm rounded-lg focus:ring-primary focus:border-primary p-2.5"
+                                placeholder="Type or select"
+                                type="text"
+                                list="type-options"
+                                value={editedQuestion.type || ''}
+                                onChange={(e) => handleQuestionChange('type', e.target.value)}
+                            />
+                            <datalist id="type-options">
+                                {availableTypes.map(type => (
+                                    <option key={type} value={type} />
+                                ))}
+                            </datalist>
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Exam Year</label>
+                            <input
+                                className="w-full bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-main dark:text-white text-sm rounded-lg focus:ring-primary focus:border-primary p-2.5"
+                                placeholder="Type or select"
+                                type="text"
+                                list="year-options"
+                                value={editedQuestion.year || ''}
+                                onChange={(e) => handleQuestionChange('year', e.target.value)}
+                            />
+                            <datalist id="year-options">
+                                {availableYears.map(year => (
+                                    <option key={year} value={year} />
+                                ))}
+                            </datalist>
                         </div>
                         <div className="space-y-1.5">
                             <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Difficulty</label>
-                            <div className="flex gap-2">
+                            <div className="flex gap-2" onClick={(e) => e.preventDefault()}>
                                 {([{ label: 'Easy', value: 'E' }, { label: 'Medium', value: 'M' }, { label: 'Hard', value: 'H' }] as const).map(d => {
                                     const getDifficultyClasses = () => {
                                         switch (d.value) {
@@ -241,14 +261,21 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
                                         }
                                     };
                                     return (
-                                        <label key={d.value} className="cursor-pointer flex-1">
+                                        <label
+                                            key={d.value}
+                                            className="cursor-pointer flex-1"
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                handleQuestionChange('tag_3', d.value);
+                                            }}
+                                        >
                                             <input
                                                 className="peer sr-only"
                                                 name="difficulty"
                                                 type="radio"
                                                 value={d.value}
                                                 checked={editedQuestion.tag_3 === d.value}
-                                                onChange={() => handleQuestionChange('tag_3', d.value)}
+                                                readOnly
                                             />
                                             <div className={`px-3 py-2 rounded-lg border border-border-light dark:border-border-dark text-xs font-medium text-text-secondary text-center ${getDifficultyClasses()}`}>
                                                 {d.label}
@@ -258,7 +285,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
                                 })}
                             </div>
                         </div>
-                        <div className="col-span-1 md:col-span-2 space-y-1.5">
+                        <div className="space-y-1.5">
                             <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Additional Tags</label>
                             <input
                                 className="w-full bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-main dark:text-white text-sm rounded-lg focus:ring-primary focus:border-primary p-2.5"
