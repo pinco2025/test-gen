@@ -16,8 +16,15 @@ export default defineConfig({
         vite: {
           build: {
             outDir: 'dist-electron',
+            sourcemap: false,
             rollupOptions: {
-              external: ['better-sqlite3']
+              external: [
+                'better-sqlite3',
+                'googleapis',
+                'google-auth-library',
+                'gaxios',
+                'electron'
+              ]
             }
           }
         }
@@ -29,7 +36,8 @@ export default defineConfig({
         },
         vite: {
           build: {
-            outDir: 'dist-electron'
+            outDir: 'dist-electron',
+            sourcemap: false
           }
         }
       }

@@ -264,11 +264,15 @@ ipcMain.handle('test:export', async (_, test: Test) => {
       const exportContent = JSON.stringify(exportData, null, 2).replace(/\\\\/g, '\\');
       fs.writeFileSync(result.filePath, exportContent, 'utf-8');
 
-      // Create solutions JSON
+      // Batch load all solutions at once to avoid blocking the main thread
+      const questionUUIDs = exportData.questions.map((q: any) => q.uuid);
+      const solutionsMap = dbService.getSolutionsByUUIDs(questionUUIDs);
+
+      // Create solutions JSON using pre-loaded solutions
       const solutionsData = {
         test_id: exportData.testId,
         questions: exportData.questions.map((q: any, index: number) => {
-          const solution = dbService.getSolution(q.uuid);
+          const solution = solutionsMap.get(q.uuid);
           return {
             id: q.id,
             number: index + 1,
