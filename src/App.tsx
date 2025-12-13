@@ -656,12 +656,19 @@ function App() {
       switch (step) {
       case 'database-connect':
         return (
-          <div className="flex flex-col items-center justify-center h-full text-center">
-            <span className="material-symbols-outlined text-6xl text-primary mb-6">database</span>
-            <h1 className="text-2xl font-bold mb-2">Test Generation System</h1>
-            <p className="text-text-secondary mb-8">Please connect to a question database to begin.</p>
-            <button className="bg-primary text-white px-6 py-3 rounded-lg font-semibold flex items-center gap-2 hover:bg-primary/90 transition-colors" onClick={handleDatabaseSelect}>
-              <span className="material-symbols-outlined">folder_open</span>
+          <div className="flex flex-col items-center justify-center h-full text-center p-8">
+            <div className="bg-[#5248e5]/10 dark:bg-[#5248e5]/20 rounded-full p-8 mb-6 animate-fade-in">
+              <span className="material-symbols-outlined text-7xl text-[#5248e5]">database</span>
+            </div>
+            <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-3">Test Generation System</h1>
+            <p className="text-gray-600 dark:text-gray-400 mb-8 text-lg max-w-md">
+              Please connect to a question database to begin.
+            </p>
+            <button
+              onClick={handleDatabaseSelect}
+              className="bg-[#5248e5] text-white px-8 py-4 rounded-lg font-semibold flex items-center gap-2 hover:bg-[#4339d9] transition-all shadow-lg hover:shadow-xl"
+            >
+              <span className="material-symbols-outlined text-xl">folder_open</span>
               Select Database File
             </button>
           </div>
@@ -849,12 +856,6 @@ function App() {
     })
     .filter(Boolean) as ProjectInfo[];
 
-  const isSelectionStep = [
-    'question-select-physics',
-    'question-select-chemistry',
-    'question-select-math'
-  ].includes(step);
-
   const saveStatusClasses = {
     saved: 'bg-green-100 text-green-700',
     saving: 'bg-yellow-100 text-yellow-700 animate-pulse',
@@ -862,43 +863,81 @@ function App() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-background-light dark:bg-background-dark text-text-main dark:text-white">
+    <div className="flex flex-col h-screen bg-gray-50 dark:bg-[#121121] text-gray-900 dark:text-white overflow-hidden">
       <TitleBar />
       <Notification notifications={notifications} removeNotification={removeNotification} />
-      <header className="flex items-center justify-between px-6 py-3 border-b border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark">
+
+      {/* Header */}
+      <header className="flex-shrink-0 flex items-center justify-between px-6 py-3 border-b border-gray-200 dark:border-[#2d2d3b] bg-white dark:bg-[#1e1e2d] transition-colors duration-200">
         <div className="flex items-center gap-4">
-          <img src="https://drive.google.com/thumbnail?id=1yLtX3YxubbDBsKYDj82qiaGbSkSX7aLv&sz=w1000" alt="Logo" className="h-6 w-6 cursor-pointer" onClick={goToDashboard} />
-          <h1 className="text-lg font-bold cursor-pointer" onClick={goToDashboard}>Test Generation System</h1>
+          <img
+            src="https://drive.google.com/thumbnail?id=1yLtX3YxubbDBsKYDj82qiaGbSkSX7aLv&sz=w1000"
+            alt="Logo"
+            className="h-6 w-6 cursor-pointer hover:opacity-80 transition-opacity"
+            onClick={goToDashboard}
+          />
+          <h1 className="text-lg font-bold cursor-pointer hover:text-[#5248e5] transition-colors" onClick={goToDashboard}>
+            Test Generation System
+          </h1>
         </div>
-        <div className="flex items-center gap-4">
-          <button onClick={() => setIsAddQuestionModalOpen(true)} title="Add New Question" className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
+
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setIsAddQuestionModalOpen(true)}
+            title="Add New Question"
+            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-[#252535] transition-colors"
+          >
             <span className="material-symbols-outlined">add_circle</span>
           </button>
-          <button onClick={toggleDarkMode} title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
+
+          <button
+            onClick={toggleDarkMode}
+            title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-[#252535] transition-colors"
+          >
             <span className="material-symbols-outlined">{darkMode ? 'light_mode' : 'dark_mode'}</span>
           </button>
+
           {currentProjectId && (
-            <div className={`text-xs px-3 py-1 rounded-full font-medium flex items-center gap-1.5 ${saveStatusClasses[saveStatus]}`}>
-              <span className="material-symbols-outlined text-sm">{saveStatus === 'saving' ? 'sync' : saveStatus === 'saved' ? 'check_circle' : 'pending'}</span>
+            <div className={`text-xs px-3 py-1.5 rounded-full font-medium flex items-center gap-1.5 transition-all ${saveStatusClasses[saveStatus]}`}>
+              <span className="material-symbols-outlined text-sm">
+                {saveStatus === 'saving' ? 'sync' : saveStatus === 'saved' ? 'check_circle' : 'pending'}
+              </span>
               {saveStatus.charAt(0).toUpperCase() + saveStatus.slice(1)}
             </div>
           )}
+
           <div className="relative">
-            <div onClick={toggleDbDropdown} className={`flex items-center gap-1.5 text-xs px-3 py-1 rounded-full font-medium cursor-pointer ${dbConnected ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+            <div
+              onClick={toggleDbDropdown}
+              className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full font-medium cursor-pointer transition-all ${
+                dbConnected
+                  ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                  : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+              }`}
+            >
               <span className="material-symbols-outlined text-sm">database</span>
               {dbConnected ? 'Connected' : 'Disconnected'}
-              <span className="material-symbols-outlined text-sm">{showDbDropdown ? 'expand_less' : 'expand_more'}</span>
+              <span className="material-symbols-outlined text-sm">
+                {showDbDropdown ? 'expand_less' : 'expand_more'}
+              </span>
             </div>
+
             {showDbDropdown && (
-              <div className="absolute top-full right-0 mt-2 w-72 bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-lg shadow-lg z-50">
-                <div className="p-3 font-semibold border-b border-border-light dark:border-border-dark">Database Connection</div>
+              <div className="absolute top-full right-0 mt-2 w-72 bg-white dark:bg-[#1e1e2d] border border-gray-200 dark:border-[#2d2d3b] rounded-xl shadow-xl z-50 animate-fade-in">
+                <div className="p-4 font-semibold border-b border-gray-200 dark:border-[#2d2d3b] text-gray-900 dark:text-white">
+                  Database Connection
+                </div>
                 {dbConnected && dbPath && (
-                  <div className="p-3 border-b border-border-light dark:border-border-dark">
-                    <div className="text-sm font-medium truncate">{getDbFileName(dbPath)}</div>
-                    <div className="text-xs text-text-secondary truncate">{dbPath}</div>
+                  <div className="p-4 border-b border-gray-200 dark:border-[#2d2d3b]">
+                    <div className="text-sm font-medium text-gray-900 dark:text-white truncate">{getDbFileName(dbPath)}</div>
+                    <div className="text-xs text-gray-600 dark:text-gray-400 truncate mt-1">{dbPath}</div>
                   </div>
                 )}
-                <button className="w-full text-left p-3 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2" onClick={handleDatabaseSelect}>
+                <button
+                  className="w-full text-left p-4 hover:bg-gray-50 dark:hover:bg-[#252535] flex items-center gap-2 transition-colors text-gray-900 dark:text-white rounded-b-xl"
+                  onClick={handleDatabaseSelect}
+                >
                   <span className="material-symbols-outlined text-sm">folder_open</span>
                   {dbConnected ? 'Change Database' : 'Select Database'}
                 </button>
@@ -907,6 +946,8 @@ function App() {
           </div>
         </div>
       </header>
+
+      {/* Project Tabs */}
       {dbConnected && (
         <ProjectTabs
           projects={openProjects}
@@ -917,9 +958,13 @@ function App() {
           onDashboard={goToDashboard}
         />
       )}
-      <main className={`flex-1 overflow-y-auto ${isSelectionStep ? '' : 'p-4 sm:p-6 lg:p-8'}`} key={currentProjectId || 'new'}>
+
+      {/* Main Content - Each page handles its own scrolling */}
+      <main className="flex-1 overflow-hidden" key={currentProjectId || 'new'}>
         {renderStep()}
       </main>
+
+      {/* Add Question Modal */}
       {isAddQuestionModalOpen && (
         <AddQuestionModal
           onClose={() => setIsAddQuestionModalOpen(false)}

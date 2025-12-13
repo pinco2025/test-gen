@@ -79,8 +79,10 @@ export const TestCreationForm: React.FC<TestCreationFormProps> = ({
   const isFormValid = () => code.trim() !== '' && description.trim() !== '' && physicsChapters.length > 0 && chemistryChapters.length > 0 && mathChapters.length > 0;
 
   return (
-    <div className="max-w-4xl mx-auto bg-surface-light dark:bg-surface-dark p-8 rounded-xl border border-border-light dark:border-border-dark shadow-sm">
-      <h2 className="text-2xl font-bold text-text-main dark:text-white mb-6">Create New Test</h2>
+    <div className="w-full h-full overflow-y-auto">
+      <div className="max-w-4xl mx-auto p-8">
+        <div className="bg-white dark:bg-[#1e1e2d] rounded-2xl border border-gray-200 dark:border-[#2d2d3b] shadow-sm p-8">
+          <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">Create New Test</h2>
 
       <form onSubmit={handleSubmit}>
         <div className="mb-8">
@@ -140,6 +142,8 @@ export const TestCreationForm: React.FC<TestCreationFormProps> = ({
           </button>
         </div>
       </form>
+        </div>
+      </div>
     </div>
   );
 };
