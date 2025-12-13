@@ -739,7 +739,6 @@ function App() {
             <QuestionEditor
                 question={editingQuestion.question}
                 solution={editingQuestion.solution}
-                sectionName={sections[currentSectionIndex]?.name}
                 onSave={handleFinishEditing}
                 onCancel={() => handleFinishEditing(null)}
             />
