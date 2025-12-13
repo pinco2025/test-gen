@@ -35,8 +35,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
   });
 
   const [activities, setActivities] = useState<ActivityItem[]>([]);
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+    setIsMounted(true);
     loadDashboardStats();
     loadRecentActivities();
   }, [projects]);
@@ -48,27 +50,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
       const totalQuestions = await window.electronAPI.questions.getCount();
       setStats({
         totalQuestions: totalQuestions || 0,
-        sourceFilesImported: 128, // Mock data
+        sourceFilesImported: 128, // This was mock data before, keeping it for now as source is unclear
         testsGenerated: projects.length
       });
     } catch (error) {
       console.error('Failed to load dashboard stats:', error);
     }
-  };
-
-  const loadRecentActivities = () => {
-    const recentActivities: ActivityItem[] = projects
-      .sort((a, b) => new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime())
-      .slice(0, 5)
-      .map(project => ({
-        id: project.id,
-        type: 'generated' as const,
-        title: `Generated '${project.testCode}'`,
-        timestamp: project.lastModified,
-        icon: 'description'
-      }));
-
-    setActivities(recentActivities);
   };
 
   const getRelativeTime = (timestamp: string): string => {
@@ -86,186 +73,142 @@ export const Dashboard: React.FC<DashboardProps> = ({
     return then.toLocaleDateString();
   };
 
+  const loadRecentActivities = () => {
+    const recentActivities: ActivityItem[] = projects
+      .sort((a, b) => new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime())
+      .slice(0, 5)
+      .map(project => ({
+        id: project.id,
+        type: 'generated' as const,
+        title: `Generated '${project.testCode}'`,
+        timestamp: getRelativeTime(project.lastModified),
+        icon: 'edit_document'
+      }));
+
+    setActivities(recentActivities);
+  };
+
+  const handleDeleteClick = (e: React.MouseEvent, projectId: string, projectTitle: string) => {
+    e.stopPropagation();
+    if (confirm(`Are you sure you want to delete "${projectTitle}"?`)) {
+      onDeleteProject(projectId);
+    }
+  };
+
+  const animationStyles = `
+    @property --num-q { syntax: '<integer>'; initial-value: 0; inherits: false; }
+    @property --num-f { syntax: '<integer>'; initial-value: 0; inherits: false; }
+    @property --num-t { syntax: '<integer>'; initial-value: 0; inherits: false; }
+    @keyframes count-q { from { --num-q: 0; } to { --num-q: ${stats.totalQuestions}; } }
+    @keyframes count-f { from { --num-f: 0; } to { --num-f: ${stats.sourceFilesImported}; } }
+    @keyframes count-t { from { --num-t: 0; } to { --num-t: ${stats.testsGenerated}; } }
+    .count-up-q { animation: count-q 2.5s cubic-bezier(0.25, 1, 0.5, 1) forwards; counter-reset: num var(--num-q); }
+    .count-up-q::after { content: counter(num); }
+    .count-up-f { animation: count-f 2s cubic-bezier(0.25, 1, 0.5, 1) forwards; counter-reset: num var(--num-f); }
+    .count-up-f::after { content: counter(num); }
+    .count-up-t { animation: count-t 2.2s cubic-bezier(0.25, 1, 0.5, 1) forwards; counter-reset: num var(--num-t); }
+    .count-up-t::after { content: counter(num); }
+  `;
+
   return (
-    <div className="w-full h-full overflow-y-auto">
-      <div className="max-w-7xl mx-auto p-8">
-        {/* Header Section */}
-        <div className="flex items-center justify-between mb-10">
-          <div className="flex-1">
-            {/* Welcome Message */}
-            <h2 className="text-5xl font-bold text-gray-900 dark:text-white mb-2">
-              Welcome back, Admin!
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400 text-lg">
-              Here's a summary of your activity.
-            </p>
+    <div className="relative flex h-auto min-h-screen w-full flex-col group/design-root overflow-x-hidden font-display bg-background-light dark:bg-background-dark">
+      <style>{animationStyles}</style>
+      {/* Animated Background */}
+      <div className="fixed inset-0 w-full h-full overflow-hidden -z-10 pointer-events-none flex justify-center items-center pt-0">
+        <div className={`relative w-[800px] h-[800px] transition-opacity duration-[1500ms] ${isMounted ? 'opacity-100 animate-hero-entry' : 'opacity-0'}`}>
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/10 rounded-full blur-[120px] animate-pulse-glow"></div>
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-primary/20 rounded-full blur-[100px] animate-pulse-glow" style={{ animationDelay: '1s' }}></div>
+          <div className="absolute inset-0 border border-primary/10 rounded-full animate-orbit-slow">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 bg-primary rounded-full shadow-[0_0_20px_theme(colors.primary)]"></div>
+            <div className="absolute bottom-[20%] right-[20%] w-2 h-2 bg-primary/60 rounded-full"></div>
           </div>
-
-          <div className="flex gap-3">
-            <button
-              onClick={onCreateNew}
-              className="bg-primary text-white px-6 py-3 rounded-lg font-semibold hover:bg-primary/90 transition-all flex items-center gap-2 shadow-lg hover:shadow-xl"
-            >
-              <span className="material-symbols-outlined">rocket_launch</span>
-              Create New Test
-            </button>
+          <div className="absolute inset-[20%] border border-primary/20 rounded-full animate-orbit-reverse">
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 w-5 h-5 bg-primary/80 rounded-full blur-[1px] shadow-[0_0_30px_theme(colors.primary)]"></div>
           </div>
-        </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-3 gap-6 mb-10">
-          {/* Total Questions Card */}
-          <div className="bg-white dark:bg-[#1e1e2d] rounded-2xl p-6 border border-gray-200 dark:border-[#2d2d3b] shadow-sm hover:shadow-md transition-shadow">
-            <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
-              Total Questions in DB
-            </div>
-            <div className="text-5xl font-bold text-gray-900 dark:text-white">
-              {stats.totalQuestions.toLocaleString()}
-            </div>
+          <div className="absolute inset-[40%] border border-primary/10 rounded-full animate-orbit-medium">
+            <div className="absolute top-1/2 left-0 -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-primary/80 rounded-full shadow-[0_0_15px_theme(colors.primary)]"></div>
           </div>
-
-          {/* Source Files Card */}
-          <div className="bg-white dark:bg-[#1e1e2d] rounded-2xl p-6 border border-gray-200 dark:border-[#2d2d3b] shadow-sm hover:shadow-md transition-shadow">
-            <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
-              Source Files Imported
-            </div>
-            <div className="text-5xl font-bold text-gray-900 dark:text-white">
-              {stats.sourceFilesImported}
-            </div>
-          </div>
-
-          {/* Tests Generated Card */}
-          <div className="bg-white dark:bg-[#1e1e2d] rounded-2xl p-6 border border-gray-200 dark:border-[#2d2d3b] shadow-sm hover:shadow-md transition-shadow">
-            <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">
-              Tests Generated
-            </div>
-            <div className="text-5xl font-bold text-gray-900 dark:text-white">
-              {stats.testsGenerated}
-            </div>
+          <div className="absolute inset-0">
+            <div className="absolute top-[25%] left-[25%] w-1.5 h-1.5 bg-primary/50 rounded-full animate-float-particle" style={{ animationDelay: '0s' }}></div>
+            <div className="absolute top-[35%] right-[25%] w-2 h-2 bg-primary/40 rounded-full animate-float-particle" style={{ animationDelay: '-1.5s' }}></div>
+            <div className="absolute bottom-[30%] left-[40%] w-1 h-1 bg-primary/60 rounded-full animate-float-particle" style={{ animationDelay: '-3s' }}></div>
+            <div className="absolute top-[20%] right-[40%] w-2.5 h-2.5 bg-primary/30 rounded-full animate-float-particle" style={{ animationDelay: '-0.5s' }}></div>
+            <div className="absolute bottom-[40%] right-[20%] w-1.5 h-1.5 bg-primary/50 rounded-full animate-float-particle" style={{ animationDelay: '-2.5s' }}></div>
+            <div className="absolute top-[45%] left-[15%] w-2 h-2 bg-primary/30 rounded-full animate-float-particle" style={{ animationDelay: '-4s' }}></div>
           </div>
         </div>
+      </div>
 
-        {/* Recent Activity */}
-        <div className="bg-white dark:bg-[#1e1e2d] rounded-2xl border border-gray-200 dark:border-[#2d2d3b] shadow-sm mb-10 overflow-hidden">
-          <div className="px-6 py-5 border-b border-gray-200 dark:border-[#2d2d3b]">
-            <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-              Recent Activity
-            </h3>
-          </div>
-          <div className="divide-y divide-gray-200 dark:divide-[#2d2d3b]">
-            {activities.length === 0 ? (
-              <div className="px-6 py-12 text-center">
-                <p className="text-gray-600 dark:text-gray-400">
-                  No recent activity. Create your first test to get started!
+      {/* Main Content */}
+      <div className="flex h-full grow flex-col">
+        <div className="px-4 md:px-10 lg:px-20 xl:px-40 flex flex-1 justify-center py-5">
+          <div className="flex flex-col max-w-[960px] flex-1 z-10">
+
+            <header className="flex items-center justify-between whitespace-nowrap px-4 py-3 mb-6" />
+
+            <div className="flex flex-col md:flex-row flex-wrap justify-between items-start gap-4 p-4 mb-4">
+              <div className="flex min-w-72 flex-col gap-2">
+                <p className="text-text-main dark:text-white text-4xl font-black leading-tight tracking-[-0.033em] animate-text-glow">Welcome back, Admin!</p>
+                <p className="text-text-secondary dark:text-gray-400 text-base font-normal leading-normal">Here's a summary of your activity.</p>
+              </div>
+              <div className="flex flex-1 md:flex-initial gap-3 flex-wrap justify-start md:justify-end mt-2 md:mt-0">
+                <button
+                  onClick={onCreateNew}
+                  className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-lg h-12 px-5 bg-primary text-white text-base font-bold leading-normal tracking-[0.015em] hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98]">
+                  <span className="material-symbols-outlined">edit_document</span>
+                  <span className="truncate">Create New Test</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 p-4 mb-6">
+              <div className="flex flex-col gap-2 rounded-xl p-6 border border-border-light dark:border-gray-700 bg-white/80 dark:bg-background-dark/80 backdrop-blur-sm hover:border-primary/40 hover:shadow-lg transition-all duration-300 group">
+                <p className="text-text-main dark:text-gray-300 text-base font-medium leading-normal group-hover:text-primary transition-colors">Total Questions in DB</p>
+                <p className="text-text-main dark:text-white tracking-light text-4xl font-bold leading-tight tabular-nums text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-400 dark:from-white dark:to-gray-200">
+                  <span className="count-up-q"></span>
                 </p>
               </div>
-            ) : (
-              activities.map((activity) => (
-                <div
-                  key={activity.id}
-                  onClick={() => onLoadProject(activity.id)}
-                  className="px-6 py-5 hover:bg-gray-50 dark:hover:bg-[#252535] transition-colors cursor-pointer group"
-                >
-                  <div className="flex items-center gap-4">
-                    {/* Icon */}
-                    <div className="w-12 h-12 rounded-xl bg-primary/10 dark:bg-primary/20 flex items-center justify-center flex-shrink-0">
-                      <span className="material-symbols-outlined text-2xl text-primary">
-                        {activity.icon}
-                      </span>
-                    </div>
+              <div className="flex flex-col gap-2 rounded-xl p-6 border border-border-light dark:border-gray-700 bg-white/80 dark:bg-background-dark/80 backdrop-blur-sm hover:border-primary/40 hover:shadow-lg transition-all duration-300 group">
+                <p className="text-text-main dark:text-gray-300 text-base font-medium leading-normal group-hover:text-primary transition-colors">Source Files Imported</p>
+                <p className="text-text-main dark:text-white tracking-light text-4xl font-bold leading-tight tabular-nums text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-400 dark:from-white dark:to-gray-200">
+                  <span className="count-up-f"></span>
+                </p>
+              </div>
+              <div className="flex flex-col gap-2 rounded-xl p-6 border border-border-light dark:border-gray-700 bg-white/80 dark:bg-background-dark/80 backdrop-blur-sm hover:border-primary/40 hover:shadow-lg transition-all duration-300 group">
+                <p className="text-text-main dark:text-gray-300 text-base font-medium leading-normal group-hover:text-primary transition-colors">Tests Generated</p>
+                <p className="text-text-main dark:text-white tracking-light text-4xl font-bold leading-tight tabular-nums text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-400 dark:from-white dark:to-gray-200">
+                  <span className="count-up-t"></span>
+                </p>
+              </div>
+            </div>
 
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-gray-900 dark:text-white group-hover:text-primary transition-colors">
-                        {activity.title}
+            <h2 className="text-text-main dark:text-white text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5">Recent Activity</h2>
+            <div className="flex flex-col p-4">
+              <div className="bg-white/80 dark:bg-background-dark/80 border border-border-light dark:border-gray-700 rounded-xl overflow-hidden backdrop-blur-sm">
+                <ul className="divide-y divide-border-light dark:divide-gray-700">
+                  {activities.map(activity => (
+                    <li key={activity.id} onClick={() => onLoadProject(activity.id)} className="flex items-center justify-between p-4 hover:bg-background-light/50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer">
+                      <div className="flex items-center gap-4">
+                        <div className="flex items-center justify-center size-10 rounded-full bg-primary/10 text-primary">
+                          <span className="material-symbols-outlined">{activity.icon}</span>
+                        </div>
+                        <div>
+                          <p className="font-medium text-text-main dark:text-white">{activity.title}</p>
+                          <p className="text-sm text-text-secondary dark:text-gray-400">{activity.timestamp}</p>
+                        </div>
                       </div>
-                      <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                        {getRelativeTime(activity.timestamp)}
-                      </div>
-                    </div>
-
-                    {/* More Button */}
-                    <button className="opacity-0 group-hover:opacity-100 transition-opacity p-2 hover:bg-gray-200 dark:hover:bg-[#3a3a4a] rounded-lg">
-                      <span className="material-symbols-outlined text-gray-600 dark:text-gray-400">
-                        more_vert
-                      </span>
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
+                      <button
+                        onClick={(e) => handleDeleteClick(e, activity.id, activity.title)}
+                        className="text-gray-500 hover:text-primary dark:text-gray-400 dark:hover:text-white transition-colors">
+                        <span className="material-symbols-outlined">more_vert</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
           </div>
         </div>
-
-        {/* Projects Table */}
-        {projects.length > 0 && (
-          <div className="bg-white dark:bg-[#1e1e2d] rounded-2xl border border-gray-200 dark:border-[#2d2d3b] shadow-sm overflow-hidden">
-            <div className="px-6 py-5 border-b border-gray-200 dark:border-[#2d2d3b]">
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-                All Projects
-              </h3>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-gray-50 dark:bg-[#121121]">
-                  <tr>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-                      Name
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-                      Description
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-                      Last Modified
-                    </th>
-                    <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200 dark:divide-[#2d2d3b]">
-                  {projects.map((project) => (
-                    <tr
-                      key={project.id}
-                      onClick={() => onLoadProject(project.id)}
-                      className="hover:bg-gray-50 dark:hover:bg-[#252535] cursor-pointer group transition-colors"
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900 dark:text-white">
-                          {project.testCode}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm text-gray-600 dark:text-gray-400">
-                          {project.description || 'No description'}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-600 dark:text-gray-400">
-                          {new Date(project.lastModified).toLocaleString()}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (confirm(`Are you sure you want to delete "${project.testCode}"?`)) {
-                              onDeleteProject(project.id);
-                            }
-                          }}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity p-2 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-lg text-red-600 dark:text-red-400"
-                          title="Delete project"
-                        >
-                          <span className="material-symbols-outlined">delete</span>
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );
