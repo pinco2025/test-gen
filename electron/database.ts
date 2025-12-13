@@ -111,8 +111,11 @@ export class DatabaseService {
    * Get questions by chapter codes (using tag_2)
    * Chapter codes are stored in tag_2 field (e.g., PHY01, CHE01, MAT01)
    * NOTE: Queries ONLY by tag_2, ignoring type field
+   * @param type - The question type (currently ignored)
+   * @param chapterCodes - Array of chapter codes to query
+   * @param limit - Maximum number of questions to return (default 2000 to prevent memory exhaustion)
    */
-  getQuestionsByChapterCodes(type: string, chapterCodes: string[]): Question[] {
+  getQuestionsByChapterCodes(type: string, chapterCodes: string[], limit: number = 2000): Question[] {
     if (!this.db) throw new Error('Database not connected');
 
     if (chapterCodes.length === 0) {
@@ -121,9 +124,9 @@ export class DatabaseService {
     }
 
     const placeholders = chapterCodes.map(() => '?').join(',');
-    // Query only by tag_2, ignore type field
-    const query = `SELECT * FROM questions WHERE tag_2 IN (${placeholders})`;
-    const params = chapterCodes;
+    // Query only by tag_2, ignore type field - with LIMIT to prevent memory exhaustion
+    const query = `SELECT * FROM questions WHERE tag_2 IN (${placeholders}) LIMIT ?`;
+    const params = [...chapterCodes, limit];
 
     console.log('[DB] Query:', query);
     console.log('[DB] Params:', params);
@@ -438,6 +441,30 @@ export class DatabaseService {
     if (!this.db) throw new Error('Database not connected');
     const stmt = this.db.prepare('SELECT * FROM solutions WHERE uuid = ?');
     return (stmt.get(uuid) as { uuid: string, solution_text: string, solution_image_url: string }) || null;
+  }
+
+  /**
+   * Get solutions by multiple UUIDs (batch) - more efficient than calling getSolution multiple times
+   */
+  getSolutionsByUUIDs(uuids: string[]): Map<string, { uuid: string, solution_text: string, solution_image_url: string }> {
+    if (!this.db) throw new Error('Database not connected');
+
+    const solutionsMap = new Map<string, { uuid: string, solution_text: string, solution_image_url: string }>();
+
+    if (uuids.length === 0) {
+      return solutionsMap;
+    }
+
+    const placeholders = uuids.map(() => '?').join(',');
+    const query = `SELECT * FROM solutions WHERE uuid IN (${placeholders})`;
+    const stmt = this.db.prepare(query);
+    const results = stmt.all(...uuids) as { uuid: string, solution_text: string, solution_image_url: string }[];
+
+    for (const solution of results) {
+      solutionsMap.set(solution.uuid, solution);
+    }
+
+    return solutionsMap;
   }
 
   /**

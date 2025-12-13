@@ -33,6 +33,21 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ label, imageUrl, onImageUrlCh
   const [dragOver, setDragOver] = useState(false);
   const [width, setWidth] = useState<number>(300);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const localPreviewRef = useRef<string | null>(null);
+
+  // Track localPreview in ref for cleanup
+  useEffect(() => {
+    localPreviewRef.current = localPreview;
+  }, [localPreview]);
+
+  // Cleanup Object URL on unmount to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (localPreviewRef.current) {
+        URL.revokeObjectURL(localPreviewRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     setInternalImageUrl(imageUrl);
@@ -61,6 +76,11 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ label, imageUrl, onImageUrlCh
       return;
     }
 
+    // Revoke old preview URL before creating a new one
+    if (localPreview) {
+      URL.revokeObjectURL(localPreview);
+    }
+
     setIsUploading(true);
     const previewUrl = URL.createObjectURL(file);
     setLocalPreview(previewUrl);
@@ -69,10 +89,12 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ label, imageUrl, onImageUrlCh
         const uploadedUrl = await uploadFile(file);
         const formattedUrl = convertToL3Thumbnail(uploadedUrl, width);
         handleUrlChange(formattedUrl);
+        // Revoke preview URL after successful upload since we now have the remote URL
+        URL.revokeObjectURL(previewUrl);
+        setLocalPreview(null);
     } catch (error: any) {
         console.error("Upload failed:", error);
         // The main process shows a detailed error box. We just reset the UI here.
-        // alert(`Image upload failed: ${error.message}`);
         // Clear preview on failure
         URL.revokeObjectURL(previewUrl);
         setLocalPreview(null);
