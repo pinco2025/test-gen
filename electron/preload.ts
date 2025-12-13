@@ -4,6 +4,9 @@ import { Question, QuestionFilter, Test, ProjectState, ProjectInfo, AppConfig } 
 // Expose protected methods that allow the renderer process to use
 // ipcRenderer without exposing the entire object
 contextBridge.exposeInMainWorld('electronAPI', {
+  // Image Upload
+  uploadImage: (filePath: string) => ipcRenderer.invoke('upload-image', filePath),
+
   // Database operations
   db: {
     connect: (dbPath?: string) => ipcRenderer.invoke('db:connect', dbPath),

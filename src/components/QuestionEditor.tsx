@@ -1,27 +1,18 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Question, Solution, SectionName } from '../types';
+import React, { useState, useEffect } from 'react';
+import { Question, Solution } from '../types';
 import QuestionDisplay from './QuestionDisplay';
-// Removed: import '../styles/QuestionEditor.css';
-import chaptersData from '../data/chapters.json';
+import ImageUpload from './ImageUpload'; // Import the new component
 
 interface QuestionEditorProps {
   question: Question;
   solution?: Solution;
-  sectionName: SectionName;
   onSave: (updatedQuestion: Question, updatedSolution?: Solution) => void;
   onCancel: () => void;
 }
 
-const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, sectionName, onSave, onCancel }) => {
+const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onSave, onCancel }) => {
   const [editedQuestion, setEditedQuestion] = useState<Question>(question);
   const [editedSolution, setEditedSolution] = useState<Solution | undefined>(solution);
-
-  const validChaptersForSection = useMemo(() => {
-    const sectionKey = sectionName as keyof typeof chaptersData;
-    const sectionChapters = chaptersData[sectionKey] || [];
-    return sectionChapters.map(ch => ({ code: ch.code, name: ch.name }));
-  }, [sectionName]);
-
 
   useEffect(() => {
     setEditedQuestion(question);
@@ -96,15 +87,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, sec
                 <div className="space-y-3">
                     <label className="block text-sm font-semibold text-text-main dark:text-gray-200">Question Statement</label>
                     <div className="border border-border-light dark:border-border-dark rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-all">
-                        <div className="bg-gray-50 dark:bg-white/5 border-b border-border-light dark:border-border-dark px-2 py-1.5 flex flex-wrap gap-1">
-                             <input
-                                type="text"
-                                className="w-full p-2 bg-transparent border-none focus:ring-0 outline-none text-text-main dark:text-gray-200 text-sm"
-                                value={editedQuestion.question_image_url || ''}
-                                onChange={(e) => handleQuestionChange('question_image_url', e.target.value)}
-                                placeholder="Question Image URL (optional)"
-                            />
-                        </div>
                         <textarea
                             className="w-full p-4 min-h-[120px] bg-transparent border-none focus:ring-0 outline-none text-text-main dark:text-gray-200 text-sm leading-relaxed resize-y"
                             placeholder="Type your question here... Use LaTeX for math like $x^2$."
@@ -112,6 +94,11 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, sec
                             onChange={(e) => handleQuestionChange('question', e.target.value)}
                         />
                     </div>
+                    <ImageUpload
+                        label="Question Image"
+                        imageUrl={editedQuestion.question_image_url}
+                        onImageUrlChange={(url) => handleQuestionChange('question_image_url', url)}
+                    />
                 </div>
 
                 {/* Section: Options */}
@@ -147,12 +134,10 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, sec
                                                 onChange={(e) => handleQuestionChange(`option_${opt}`, e.target.value)}
                                             />
                                         </div>
-                                         <input
-                                            type="text"
-                                            className="w-full py-1 px-2 text-xs bg-gray-50 dark:bg-white/5 border border-border-light dark:border-border-dark rounded-md focus:ring-1 focus:ring-primary focus:border-primary"
-                                            placeholder={`Image URL for Option ${opt.toUpperCase()} (optional)`}
-                                            value={editedQuestion[`option_${opt}_image_url`] || ''}
-                                            onChange={(e) => handleQuestionChange(`option_${opt}_image_url`, e.target.value)}
+                                        <ImageUpload
+                                            label=""
+                                            imageUrl={editedQuestion[`option_${opt}_image_url`]}
+                                            onImageUrlChange={(url) => handleQuestionChange(`option_${opt}_image_url`, url)}
                                         />
                                     </div>
                                 </div>
@@ -160,19 +145,9 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, sec
                         })}
                     </div>
                 </div>
-                 {/* Section: Solution */}
                 <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                        <label className="block text-sm font-semibold text-text-main dark:text-gray-200">Detailed Solution</label>
-                    </div>
+                    <label className="block text-sm font-semibold text-text-main dark:text-gray-200">Detailed Solution</label>
                     <div className="border border-border-light dark:border-border-dark rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-all">
-                         <input
-                            type="text"
-                            className="w-full p-2 bg-gray-50 dark:bg-white/5 border-b border-border-light dark:border-border-dark focus:ring-0 text-text-main dark:text-gray-200 text-sm"
-                            placeholder="Solution Image URL (optional)"
-                            value={editedSolution?.solution_image_url || ''}
-                            onChange={(e) => handleSolutionChange('solution_image_url', e.target.value)}
-                        />
                         <textarea
                             className="w-full p-4 min-h-[100px] bg-transparent border-none focus:ring-0 text-text-main dark:text-gray-200 text-sm leading-relaxed resize-y"
                             placeholder="Explain the logic behind the correct answer..."
@@ -180,89 +155,48 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, sec
                             onChange={(e) => handleSolutionChange('solution_text', e.target.value)}
                         />
                     </div>
+                    <ImageUpload
+                        label="Solution Image"
+                        imageUrl={editedSolution?.solution_image_url || null}
+                        onImageUrlChange={(url) => handleSolutionChange('solution_image_url', url)}
+                    />
                 </div>
 
-                {/* Section: Properties */}
+                {/* Section: Properties (Metadata) */}
                 <div className="pt-6 border-t border-border-light dark:border-border-dark">
                     <h4 className="text-base font-bold text-text-main dark:text-white mb-4">Properties</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                       <div className="space-y-1.5">
-                            <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Topic (Tag 1)</label>
-                            <input
-                                type="text"
-                                className="w-full bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-main dark:text-white text-sm rounded-lg focus:ring-primary focus:border-primary p-2.5"
-                                value={editedQuestion.tag_1 || ''}
-                                onChange={(e) => handleQuestionChange('tag_1', e.target.value)}
-                                placeholder="e.g. Mechanics, Thermodynamics"
-                            />
-                        </div>
-
-                         <div className="space-y-1.5">
-                            <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Chapter (Tag 2)</label>
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Topic</label>
                             <div className="relative">
                                 <select
                                     className="w-full bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-main dark:text-white text-sm rounded-lg focus:ring-primary focus:border-primary p-2.5 appearance-none"
-                                    value={editedQuestion.tag_2 || ''}
-                                    onChange={(e) => handleQuestionChange('tag_2', e.target.value)}
+                                    value={editedQuestion.tag_1 || ''}
+                                    onChange={(e) => handleQuestionChange('tag_1', e.target.value)}
                                 >
-                                    <option value="">Select a chapter...</option>
-                                    {validChaptersForSection.map(ch => (
-                                        <option key={ch.code} value={ch.code}>
-                                            {ch.code} - {ch.name}
-                                        </option>
-                                    ))}
+                                    <option>Physics &gt; Mechanics &gt; Gravitation</option>
+                                    <option>Physics &gt; Electromagnetism</option>
+                                    <option>Mathematics &gt; Calculus</option>
                                 </select>
                                 <span className="material-symbols-outlined absolute right-3 top-2.5 text-text-secondary pointer-events-none">expand_more</span>
                             </div>
                         </div>
-
-                         <div className="space-y-1.5">
-                            <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Difficulty (Tag 3)</label>
-                             <div className="flex gap-2">
-                                {(['E', 'M', 'H'] as const).map(d => {
-                                    const isChecked = editedQuestion.tag_3 === d;
-                                    const label = d === 'E' ? 'Easy' : d === 'M' ? 'Medium' : 'Hard';
-                                    const colors = d === 'E' ? 'green' : d === 'M' ? 'yellow' : 'red';
-                                    return (
-                                    <label key={d} className="cursor-pointer">
-                                        <input
-                                            className="peer sr-only"
-                                            name="difficulty"
-                                            type="radio"
-                                            checked={isChecked}
-                                            onChange={() => handleQuestionChange('tag_3', d)}
-                                        />
-                                        <div className={`px-3 py-2 rounded-lg border text-xs font-medium transition-colors ${isChecked ? `bg-${colors}-50 text-${colors}-600 border-${colors}-200 dark:bg-${colors}-900/20 dark:border-${colors}-800` : 'border-border-light dark:border-border-dark text-text-secondary'}`}>
-                                            {label}
-                                        </div>
-                                    </label>
-                                    );
-                                })}
-                            </div>
-                        </div>
-
-                        <div className="space-y-1.5">
-                            <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Tags (Tag 4)</label>
-                             <input
-                                type="text"
-                                className="w-full bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-main dark:text-white text-sm rounded-lg focus:ring-primary focus:border-primary p-2.5"
-                                value={editedQuestion.tag_4 || ''}
-                                onChange={(e) => handleQuestionChange('tag_4', e.target.value)}
-                                placeholder="e.g. Conceptual, Formula-based"
-                            />
-                        </div>
-
                         <div className="space-y-1.5">
                             <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Question Type</label>
-                             <input
-                                type="text"
-                                className="w-full bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-main dark:text-white text-sm rounded-lg focus:ring-primary focus:border-primary p-2.5"
-                                value={editedQuestion.type || ''}
-                                onChange={(e) => handleQuestionChange('type', e.target.value)}
-                                placeholder="e.g. Single Correct MCQ"
-                            />
+                            <div className="relative">
+                                <select
+                                    className="w-full bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-main dark:text-white text-sm rounded-lg focus:ring-primary focus:border-primary p-2.5 appearance-none"
+                                    value={editedQuestion.type || ''}
+                                    onChange={(e) => handleQuestionChange('type', e.target.value)}
+                                >
+                                    <option>Single Correct MCQ</option>
+                                    <option>Multiple Correct MCQ</option>
+                                    <option>Integer Type</option>
+                                </select>
+                                <span className="material-symbols-outlined absolute right-3 top-2.5 text-text-secondary pointer-events-none">expand_more</span>
+                            </div>
                         </div>
-                         <div className="space-y-1.5">
+                        <div className="space-y-1.5">
                             <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Exam Year / Reference</label>
                             <input
                                 className="w-full bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-main dark:text-white text-sm rounded-lg focus:ring-primary focus:border-primary p-2.5"
@@ -271,6 +205,49 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, sec
                                 value={editedQuestion.year || ''}
                                 onChange={(e) => handleQuestionChange('year', e.target.value)}
                             />
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Difficulty</label>
+                            <div className="flex gap-2">
+                                {(['Easy', 'Medium', 'Hard'] as const).map(d => {
+                                    const getDifficultyClasses = () => {
+                                        switch (d) {
+                                            case 'Easy': return 'peer-checked:bg-green-50 peer-checked:text-green-600 peer-checked:border-green-200 dark:peer-checked:bg-green-900/20 dark:peer-checked:border-green-800';
+                                            case 'Medium': return 'peer-checked:bg-yellow-50 peer-checked:text-yellow-600 peer-checked:border-yellow-200 dark:peer-checked:bg-yellow-900/20 dark:peer-checked:border-yellow-800';
+                                            case 'Hard': return 'peer-checked:bg-red-50 peer-checked:text-red-600 peer-checked:border-red-200 dark:peer-checked:bg-red-900/20 dark:peer-checked:border-red-800';
+                                            default: return '';
+                                        }
+                                    };
+                                    return (
+                                        <label key={d} className="cursor-pointer">
+                                            <input
+                                                className="peer sr-only"
+                                                name="difficulty"
+                                                type="radio"
+                                                value={d}
+                                                checked={editedQuestion.tag_3 === d}
+                                                onChange={() => handleQuestionChange('tag_3', d)}
+                                            />
+                                            <div className={`px-3 py-2 rounded-lg border border-border-light dark:border-border-dark text-xs font-medium text-text-secondary ${getDifficultyClasses()}`}>
+                                                {d}
+                                            </div>
+                                        </label>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                        <div className="col-span-1 md:col-span-2 space-y-1.5">
+                            <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Tags</label>
+                            <div className="w-full bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-lg focus-within:ring-1 focus-within:ring-primary focus-within:border-primary p-2 flex flex-wrap gap-2 min-h-[46px]">
+                                {/* TODO: Implement a proper tag input component */}
+                                <input
+                                    className="bg-transparent border-none focus:ring-0 text-sm text-text-main dark:text-white p-0 h-6 grow min-w-[120px]"
+                                    placeholder="Type and press Enter..."
+                                    type="text"
+                                    value={editedQuestion.tag_4 || ''}
+                                    onChange={(e) => handleQuestionChange('tag_4', e.target.value)}
+                                />
+                            </div>
                         </div>
                     </div>
                 </div>
