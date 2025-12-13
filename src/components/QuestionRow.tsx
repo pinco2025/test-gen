@@ -46,8 +46,8 @@ const QuestionRow: React.FC<QuestionRowProps> = React.memo(({
         onClick={handleClick}
         className={`cursor-pointer rounded-lg p-4 transition-all duration-150 ${
           selected
-            ? 'border-2 border-[#5248e5] bg-[#5248e5]/5 shadow-md scale-[1.01]'
-            : 'border border-gray-200 dark:border-[#2d2d3b] bg-white dark:bg-[#1e1e2d] hover:border-[#5248e5]/50 hover:shadow-sm'
+            ? 'border-2 border-primary bg-primary/5 shadow-md'
+            : 'border border-gray-200 dark:border-[#2d2d3b] bg-white dark:bg-[#1e1e2d] hover:border-primary/50 hover:shadow-sm'
         }`}
       >
         <div className="flex justify-between items-start mb-2">
@@ -67,7 +67,7 @@ const QuestionRow: React.FC<QuestionRowProps> = React.memo(({
                 setShowMenu(!showMenu);
               }}
               title="Actions"
-              className="flex items-center gap-1 px-2 py-1 bg-gray-50 dark:bg-[#252535] border border-gray-200 dark:border-[#2d2d3b] rounded text-xs text-gray-700 dark:text-gray-300 hover:border-[#5248e5] hover:text-[#5248e5] transition-all"
+              className="flex items-center gap-1 px-2 py-1 bg-gray-50 dark:bg-[#252535] border border-gray-200 dark:border-[#2d2d3b] rounded text-xs text-gray-700 dark:text-gray-300 hover:border-primary hover:text-primary transition-all"
             >
               <span className="material-symbols-outlined text-base">more_vert</span>
               Actions
@@ -98,7 +98,7 @@ const QuestionRow: React.FC<QuestionRowProps> = React.memo(({
         <QuestionDisplay
           question={question}
           showAnswer={highlightCorrectAnswer && !isDivision2Question}
-          isSelected={selected}
+          isSelected={false} // Disable internal selection ring to avoid double border
           hideOptions={isDivision2Question}
           questionNumber={index + 1}
           highlightCorrectAnswer={highlightCorrectAnswer && !isDivision2Question}

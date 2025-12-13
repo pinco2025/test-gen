@@ -657,8 +657,8 @@ function App() {
       case 'database-connect':
         return (
           <div className="flex flex-col items-center justify-center h-full text-center p-8">
-            <div className="bg-[#5248e5]/10 dark:bg-[#5248e5]/20 rounded-full p-8 mb-6 animate-fade-in">
-              <span className="material-symbols-outlined text-7xl text-[#5248e5]">database</span>
+            <div className="bg-primary/10 dark:bg-primary/20 rounded-full p-8 mb-6 animate-fade-in">
+              <span className="material-symbols-outlined text-7xl text-primary">database</span>
             </div>
             <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-3">Test Generation System</h1>
             <p className="text-gray-600 dark:text-gray-400 mb-8 text-lg max-w-md">
@@ -666,7 +666,7 @@ function App() {
             </p>
             <button
               onClick={handleDatabaseSelect}
-              className="bg-[#5248e5] text-white px-8 py-4 rounded-lg font-semibold flex items-center gap-2 hover:bg-[#4339d9] transition-all shadow-lg hover:shadow-xl"
+              className="bg-primary text-white px-8 py-4 rounded-lg font-semibold flex items-center gap-2 hover:bg-primary/90 transition-all shadow-lg hover:shadow-xl"
             >
               <span className="material-symbols-outlined text-xl">folder_open</span>
               Select Database File
@@ -792,7 +792,7 @@ function App() {
             <div className="flex flex-col sm:flex-row gap-4 w-full mb-8">
               <button
                 onClick={() => addNotification('info', 'Test has already been exported to a JSON file')}
-                className="flex-1 bg-[#5248e5] text-white px-8 py-4 rounded-lg font-semibold hover:bg-[#4339d9] transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
+                className="flex-1 bg-primary text-white px-8 py-4 rounded-lg font-semibold hover:bg-primary/90 transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
               >
                 <span className="material-symbols-outlined text-xl">download</span>
                 Download JSON
@@ -810,14 +810,14 @@ function App() {
             <div className="flex items-center gap-6 text-sm">
               <button
                 onClick={() => updateCurrentProject({ currentStep: 'test-review' })}
-                className="text-gray-600 dark:text-gray-400 hover:text-[#5248e5] transition-colors flex items-center gap-1 font-medium"
+                className="text-gray-600 dark:text-gray-400 hover:text-primary transition-colors flex items-center gap-1 font-medium"
               >
                 <span className="material-symbols-outlined text-lg">arrow_back</span>
                 Back to Review
               </button>
               <button
                 onClick={createNewProject}
-                className="text-[#5248e5] hover:text-[#4339d9] transition-colors flex items-center gap-1 font-semibold"
+                className="text-primary hover:text-primary/90 transition-colors flex items-center gap-1 font-semibold"
               >
                 <span className="material-symbols-outlined text-lg">add_circle</span>
                 Create Another Test
@@ -876,7 +876,7 @@ function App() {
             className="h-6 w-6 cursor-pointer hover:opacity-80 transition-opacity"
             onClick={goToDashboard}
           />
-          <h1 className="text-lg font-bold cursor-pointer hover:text-[#5248e5] transition-colors" onClick={goToDashboard}>
+          <h1 className="text-lg font-bold cursor-pointer hover:text-primary transition-colors" onClick={goToDashboard}>
             Test Generation System
           </h1>
         </div>

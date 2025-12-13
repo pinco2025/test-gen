@@ -45,7 +45,14 @@ const ProjectTabs: React.FC<ProjectTabsProps> = ({
               className={`group flex items-center justify-between gap-2 px-4 py-2 rounded-t-lg border border-b-0 cursor-pointer transition-colors max-w-[200px] ${
                 isActive
                   ? 'bg-surface-light dark:bg-surface-dark border-border-light dark:border-border-dark'
-                  : 'border-transparent hover:bg-gray-200 dark:hover:bg-gray-700'
+                  : 'border-transparent hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg' // Use full rounded corners on hover for cleaner floating look, or stick to rounded-t-lg but ensure it looks grounded?
+                  // User complained about "weird shape". Usually floating tabs look better if fully rounded when not active, or if they have a bottom border.
+                  // But standard is rounded-t.
+                  // Let's try matching the active shape more closely but fixing potentially sharp corners if it's floating.
+                  // Actually, if we just use rounded-lg on hover it might look like a button.
+                  // Let's stick to rounded-t-lg but ensure no border artifacts.
+                  // The previous code had hover:bg-gray-200 on a rounded-t-lg div.
+                  // If I change it to rounded-lg on hover, it creates a "floating pill" look which is often nicer for inactive tabs.
               }`}
             >
               <span className="truncate text-sm font-medium text-text-main dark:text-white">{project.testCode}</span>

@@ -8,15 +8,15 @@ module.exports = {
   theme: {
       extend: {
           colors: {
-              "primary": "#5248e5",
-              "background-light": "#f6f6f8",
-              "background-dark": "#121121",
+              "primary": "#3b82f6", // blue-500
+              "background-light": "#eff6ff", // blue-50
+              "background-dark": "#0f172a", // slate-900
               "surface-light": "#ffffff",
-              "surface-dark": "#1e1e2d",
-              "border-light": "#e5e7eb",
-              "border-dark": "#2d2d3b",
-              "text-main": "#121117",
-              "text-secondary": "#666487",
+              "surface-dark": "#1e293b", // slate-800
+              "border-light": "#bfdbfe", // blue-200
+              "border-dark": "#334155", // slate-700
+              "text-main": "#0f172a", // slate-900
+              "text-secondary": "#64748b", // slate-500
           },
           fontFamily: {
               "display": ["Inter", "sans-serif"]

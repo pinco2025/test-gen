@@ -63,7 +63,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, sec
   };
 
   return (
-    <main className="flex-1 w-full max-w-[1600px] mx-auto p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 h-[calc(100vh-65px)] overflow-hidden">
+    <main className="flex-1 w-full max-w-[1600px] mx-auto p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 h-full overflow-hidden">
         {/* Left Pane: Preview */}
         <aside className="lg:col-span-5 flex flex-col gap-4 h-full overflow-hidden">
             <div className="flex items-center justify-between">
@@ -99,14 +99,14 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, sec
                         <div className="bg-gray-50 dark:bg-white/5 border-b border-border-light dark:border-border-dark px-2 py-1.5 flex flex-wrap gap-1">
                              <input
                                 type="text"
-                                className="w-full p-2 bg-transparent border-none focus:ring-0 text-text-main dark:text-gray-200 text-sm"
+                                className="w-full p-2 bg-transparent border-none focus:ring-0 outline-none text-text-main dark:text-gray-200 text-sm"
                                 value={editedQuestion.question_image_url || ''}
                                 onChange={(e) => handleQuestionChange('question_image_url', e.target.value)}
                                 placeholder="Question Image URL (optional)"
                             />
                         </div>
                         <textarea
-                            className="w-full p-4 min-h-[120px] bg-transparent border-none focus:ring-0 text-text-main dark:text-gray-200 text-sm leading-relaxed resize-y"
+                            className="w-full p-4 min-h-[120px] bg-transparent border-none focus:ring-0 outline-none text-text-main dark:text-gray-200 text-sm leading-relaxed resize-y"
                             placeholder="Type your question here... Use LaTeX for math like $x^2$."
                             value={editedQuestion.question}
                             onChange={(e) => handleQuestionChange('question', e.target.value)}
@@ -274,7 +274,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, sec
                         </div>
                     </div>
                 </div>
-                <div className="h-8"></div>
             </div>
 
             <div className="px-6 py-4 border-t border-border-light dark:border-border-dark bg-gray-50 dark:bg-surface-dark/50 flex items-center justify-between shrink-0">

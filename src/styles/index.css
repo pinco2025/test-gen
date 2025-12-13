@@ -64,13 +64,14 @@ button, a, input, select, textarea {
 }
 
 /* Focus visible for accessibility */
+/* Override default outline for elements that manage their own ring/border */
 button:focus-visible,
 a:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
-  outline: 2px solid #5248e5;
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: 0 0 0 2px #3b82f6; /* Fallback using shadow if ring not present */
 }
 
 /* Prevent layout shift */
@@ -85,41 +86,43 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-/* Title Bar Styles */
+/* Title Bar Styles - Polished */
 .title-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 32px;
-  background: linear-gradient(to bottom, #f9fafb, #f3f4f6);
-  border-bottom: 1px solid #e5e7eb;
-  padding: 0 12px;
+  height: 38px; /* Slightly taller for better touch targets */
+  background: #f1f5f9; /* Slate-100 */
+  border-bottom: 1px solid #e2e8f0;
+  padding: 0 16px;
   user-select: none;
   -webkit-app-region: drag;
+  font-family: 'Inter', system-ui, sans-serif;
 }
 
 .dark .title-bar {
-  background: linear-gradient(to bottom, #1e1e2d, #121121);
-  border-bottom: 1px solid #2d2d3b;
+  background: #0f172a; /* Slate-900 */
+  border-bottom: 1px solid #1e293b;
 }
 
 .title-bar-title {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #374151;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #334155;
+  letter-spacing: 0.01em;
 }
 
 .dark .title-bar-title {
-  color: #d1d5db;
+  color: #e2e8f0;
 }
 
 .title-bar-controls {
   display: flex;
   align-items: center;
-  gap: 0;
+  gap: 8px; /* Spacing between buttons */
   -webkit-app-region: no-drag;
 }
 
@@ -127,27 +130,28 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 46px;
-  height: 32px;
+  width: 32px;
+  height: 24px;
   border: none;
+  border-radius: 4px; /* Rounded corners */
   background: transparent;
-  color: #6b7280;
+  color: #64748b;
   cursor: pointer;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition: all 0.2s ease;
 }
 
 .title-bar-btn:hover {
-  background-color: rgba(0, 0, 0, 0.05);
-  color: #111827;
+  background-color: #e2e8f0; /* Slight gray bg on hover */
+  color: #0f172a;
 }
 
 .dark .title-bar-btn {
-  color: #9ca3af;
+  color: #94a3b8;
 }
 
 .dark .title-bar-btn:hover {
-  background-color: rgba(255, 255, 255, 0.1);
-  color: #f3f4f6;
+  background-color: #334155;
+  color: #f8fafc;
 }
 
 .title-bar-btn.close:hover {
@@ -156,7 +160,7 @@ body {
 }
 
 .title-bar-btn .material-symbols-outlined {
-  font-size: 16px;
+  font-size: 18px; /* Slightly larger icons */
 }
 
 /* Smooth selection transitions */

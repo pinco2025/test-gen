@@ -120,7 +120,7 @@ export const SectionConfiguration: React.FC<SectionConfigurationProps> = ({
               <button
                 type="button"
                 onClick={() => setShowConfig(!showConfig)}
-                className="text-sm font-medium text-[#5248e5] hover:text-[#4339d9] transition-colors flex items-center gap-1"
+                className="text-sm font-medium text-primary hover:text-primary/90 transition-colors flex items-center gap-1"
               >
                 {showConfig ? 'Hide' : 'Show'} Algorithm Settings
                 <span className="material-symbols-outlined text-base">
@@ -150,7 +150,7 @@ export const SectionConfiguration: React.FC<SectionConfigurationProps> = ({
                       max="5"
                       value={constraintConfig.minIdx}
                       onChange={(e) => onConfigChange({ ...constraintConfig, minIdx: parseInt(e.target.value) || 1 })}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-[#2d2d3b] rounded-lg bg-white dark:bg-[#1e1e2d] text-gray-900 dark:text-white focus:ring-2 focus:ring-[#5248e5] focus:border-transparent transition-all"
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-[#2d2d3b] rounded-lg bg-white dark:bg-[#1e1e2d] text-gray-900 dark:text-white focus:ring-2 focus:ring-[primary] focus:border-transparent transition-all"
                     />
                   </div>
                   <div>
@@ -162,7 +162,7 @@ export const SectionConfiguration: React.FC<SectionConfigurationProps> = ({
                       step="0.01"
                       value={constraintConfig.Sm}
                       onChange={(e) => onConfigChange({ ...constraintConfig, Sm: parseFloat(e.target.value) || 0 })}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-[#2d2d3b] rounded-lg bg-white dark:bg-[#1e1e2d] text-gray-900 dark:text-white focus:ring-2 focus:ring-[#5248e5] focus:border-transparent transition-all"
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-[#2d2d3b] rounded-lg bg-white dark:bg-[#1e1e2d] text-gray-900 dark:text-white focus:ring-2 focus:ring-[primary] focus:border-transparent transition-all"
                     />
                   </div>
                   <div>
@@ -174,7 +174,7 @@ export const SectionConfiguration: React.FC<SectionConfigurationProps> = ({
                       step="0.01"
                       value={constraintConfig.Sh}
                       onChange={(e) => onConfigChange({ ...constraintConfig, Sh: parseFloat(e.target.value) || 0 })}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-[#2d2d3b] rounded-lg bg-white dark:bg-[#1e1e2d] text-gray-900 dark:text-white focus:ring-2 focus:ring-[#5248e5] focus:border-transparent transition-all"
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-[#2d2d3b] rounded-lg bg-white dark:bg-[#1e1e2d] text-gray-900 dark:text-white focus:ring-2 focus:ring-[primary] focus:border-transparent transition-all"
                     />
                   </div>
                 </div>
@@ -202,7 +202,7 @@ export const SectionConfiguration: React.FC<SectionConfigurationProps> = ({
                   <span className="text-sm text-gray-600 dark:text-gray-400">Are you sure?</span>
                   <button
                     onClick={confirmReset}
-                    className="px-4 py-1.5 text-sm rounded-lg bg-[#5248e5] text-white hover:bg-[#4339d9] transition-all shadow-sm hover:shadow-md"
+                    className="px-4 py-1.5 text-sm rounded-lg bg-primary text-white hover:bg-primary/90 transition-all shadow-sm hover:shadow-md"
                   >
                     Yes
                   </button>
@@ -264,7 +264,7 @@ export const SectionConfiguration: React.FC<SectionConfigurationProps> = ({
                             min="0"
                             value={chapter[field as keyof ChapterDistribution]}
                             onChange={(e) => updateChapter(index, field as keyof ChapterDistribution, parseInt(e.target.value) || 0)}
-                            className="w-20 px-3 py-2 text-center text-base font-bold bg-white dark:bg-[#1e1e2d] border-2 border-gray-400 dark:border-gray-500 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-[#5248e5] focus:border-[#5248e5] transition-all shadow-sm hover:border-[#5248e5]"
+                            className="w-20 px-3 py-2 text-center text-base font-bold bg-white dark:bg-[#1e1e2d] border-2 border-gray-400 dark:border-gray-500 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-[primary] focus:border-primary transition-all shadow-sm hover:border-primary"
                           />
                         </td>
                       ))}
@@ -330,7 +330,7 @@ export const SectionConfiguration: React.FC<SectionConfigurationProps> = ({
               disabled={!isValid}
               className={`px-8 py-3 rounded-lg font-semibold flex items-center gap-2 transition-all duration-200 ${
                 isValid
-                  ? 'bg-[#5248e5] text-white hover:bg-[#4339d9] shadow-lg hover:shadow-xl'
+                  ? 'bg-primary text-white hover:bg-primary/90 shadow-lg hover:shadow-xl'
                   : 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-500 cursor-not-allowed'
               }`}
             >

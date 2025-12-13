@@ -92,14 +92,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
         {/* Header Section */}
         <div className="flex items-center justify-between mb-10">
           <div className="flex-1">
-            {/* Logo and Title */}
-            <div className="flex items-center gap-3 mb-6">
-              <span className="material-symbols-outlined text-[#5248e5] text-4xl">star</span>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                Test Generator Pro
-              </h1>
-            </div>
-
             {/* Welcome Message */}
             <h2 className="text-5xl font-bold text-gray-900 dark:text-white mb-2">
               Welcome back, Admin!
@@ -112,16 +104,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <div className="flex gap-3">
             <button
               onClick={onCreateNew}
-              className="bg-[#5248e5] text-white px-6 py-3 rounded-lg font-semibold hover:bg-[#4339d9] transition-all flex items-center gap-2 shadow-lg hover:shadow-xl"
+              className="bg-primary text-white px-6 py-3 rounded-lg font-semibold hover:bg-primary/90 transition-all flex items-center gap-2 shadow-lg hover:shadow-xl"
             >
               <span className="material-symbols-outlined">rocket_launch</span>
               Create New Test
-            </button>
-            <button
-              className="bg-white dark:bg-[#1e1e2d] border-2 border-gray-200 dark:border-[#2d2d3b] text-gray-900 dark:text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-50 dark:hover:bg-[#2a2a3a] transition-all flex items-center gap-2"
-            >
-              <span className="material-symbols-outlined">upload</span>
-              Import Questions
             </button>
           </div>
         </div>
@@ -182,15 +168,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 >
                   <div className="flex items-center gap-4">
                     {/* Icon */}
-                    <div className="w-12 h-12 rounded-xl bg-[#5248e5]/10 dark:bg-[#5248e5]/20 flex items-center justify-center flex-shrink-0">
-                      <span className="material-symbols-outlined text-2xl text-[#5248e5]">
+                    <div className="w-12 h-12 rounded-xl bg-primary/10 dark:bg-primary/20 flex items-center justify-center flex-shrink-0">
+                      <span className="material-symbols-outlined text-2xl text-primary">
                         {activity.icon}
                       </span>
                     </div>
 
                     {/* Content */}
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-gray-900 dark:text-white group-hover:text-[#5248e5] transition-colors">
+                      <div className="text-sm font-medium text-gray-900 dark:text-white group-hover:text-primary transition-colors">
                         {activity.title}
                       </div>
                       <div className="text-xs text-gray-600 dark:text-gray-400 mt-1">
