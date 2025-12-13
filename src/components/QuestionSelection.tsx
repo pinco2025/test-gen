@@ -291,7 +291,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
   };
 
   return (
-    <div className="w-full h-full flex flex-col overflow-y-auto">
+    <div className="w-full h-full flex flex-col overflow-y-auto overflow-x-hidden">
       {/* Header */}
       <div className="flex-shrink-0 p-4 pb-0">
         <div className="bg-white dark:bg-[#1e1e2d] p-4 rounded-xl mb-4 border border-gray-200 dark:border-[#2d2d3b] shadow-sm flex justify-between items-center">
@@ -308,8 +308,8 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
       </div>
 
       {/* Main Content Area - INCREASED HEIGHT WITH SCROLLBAR */}
-      <div className="flex-1 px-4" style={{ minHeight: '1000px' }}>
-      <div className="grid grid-cols-12 gap-4 h-full" style={{ minHeight: '1000px' }}>
+      <div className="flex-1 px-4 pb-4" style={{ minHeight: '1000px' }}>
+      <div className="grid grid-cols-12 gap-4" style={{ minHeight: '1000px' }}>
         {/* Left Sidebar: Constraints */}
         <div className="col-span-3 h-full overflow-hidden flex flex-col">
           <div className="bg-white dark:bg-[#1e1e2d] p-4 rounded-xl border-2 border-gray-300 dark:border-[#2d2d3b] shadow-md h-full overflow-hidden flex flex-col">
@@ -397,8 +397,8 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
       </div>
       </div>
 
-      {/* Footer */}
-      <div className="flex-shrink-0 p-4 pt-4 border-t border-gray-200 dark:border-[#2d2d3b] flex justify-between bg-gray-50 dark:bg-[#121121]">
+      {/* Footer - Always visible at bottom */}
+      <div className="flex-shrink-0 p-4 pt-4 border-t border-gray-200 dark:border-[#2d2d3b] flex justify-between bg-gray-50 dark:bg-[#121121] sticky bottom-0 z-10">
         <button onClick={onBack} className="px-6 py-2.5 rounded-lg border border-gray-200 dark:border-[#2d2d3b] text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#252535] font-semibold transition-all">Back</button>
         <button onClick={() => onComplete(selectedQuestions)} disabled={!isSelectionValid} className="px-6 py-2.5 rounded-lg bg-primary text-white disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:cursor-not-allowed font-semibold hover:bg-primary/90 transition-all shadow-md disabled:shadow-none">
           {isSelectionValid ? 'Continue' : `Need ${20 - summary.division1} for Div1, ${5 - summary.division2} for Div2`}
