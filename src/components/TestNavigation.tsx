@@ -33,12 +33,19 @@ const TestNavigation: React.FC<TestNavigationProps> = ({ currentStep, sections, 
                     chemistryQuestions >= totalRequired &&
                     mathQuestions >= totalRequired;
 
-  const getButtonClass = (isActive: boolean) =>
-    `nav-segment ${isActive ? 'active' : ''}`;
+  const getButtonClass = (isActive: boolean) => {
+    return `
+      px-6 py-3 rounded-lg font-medium transition-all duration-200 flex items-center gap-3
+      ${isActive
+        ? 'bg-primary text-white shadow-md'
+        : 'bg-surface-light dark:bg-surface-dark text-text-main dark:text-white hover:bg-background-light dark:hover:bg-background-dark border border-border-light dark:border-border-dark'
+      }
+    `.trim();
+  };
 
   return (
-    <div className="test-navigation-container">
-      <div className="test-navigation">
+    <div className="bg-surface-light dark:bg-surface-dark border-b border-border-light dark:border-border-dark px-4 py-3">
+      <div className="max-w-7xl mx-auto flex items-center gap-3">
         <button
           className={getButtonClass(currentStep === 'question-select-physics')}
           onClick={() => {
@@ -49,8 +56,14 @@ const TestNavigation: React.FC<TestNavigationProps> = ({ currentStep, sections, 
             }
           }}
         >
-          <span className="nav-label">Physics</span>
-          <span className="nav-badge">{physicsQuestions}</span>
+          <span className="font-semibold">Physics</span>
+          <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+            currentStep === 'question-select-physics'
+              ? 'bg-white/20 text-white'
+              : 'bg-primary/10 text-primary'
+          }`}>
+            {physicsQuestions}
+          </span>
         </button>
         <button
           className={getButtonClass(currentStep === 'question-select-chemistry')}
@@ -62,8 +75,14 @@ const TestNavigation: React.FC<TestNavigationProps> = ({ currentStep, sections, 
             }
           }}
         >
-          <span className="nav-label">Chemistry</span>
-          <span className="nav-badge">{chemistryQuestions}</span>
+          <span className="font-semibold">Chemistry</span>
+          <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+            currentStep === 'question-select-chemistry'
+              ? 'bg-white/20 text-white'
+              : 'bg-primary/10 text-primary'
+          }`}>
+            {chemistryQuestions}
+          </span>
         </button>
         <button
           className={getButtonClass(currentStep === 'question-select-math')}
@@ -75,18 +94,32 @@ const TestNavigation: React.FC<TestNavigationProps> = ({ currentStep, sections, 
             }
           }}
         >
-          <span className="nav-label">Maths</span>
-          <span className="nav-badge">{mathQuestions}</span>
+          <span className="font-semibold">Mathematics</span>
+          <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+            currentStep === 'question-select-math'
+              ? 'bg-white/20 text-white'
+              : 'bg-primary/10 text-primary'
+          }`}>
+            {mathQuestions}
+          </span>
         </button>
-        <div className="nav-separator"></div>
+        <div className="flex-1"></div>
         <button
-          className={`nav-segment review ${currentStep === 'test-review' ? 'active' : ''}`}
+          className={`
+            px-6 py-3 rounded-lg font-medium transition-all duration-200 flex items-center gap-2
+            ${currentStep === 'test-review'
+              ? 'bg-green-600 text-white shadow-md'
+              : canReview
+                ? 'bg-surface-light dark:bg-surface-dark text-text-main dark:text-white hover:bg-green-50 dark:hover:bg-green-900/20 border border-border-light dark:border-border-dark hover:border-green-600'
+                : 'bg-gray-200 dark:bg-gray-800 text-gray-400 dark:text-gray-600 cursor-not-allowed border border-gray-300 dark:border-gray-700'
+            }
+          `.trim()}
           onClick={() => canReview && onNavigate('test-review')}
           disabled={!canReview}
           title={!canReview ? `Need 25 questions per section (P: ${physicsQuestions}, C: ${chemistryQuestions}, M: ${mathQuestions})` : ''}
         >
-          <span className="material-symbols-outlined icon">assignment_turned_in</span>
-          <span className="nav-label">Review</span>
+          <span className="material-symbols-outlined text-xl">assignment_turned_in</span>
+          <span className="font-semibold">Review & Export</span>
         </button>
       </div>
     </div>

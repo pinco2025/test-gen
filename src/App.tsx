@@ -26,6 +26,7 @@ import TestNavigation from './components/TestNavigation';
 import AddQuestionModal from './components/AddQuestionModal';
 import Notification, { useNotification } from './components/Notification';
 import TitleBar from './components/TitleBar';
+import Dashboard from './components/Dashboard';
 
 // In-memory project data
 interface ProjectData {
@@ -668,53 +669,12 @@ function App() {
 
       case 'dashboard':
         return (
-          <div className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-3xl font-bold text-text-main dark:text-white">Your Projects</h2>
-              <button className="bg-primary text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2 hover:bg-primary/90 transition-colors" onClick={createNewProject}>
-                <span className="material-symbols-outlined">add</span>
-                Create New Project
-              </button>
-            </div>
-            <div className="bg-surface-light dark:bg-surface-dark rounded-lg border border-border-light dark:border-border-dark overflow-hidden">
-              <table className="min-w-full divide-y divide-border-light dark:divide-border-dark">
-                <thead className="bg-background-light dark:bg-background-dark">
-                  <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Name</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Description</th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Date Modified</th>
-                    <th scope="col" className="relative px-6 py-3"><span className="sr-only">Actions</span></th>
-                  </tr>
-                </thead>
-                <tbody className="bg-surface-light dark:bg-surface-dark divide-y divide-border-light dark:divide-border-dark">
-                  {projects.length === 0 ? (
-                    <tr>
-                      <td colSpan={4} className="px-6 py-12 text-center text-sm text-text-secondary">
-                        No projects found. Create a new one to get started.
-                      </td>
-                    </tr>
-                  ) : (
-                    projects.map((project) => (
-                      <tr key={project.id} onClick={() => loadProject(project.id)} className="hover:bg-background-light dark:hover:bg-background-dark cursor-pointer group">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-text-main dark:text-white">{project.testCode}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-text-secondary">{project.description || 'No description'}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-text-secondary">{new Date(project.lastModified).toLocaleString()}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <button
-                            className="text-red-600 hover:text-red-900 opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={(e) => { e.stopPropagation(); handleDeleteProject(project.id); }}
-                            title="Delete project permanently"
-                          >
-                            <span className="material-symbols-outlined">delete</span>
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <Dashboard
+            projects={projects}
+            onLoadProject={loadProject}
+            onCreateNew={createNewProject}
+            onDeleteProject={handleDeleteProject}
+          />
         );
 
       case 'test-creation':
@@ -779,18 +739,79 @@ function App() {
         );
 
       case 'complete':
+        const totalQuestions = sections.reduce((sum, section) => sum + section.selectedQuestions.length, 0);
+        const totalMarks = totalQuestions * 4; // Assuming 4 marks per question
         return (
-          <div className="flex flex-col items-center justify-center h-full text-center">
-            <span className="material-symbols-outlined text-6xl text-green-500 mb-6">check_circle</span>
-            <h2 className="text-2xl font-bold mb-2">Test Generated Successfully!</h2>
-            <p className="text-text-secondary mb-8">Your test has been exported as a JSON file.</p>
-            <div className="flex gap-4">
-              <button className="bg-gray-200 text-gray-800 px-6 py-3 rounded-lg font-semibold flex items-center gap-2 hover:bg-gray-300 transition-colors" onClick={() => updateCurrentProject({ currentStep: 'test-review' })}>
-                <span className="material-symbols-outlined">arrow_back</span>
+          <div className="flex flex-col items-center justify-center h-full text-center max-w-2xl mx-auto py-12">
+            <div className="bg-green-100 dark:bg-green-900/30 rounded-full p-6 mb-6">
+              <span className="material-symbols-outlined text-6xl text-green-600 dark:text-green-400">check_circle</span>
+            </div>
+            <h2 className="text-3xl font-bold mb-3 text-text-main dark:text-white">Test Generated Successfully!</h2>
+            <p className="text-text-secondary mb-8 text-lg">Your new practice test is ready. You can download it, copy it, or create another one.</p>
+
+            {/* Test Summary */}
+            <div className="w-full bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm p-6 mb-8 text-left">
+              <h3 className="text-lg font-semibold text-text-main dark:text-white mb-4 pb-3 border-b border-border-light dark:border-border-dark">
+                Test Summary
+              </h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-sm text-text-secondary mb-1">Test ID</div>
+                  <div className="font-semibold text-text-main dark:text-white">{testMetadata?.code || 'N/A'}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-text-secondary mb-1">Title</div>
+                  <div className="font-semibold text-text-main dark:text-white">{testMetadata?.description || 'N/A'}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-text-secondary mb-1">Total Questions</div>
+                  <div className="font-semibold text-text-main dark:text-white">{totalQuestions}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-text-secondary mb-1">Total Marks</div>
+                  <div className="font-semibold text-text-main dark:text-white">{totalMarks}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex flex-col sm:flex-row gap-3 w-full mb-6">
+              <button
+                className="flex-1 bg-primary text-white px-6 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors shadow-sm"
+                onClick={() => {
+                  // Download JSON functionality would go here
+                  addNotification('info', 'Test has already been exported to a JSON file');
+                }}
+              >
+                <span className="material-symbols-outlined">download</span>
+                Download JSON
+              </button>
+              <button
+                className="flex-1 bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-main dark:text-white px-6 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 hover:bg-background-light dark:hover:bg-background-dark transition-colors"
+                onClick={() => {
+                  // Copy to clipboard functionality would go here
+                  addNotification('info', 'Copy functionality coming soon');
+                }}
+              >
+                <span className="material-symbols-outlined">content_copy</span>
+                Copy to Clipboard
+              </button>
+            </div>
+
+            {/* Secondary Actions */}
+            <div className="flex gap-4 text-sm">
+              <button
+                className="text-text-secondary hover:text-primary transition-colors flex items-center gap-1"
+                onClick={() => updateCurrentProject({ currentStep: 'test-review' })}
+              >
+                <span className="material-symbols-outlined text-base">arrow_back</span>
                 Back to Review
               </button>
-              <button className="bg-primary text-white px-6 py-3 rounded-lg font-semibold flex items-center gap-2 hover:bg-primary/90 transition-colors" onClick={createNewProject}>
-                <span className="material-symbols-outlined">add</span>
+              <button
+                className="text-primary hover:text-primary/80 transition-colors font-medium flex items-center gap-1"
+                onClick={createNewProject}
+              >
+                <span className="material-symbols-outlined text-base">add_circle</span>
                 Create Another Test
               </button>
             </div>
