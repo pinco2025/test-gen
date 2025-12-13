@@ -216,14 +216,10 @@ function App() {
 
     // If we're in edit-question state but have no editingQuestion (e.g., after app restart)
     if (currentProject.currentStep === 'edit-question' && !editingQuestion) {
-      console.warn('Invalid state detected: edit-question step without editingQuestion. Resetting to test-review.');
+      console.warn('Invalid state detected: edit-question step without editingQuestion. Resetting to first section (Physics).');
 
-      // Reset to test-review (or section-config if no sections selected yet)
-      const safeStep: WorkflowStep = sections.length > 0 && sections.some(s => s.selectedQuestions.length > 0)
-        ? 'test-review'
-        : 'section-config';
-
-      updateCurrentProject({ currentStep: safeStep });
+      // Reset to first section (Physics) for smooth UX
+      updateCurrentProject({ currentStep: 'question-select-physics', currentSectionIndex: 0 });
     }
   }, [currentProject, editingQuestion, sections, updateCurrentProject]);
 
@@ -575,21 +571,76 @@ function App() {
     updateCurrentProject({ constraintConfig: config });
   };
 
-  const handleQuestionUpdate = useCallback((updatedQuestion: any) => {
-    if (!currentProjectId) return;
+  const handleQuestionUpdate = useCallback(async (updatedQuestion: any) => {
+    if (!currentProjectId || !window.electronAPI) return;
 
-    const updatedSections = sections.map(section => ({
-      ...section,
-      selectedQuestions: section.selectedQuestions.map(sq => {
-        if (sq.question.uuid === updatedQuestion.uuid) {
-          return { ...sq, question: updatedQuestion };
+    try {
+      // Update question in database
+      const success = await window.electronAPI.questions.updateQuestion(
+        updatedQuestion.uuid,
+        {
+          question: updatedQuestion.question,
+          question_image_url: updatedQuestion.question_image_url,
+          option_a: updatedQuestion.option_a,
+          option_a_image_url: updatedQuestion.option_a_image_url,
+          option_b: updatedQuestion.option_b,
+          option_b_image_url: updatedQuestion.option_b_image_url,
+          option_c: updatedQuestion.option_c,
+          option_c_image_url: updatedQuestion.option_c_image_url,
+          option_d: updatedQuestion.option_d,
+          option_d_image_url: updatedQuestion.option_d_image_url,
+          answer: updatedQuestion.answer,
+          type: updatedQuestion.type,
+          year: updatedQuestion.year,
+          tag_1: updatedQuestion.tag_1,
+          tag_2: updatedQuestion.tag_2,
+          tag_3: updatedQuestion.tag_3,
+          tag_4: updatedQuestion.tag_4,
+          updated_at: new Date().toISOString()
         }
-        return sq;
-      })
-    }));
+      );
 
-    updateCurrentProject({ sections: updatedSections });
-  }, [currentProjectId, sections, updateCurrentProject]);
+      if (success) {
+        // Refetch the question from database to ensure sync
+        const freshQuestion = await window.electronAPI.questions.getByUUID(updatedQuestion.uuid);
+
+        if (freshQuestion) {
+          // Update in-memory project state with fresh data from database
+          const updatedSections = sections.map(section => ({
+            ...section,
+            selectedQuestions: section.selectedQuestions.map(sq => {
+              if (sq.question.uuid === updatedQuestion.uuid) {
+                return { ...sq, question: freshQuestion };
+              }
+              return sq;
+            })
+          }));
+
+          updateCurrentProject({ sections: updatedSections });
+          addNotification('success', 'Question updated successfully!');
+        } else {
+          // Fallback to using updatedQuestion if refetch fails
+          const updatedSections = sections.map(section => ({
+            ...section,
+            selectedQuestions: section.selectedQuestions.map(sq => {
+              if (sq.question.uuid === updatedQuestion.uuid) {
+                return { ...sq, question: updatedQuestion };
+              }
+              return sq;
+            })
+          }));
+
+          updateCurrentProject({ sections: updatedSections });
+          addNotification('success', 'Question updated successfully!');
+        }
+      } else {
+        addNotification('error', 'Failed to update question in database.');
+      }
+    } catch (error) {
+      console.error('Error updating question:', error);
+      addNotification('error', 'An error occurred while updating the question.');
+    }
+  }, [currentProjectId, sections, updateCurrentProject, addNotification]);
 
   const handleRemoveQuestion = useCallback((questionUuid: string) => {
     if (!currentProjectId) return;
@@ -636,7 +687,7 @@ function App() {
     handleStartEditing(clonedQuestion);
   };
 
-  const handleFinishEditing = (updatedQuestion: Question | null, updatedSolution?: Solution) => {
+  const handleFinishEditing = async (updatedQuestion: Question | null, updatedSolution?: Solution) => {
     if (!updatedQuestion) {
       if (previousStep) {
         updateCurrentProject({ currentStep: previousStep });
@@ -645,16 +696,24 @@ function App() {
       return;
     }
 
-    handleQuestionUpdate(updatedQuestion);
+    // Update question in database and in-memory state
+    await handleQuestionUpdate(updatedQuestion);
 
+    // Save solution if provided
     if (updatedSolution && window.electronAPI) {
-        window.electronAPI.questions.saveSolution(
-            updatedSolution.uuid,
-            updatedSolution.solution_text || '',
-            updatedSolution.solution_image_url || ''
+      try {
+        await window.electronAPI.questions.saveSolution(
+          updatedSolution.uuid,
+          updatedSolution.solution_text || '',
+          updatedSolution.solution_image_url || ''
         );
+      } catch (error) {
+        console.error('Error saving solution:', error);
+        addNotification('warning', 'Question saved, but failed to save solution.');
+      }
     }
 
+    // Return to previous step
     if (previousStep) {
       updateCurrentProject({ currentStep: previousStep });
     }
