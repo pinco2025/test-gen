@@ -150,7 +150,7 @@ export const SectionConfiguration: React.FC<SectionConfigurationProps> = ({
                       max="5"
                       value={constraintConfig.minIdx}
                       onChange={(e) => onConfigChange({ ...constraintConfig, minIdx: parseInt(e.target.value) || 1 })}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-[#2d2d3b] rounded-lg bg-white dark:bg-[#1e1e2d] text-gray-900 dark:text-white focus:ring-2 focus:ring-[primary] focus:border-transparent transition-all"
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-[#2d2d3b] rounded-lg bg-white dark:bg-[#1e1e2d] text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
                     />
                   </div>
                   <div>
@@ -162,7 +162,7 @@ export const SectionConfiguration: React.FC<SectionConfigurationProps> = ({
                       step="0.01"
                       value={constraintConfig.Sm}
                       onChange={(e) => onConfigChange({ ...constraintConfig, Sm: parseFloat(e.target.value) || 0 })}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-[#2d2d3b] rounded-lg bg-white dark:bg-[#1e1e2d] text-gray-900 dark:text-white focus:ring-2 focus:ring-[primary] focus:border-transparent transition-all"
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-[#2d2d3b] rounded-lg bg-white dark:bg-[#1e1e2d] text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
                     />
                   </div>
                   <div>
@@ -174,7 +174,7 @@ export const SectionConfiguration: React.FC<SectionConfigurationProps> = ({
                       step="0.01"
                       value={constraintConfig.Sh}
                       onChange={(e) => onConfigChange({ ...constraintConfig, Sh: parseFloat(e.target.value) || 0 })}
-                      className="w-full px-4 py-2 border border-gray-300 dark:border-[#2d2d3b] rounded-lg bg-white dark:bg-[#1e1e2d] text-gray-900 dark:text-white focus:ring-2 focus:ring-[primary] focus:border-transparent transition-all"
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-[#2d2d3b] rounded-lg bg-white dark:bg-[#1e1e2d] text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-transparent transition-all"
                     />
                   </div>
                 </div>
@@ -264,7 +264,7 @@ export const SectionConfiguration: React.FC<SectionConfigurationProps> = ({
                             min="0"
                             value={chapter[field as keyof ChapterDistribution]}
                             onChange={(e) => updateChapter(index, field as keyof ChapterDistribution, parseInt(e.target.value) || 0)}
-                            className="w-20 px-3 py-2 text-center text-base font-bold bg-white dark:bg-[#1e1e2d] border-2 border-gray-400 dark:border-gray-500 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-[primary] focus:border-primary transition-all shadow-sm hover:border-primary"
+                            className="w-20 px-3 py-2 text-center text-base font-bold bg-white dark:bg-[#1e1e2d] border-2 border-gray-400 dark:border-gray-500 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-primary focus:border-primary transition-all shadow-sm hover:border-primary"
                           />
                         </td>
                       ))}
