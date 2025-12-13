@@ -810,7 +810,16 @@ function App() {
         );
 
       case 'edit-question':
-        if (!editingQuestion) return <div>Error: No question selected for editing.</div>;
+        if (!editingQuestion) {
+          // Auto-recovery: redirect to first section instead of showing error
+          // This handles edge cases where the useEffect hasn't run yet
+          if (currentProject) {
+            updateCurrentProject({ currentStep: 'question-select-physics', currentSectionIndex: 0 });
+          }
+          return <div className="flex items-center justify-center h-full">
+            <div className="text-gray-500">Redirecting...</div>
+          </div>;
+        }
         return (
             <QuestionEditor
                 question={editingQuestion.question}
