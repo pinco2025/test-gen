@@ -106,8 +106,14 @@ export interface SelectionSummary {
       chapterName: string; // Added for display
       a: number; // Current count
       b: number;
+      e: number; // Easy count
+      m: number; // Medium count
+      h: number; // Hard count
       required_a: number; // From alpha
       required_b: number;
+      required_e: number; // Required easy
+      required_m: number; // Required medium
+      required_h: number; // Required hard
     };
   };
   byDifficulty: {

@@ -119,8 +119,14 @@ export function generateSummary(
       chapterName: ch.chapterName,
       a: 0,
       b: 0,
+      e: 0,
+      m: 0,
+      h: 0,
       required_a: ch.a,
-      required_b: ch.b
+      required_b: ch.b,
+      required_e: ch.e,
+      required_m: ch.m,
+      required_h: ch.h
     };
     requiredE += ch.e;
     requiredM += ch.m;
@@ -135,6 +141,10 @@ export function generateSummary(
       } else {
         byChapter[sq.chapterCode].b++;
       }
+      // Track difficulty per chapter
+      if (sq.difficulty === 'E') byChapter[sq.chapterCode].e++;
+      else if (sq.difficulty === 'M') byChapter[sq.chapterCode].m++;
+      else if (sq.difficulty === 'H') byChapter[sq.chapterCode].h++;
     }
 
     if (sq.difficulty === 'E') totalE++;

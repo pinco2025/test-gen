@@ -158,12 +158,28 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
     let div1Count = 0, div2Count = 0;
     const byChapter: SelectionSummary['byChapter'] = {};
     alphaConstraint.chapters.forEach(ch => {
-      byChapter[ch.chapterCode] = { chapterName: ch.chapterName, a: 0, b: 0, required_a: ch.a, required_b: ch.b };
+      byChapter[ch.chapterCode] = {
+        chapterName: ch.chapterName,
+        a: 0,
+        b: 0,
+        e: 0,
+        m: 0,
+        h: 0,
+        required_a: ch.a,
+        required_b: ch.b,
+        required_e: ch.e,
+        required_m: ch.m,
+        required_h: ch.h
+      };
     });
     selectedQuestions.forEach(sq => {
       if (sq.division === 1) div1Count++; else div2Count++;
       if (byChapter[sq.chapterCode]) {
         if (sq.division === 1) byChapter[sq.chapterCode].a++; else byChapter[sq.chapterCode].b++;
+        // Track difficulty
+        if (sq.difficulty === 'E') byChapter[sq.chapterCode].e++;
+        else if (sq.difficulty === 'M') byChapter[sq.chapterCode].m++;
+        else if (sq.difficulty === 'H') byChapter[sq.chapterCode].h++;
       }
     });
     return { total: selectedQuestions.length, division1: div1Count, division2: div2Count, byChapter, byDifficulty: { easy: 0, medium: 0, hard: 0, required_e: 0, required_m: 0, required_h: 0 } };
@@ -250,18 +266,30 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
 
       <div className="grid grid-cols-12 gap-4">
         <div className="col-span-3">
-          <div className="sticky top-4 bg-white dark:bg-[#1e1e2d] p-4 rounded-xl border border-gray-200 dark:border-[#2d2d3b] shadow-sm">
+          <div className="sticky top-4 bg-white dark:bg-[#1e1e2d] p-4 rounded-xl border-2 border-gray-300 dark:border-[#2d2d3b] shadow-md">
             <h3 className="font-semibold mb-4 flex items-center gap-2 text-gray-900 dark:text-white"><span className="material-symbols-outlined text-lg">tune</span>Constraints</h3>
-            <div className="text-xs">
+            <div className="text-xs overflow-x-auto">
               <h4 className="font-bold uppercase text-gray-600 dark:text-gray-400 mb-2">By Chapter</h4>
-              <table className="w-full text-gray-900 dark:text-white">
-                <thead><tr><th className="text-left py-1">Chapter</th><th className="py-1">A</th><th className="py-1">B</th></tr></thead>
+              <table className="w-full text-gray-900 dark:text-white border-collapse">
+                <thead>
+                  <tr className="border-b-2 border-gray-300 dark:border-[#2d2d3b]">
+                    <th className="text-left py-2 pr-2 font-bold">Chapter</th>
+                    <th className="text-center py-2 px-1 font-bold">A</th>
+                    <th className="text-center py-2 px-1 font-bold">B</th>
+                    <th className="text-center py-2 px-1 font-bold bg-blue-50 dark:bg-blue-900/20 text-blue-900 dark:text-blue-300">E</th>
+                    <th className="text-center py-2 px-1 font-bold bg-blue-50 dark:bg-blue-900/20 text-blue-900 dark:text-blue-300">M</th>
+                    <th className="text-center py-2 px-1 font-bold bg-blue-50 dark:bg-blue-900/20 text-blue-900 dark:text-blue-300">H</th>
+                  </tr>
+                </thead>
                 <tbody>
                   {Object.entries(summary.byChapter).map(([code, counts]) => (
-                    <tr key={code} className="border-t border-gray-100 dark:border-[#2d2d3b]">
-                      <td className="py-1">{counts.chapterName}</td>
-                      <td className={`text-center py-1 ${counts.a === counts.required_a ? 'text-green-500' : 'text-red-500'}`}>{counts.a}/{counts.required_a}</td>
-                      <td className={`text-center py-1 ${counts.b === counts.required_b ? 'text-green-500' : 'text-red-500'}`}>{counts.b}/{counts.required_b}</td>
+                    <tr key={code} className="border-t border-gray-200 dark:border-[#2d2d3b] hover:bg-gray-50 dark:hover:bg-[#252535] transition-colors">
+                      <td className="py-2 pr-2 font-medium truncate max-w-[80px]" title={counts.chapterName}>{counts.chapterName}</td>
+                      <td className={`text-center py-2 px-1 font-semibold ${counts.a === counts.required_a ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{counts.a}/{counts.required_a}</td>
+                      <td className={`text-center py-2 px-1 font-semibold ${counts.b === counts.required_b ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{counts.b}/{counts.required_b}</td>
+                      <td className={`text-center py-2 px-1 font-bold bg-blue-50/30 dark:bg-blue-900/10 ${counts.e === counts.required_e ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{counts.e}/{counts.required_e}</td>
+                      <td className={`text-center py-2 px-1 font-bold bg-blue-50/30 dark:bg-blue-900/10 ${counts.m === counts.required_m ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{counts.m}/{counts.required_m}</td>
+                      <td className={`text-center py-2 px-1 font-bold bg-blue-50/30 dark:bg-blue-900/10 ${counts.h === counts.required_h ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{counts.h}/{counts.required_h}</td>
                     </tr>
                   ))}
                 </tbody>
