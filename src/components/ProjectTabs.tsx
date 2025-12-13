@@ -1,5 +1,5 @@
+import React from 'react';
 import { ProjectInfo } from '../types';
-import './ProjectTabs.css';
 
 interface ProjectTabsProps {
   projects: ProjectInfo[];
@@ -10,66 +10,68 @@ interface ProjectTabsProps {
   onDashboard: () => void;
 }
 
-function ProjectTabs({
+const ProjectTabs: React.FC<ProjectTabsProps> = ({
   projects,
   currentProjectId,
   onSelectProject,
   onCloseProject,
   onNewProject,
-  onDashboard
-}: ProjectTabsProps) {
-  const hasOpenTabs = projects.length > 0;
-  const isOnDashboard = currentProjectId === null;
+  onDashboard,
+}) => {
+  const isDashboardActive = !currentProjectId;
 
   return (
-    <div className="project-tabs">
-      <div className="tabs-container">
-        {/* Dashboard/Home Tab */}
-        <div
-          className={`tab dashboard-tab ${isOnDashboard ? 'active' : ''}`}
+    <div className="bg-background-light dark:bg-background-dark border-b border-border-light dark:border-border-dark">
+      <div className="flex items-end gap-px px-2 pt-1">
+        {/* Dashboard Tab */}
+        <button
           onClick={onDashboard}
-          title="View all projects"
+          className={`flex items-center gap-2 px-4 py-2 rounded-t-lg border border-b-0 transition-colors ${
+            isDashboardActive
+              ? 'bg-surface-light dark:bg-surface-dark border-border-light dark:border-border-dark'
+              : 'border-transparent hover:bg-gray-200 dark:hover:bg-gray-700'
+          }`}
         >
-          <div className="tab-content">
-            <span className="material-symbols-outlined tab-icon">dashboard</span>
-            <div className="tab-title">All Projects</div>
-          </div>
-        </div>
+          <span className={`material-symbols-outlined text-base ${isDashboardActive ? 'text-primary' : 'text-text-secondary'}`}>dashboard</span>
+          <span className={`text-sm font-medium ${isDashboardActive ? 'text-primary' : 'text-text-secondary'}`}>All Projects</span>
+        </button>
 
-        {/* Separator */}
-        {hasOpenTabs && <div className="tab-separator" />}
-
-        {/* Open Project Tabs */}
-        {projects.map((project) => (
-          <div
-            key={project.id}
-            className={`tab ${currentProjectId === project.id ? 'active' : ''}`}
-            onClick={() => onSelectProject(project.id)}
-          >
-            <div className="tab-content">
-              <span className="material-symbols-outlined tab-icon">description</span>
-              <div className="tab-title">{project.testCode || 'Untitled'}</div>
-            </div>
-            <button
-              className="tab-close"
-              onClick={(e) => {
-                e.stopPropagation();
-                onCloseProject(project.id);
-              }}
-              title="Close tab"
+        {projects.map(project => {
+          const isActive = project.id === currentProjectId;
+          return (
+            <div
+              key={project.id}
+              onClick={() => onSelectProject(project.id)}
+              className={`group flex items-center justify-between gap-2 px-4 py-2 rounded-t-lg border border-b-0 cursor-pointer transition-colors max-w-[200px] ${
+                isActive
+                  ? 'bg-surface-light dark:bg-surface-dark border-border-light dark:border-border-dark'
+                  : 'border-transparent hover:bg-gray-200 dark:hover:bg-gray-700'
+              }`}
             >
-              <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>close</span>
-            </button>
-          </div>
-        ))}
+              <span className="truncate text-sm font-medium text-text-main dark:text-white">{project.testCode}</span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onCloseProject(project.id);
+                }}
+                className="opacity-0 group-hover:opacity-100 rounded-full p-0.5 hover:bg-red-100 dark:hover:bg-red-900/50 text-red-500 transition-opacity"
+              >
+                <span className="material-symbols-outlined text-sm">close</span>
+              </button>
+            </div>
+          );
+        })}
 
-        {/* New Project Button */}
-        <button className="new-tab-btn" onClick={onNewProject} title="Create new project">
-          <span className="material-symbols-outlined">add</span>
+        <button
+          onClick={onNewProject}
+          className="ml-1 mb-1 p-1.5 rounded-full hover:bg-primary/10 text-primary transition-colors"
+          title="Create New Project"
+        >
+          <span className="material-symbols-outlined text-lg">add</span>
         </button>
       </div>
     </div>
   );
-}
+};
 
 export default ProjectTabs;

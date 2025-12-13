@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   AlphaConstraint,
   BetaConstraint,
@@ -17,9 +17,6 @@ interface SectionConfigurationProps {
   onConfigure: (alpha: AlphaConstraint, beta: BetaConstraint) => void;
 }
 
-/**
- * Component to configure Alpha and Beta constraints for a section
- */
 export const SectionConfiguration: React.FC<SectionConfigurationProps> = ({
   sectionName,
   chapters,
@@ -30,85 +27,30 @@ export const SectionConfiguration: React.FC<SectionConfigurationProps> = ({
   const [alphaData, setAlphaData] = useState<ChapterDistribution[]>([]);
   const [betaData] = useState<BetaConstraint>({});
   const [showConfig, setShowConfig] = useState(false);
+  const [pendingReset, setPendingReset] = useState(false);
 
-  // Auto-generate constraints on mount and when config or chapters change
   useEffect(() => {
     if (chapters.length > 0) {
       autoGenerate();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chapters, constraintConfig]);
 
   const autoGenerate = () => {
     try {
       const generated = generateAlphaConstraint(chapters, constraintConfig);
       const validation = validateGeneratedConstraints(generated);
-
       if (!validation.isValid) {
         console.error('Auto-generation validation failed:', validation.errors);
         return;
       }
-
       setAlphaData(generated);
     } catch (error) {
       console.error('Error during auto-generation:', error);
     }
   };
 
-  const validateEdit = (
-    index: number,
-    field: keyof ChapterDistribution,
-    newValue: number
-  ): { isValid: boolean; error?: string } => {
-    const testData = [...alphaData];
-    testData[index] = { ...testData[index], [field]: newValue };
-
-    // Check if difficulty sum equals a + b for this chapter
-    if (field === 'e' || field === 'm' || field === 'h' || field === 'a' || field === 'b') {
-      const chapter = testData[index];
-      const difficultySum = chapter.e + chapter.m + chapter.h;
-      const totalQuestions = chapter.a + chapter.b;
-
-      if (difficultySum !== totalQuestions) {
-        return {
-          isValid: false,
-          error: `Difficulty sum (${difficultySum}) must equal A+B (${totalQuestions})`
-        };
-      }
-    }
-
-    // Check global totals
-    const totals = testData.reduce(
-      (acc, curr) => ({
-        a: acc.a + curr.a,
-        b: acc.b + curr.b
-      }),
-      { a: 0, b: 0 }
-    );
-
-    if (field === 'a' && totals.a > 20) {
-      return { isValid: false, error: 'Total A cannot exceed 20' };
-    }
-
-    if (field === 'b' && totals.b > 5) {
-      return { isValid: false, error: 'Total B cannot exceed 5' };
-    }
-
-    return { isValid: true };
-  };
-
   const updateChapter = (index: number, field: keyof ChapterDistribution, value: number) => {
     if (field === 'chapterName' || field === 'chapterCode') return;
-
-    // Validate the edit
-    const validation = validateEdit(index, field, value);
-    if (!validation.isValid) {
-      // alert(`Invalid edit: ${validation.error}`);
-      // Notification handled by parent context if possible, otherwise silently ignore or console.error
-      console.error(`Invalid edit: ${validation.error}`);
-      return;
-    }
-
     const newData = [...alphaData];
     newData[index] = { ...newData[index], [field]: value };
     setAlphaData(newData);
@@ -127,8 +69,16 @@ export const SectionConfiguration: React.FC<SectionConfigurationProps> = ({
     );
   };
 
+  const alphaDataWithValidation = useMemo(() => {
+    return alphaData.map(chapter => ({
+      ...chapter,
+      isRowValid: chapter.a + chapter.b === chapter.e + chapter.m + chapter.h
+    }));
+  }, [alphaData]);
+
   const totals = getTotals();
-  const isValid = totals.a === 20 && totals.b === 5;
+  const hasRowErrors = alphaDataWithValidation.some(c => !c.isRowValid);
+  const isValid = totals.a === 20 && totals.b === 5 && !hasRowErrors;
 
   const handleSubmit = () => {
     if (isValid) {
@@ -136,258 +86,119 @@ export const SectionConfiguration: React.FC<SectionConfigurationProps> = ({
     }
   };
 
-  const handleReset = () => {
-    // confirm('Reset to auto-generated constraints? This will discard your manual edits.')
-    // Ideally use a custom modal. For now, since "All alerts can be replaced", I'll just skip confirm or do it directly.
-    // Or simpler, just execute. The user can just undo by re-editing if needed, but "Reset" implies destructive.
-    // Given the constraints and time, I will make it direct but maybe add a small "Are you sure?" UI if I had time.
-    // Actually, let's keep the confirm but wrapping it in window.confirm check is what we want to avoid?
-    // "All alerts can be replaced with a UI centric popup"
-    // I'll leave it as is for now because implementing a confirmation modal here requires more state.
-    // Wait, I can just use a simple state to show a "Confirm Reset" button instead of the alert.
-
-    // Let's implement a simple inline confirmation
-    setPendingReset(true);
-  };
-
-  const [pendingReset, setPendingReset] = useState(false);
-
   const confirmReset = () => {
     autoGenerate();
     setPendingReset(false);
   };
 
   return (
-    <div className="section-configuration">
-      <h2>Configure {sectionName} Section</h2>
+    <div className="max-w-6xl mx-auto bg-surface-light dark:bg-surface-dark p-8 rounded-xl border border-border-light dark:border-border-dark shadow-sm">
+      <h2 className="text-2xl font-bold text-text-main dark:text-white mb-6">Configure {sectionName} Section</h2>
 
-      <div className="config-info">
-        <p>
-          Define the Alpha constraints for this section. Each section must have:
-        </p>
-        <ul>
+      <div className="mb-6 p-4 bg-blue-50 dark:bg-primary/10 border-l-4 border-blue-400 dark:border-primary text-blue-800 dark:text-blue-200">
+        <p>Define the Alpha constraints for this section. Each section must have:</p>
+        <ul className="list-disc list-inside ml-4 mt-2 text-sm">
           <li>Total of 20 questions in Division 1 (A)</li>
           <li>Total of 5 questions in Division 2 (B)</li>
-          <li>Difficulty distribution: Easy (E), Medium (M), Hard (H)</li>
+          <li>A valid distribution of Easy (E), Medium (M), and Hard (H) questions</li>
         </ul>
       </div>
 
-      {/* Auto-Generation Configuration Panel */}
-      <div className="auto-gen-panel">
-        <div className="auto-gen-header">
-          <h3>Constraint Auto-Generation</h3>
-          <button
-            type="button"
-            className="btn-toggle"
-            onClick={() => setShowConfig(!showConfig)}
-          >
+      <div className="bg-background-light dark:bg-background-dark p-4 rounded-lg border border-border-light dark:border-border-dark mb-6">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold">Constraint Auto-Generation</h3>
+          <button type="button" onClick={() => setShowConfig(!showConfig)} className="text-sm font-medium text-primary hover:underline">
             {showConfig ? 'Hide' : 'Show'} Algorithm Settings
           </button>
         </div>
-
         {showConfig && (
-          <div className="config-panel">
-            <p className="info-text">
-              Configure the algorithm parameters for auto-generating constraints based on chapter importance levels.
-            </p>
-            <div className="config-inputs">
-              <div className="config-input-group">
-                <label>
-                  <strong>Min Questions/Chapter (min_idx):</strong>
-                  <input
-                    type="number"
-                    min="1"
-                    max="5"
-                    value={constraintConfig.minIdx}
-                    onChange={(e) =>
-                      onConfigChange({
-                        ...constraintConfig,
-                        minIdx: parseInt(e.target.value) || 1
-                      })
-                    }
-                  />
-                </label>
-                <span className="hint">Minimum questions per chapter (typically 1-5)</span>
+          <div className="p-4 bg-surface-light dark:bg-surface-dark rounded-md border border-border-light dark:border-border-dark mb-4">
+            <p className="text-sm text-text-secondary italic mb-4">Configure the algorithm for auto-generating constraints.</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-text-secondary">Min Questions/Chapter</label>
+                <input type="number" min="1" max="5" value={constraintConfig.minIdx} onChange={(e) => onConfigChange({ ...constraintConfig, minIdx: parseInt(e.target.value) || 1 })} className="mt-1 w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-md" />
               </div>
-
-              <div className="config-input-group">
-                <label>
-                  <strong>Medium Slope (Sm):</strong>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={constraintConfig.Sm}
-                    onChange={(e) =>
-                      onConfigChange({
-                        ...constraintConfig,
-                        Sm: parseFloat(e.target.value) || 0
-                      })
-                    }
-                  />
-                </label>
-                <span className="hint">Effect of weight on medium difficulty (no limits)</span>
+              <div>
+                <label className="block text-sm font-medium text-text-secondary">Medium Slope</label>
+                <input type="number" step="0.01" value={constraintConfig.Sm} onChange={(e) => onConfigChange({ ...constraintConfig, Sm: parseFloat(e.target.value) || 0 })} className="mt-1 w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-md" />
               </div>
-
-              <div className="config-input-group">
-                <label>
-                  <strong>Hard Slope (Sh):</strong>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={constraintConfig.Sh}
-                    onChange={(e) =>
-                      onConfigChange({
-                        ...constraintConfig,
-                        Sh: parseFloat(e.target.value) || 0
-                      })
-                    }
-                  />
-                </label>
-                <span className="hint">Effect of weight on hard difficulty (no limits)</span>
+              <div>
+                <label className="block text-sm font-medium text-text-secondary">Hard Slope</label>
+                <input type="number" step="0.01" value={constraintConfig.Sh} onChange={(e) => onConfigChange({ ...constraintConfig, Sh: parseFloat(e.target.value) || 0 })} className="mt-1 w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-md" />
               </div>
             </div>
           </div>
         )}
-
-        <div className="auto-gen-info">
-          <p className="auto-gen-status">
-            ✓ Constraints auto-generated based on chapter importance levels.
-            You can manually edit values below (edits must respect constraints).
-          </p>
-          {!pendingReset ? (
-            <button
-              type="button"
-              className="btn-reset"
-              onClick={handleReset}
-            >
-              ↺ Reset to Auto-Generated
-            </button>
-          ) : (
-             <div style={{display: 'flex', gap: '0.5rem', alignItems: 'center'}}>
-                <span style={{fontSize: '0.9rem', color: 'var(--text-secondary)'}}>Are you sure?</span>
-                <button className="btn-primary" style={{padding: '0.25rem 0.5rem', fontSize: '0.8rem'}} onClick={confirmReset}>Yes</button>
-                <button className="btn-secondary" style={{padding: '0.25rem 0.5rem', fontSize: '0.8rem'}} onClick={() => setPendingReset(false)}>No</button>
-             </div>
-          )}
+        <div className="flex justify-between items-center bg-green-50 dark:bg-green-900/20 p-3 rounded-md">
+            <p className="text-sm text-green-800 dark:text-green-200">Constraints auto-generated. You can manually edit values below.</p>
+            {!pendingReset ? (
+                <button type="button" onClick={() => setPendingReset(true)} className="text-sm font-semibold text-blue-600 hover:text-blue-800">Reset</button>
+            ) : (
+                <div className="flex items-center gap-2">
+                    <span className="text-sm text-text-secondary">Are you sure?</span>
+                    <button onClick={confirmReset} className="px-3 py-1 text-sm rounded-md bg-primary text-white">Yes</button>
+                    <button onClick={() => setPendingReset(false)} className="px-3 py-1 text-sm rounded-md border border-border-light dark:border-border-dark">No</button>
+                </div>
+            )}
         </div>
       </div>
 
-      <div className="alpha-configuration">
-        <h3>Alpha Constraints</h3>
-
-        <table className="alpha-table">
-          <thead>
-            <tr>
-              <th>Chapter</th>
-              <th>A (Div 1)</th>
-              <th>B (Div 2)</th>
-              <th>E (Easy)</th>
-              <th>M (Medium)</th>
-              <th>H (Hard)</th>
-              <th>Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {alphaData.map((chapter, index) => {
-              const rowTotal = chapter.a + chapter.b;
-              return (
-                <tr key={chapter.chapterCode}>
-                  <td className="chapter-name">
-                    <span className="chapter-code-small">{chapter.chapterCode}</span>
-                    {chapter.chapterName}
-                  </td>
-                  <td>
-                    <input
-                      type="number"
-                      min="0"
-                      value={chapter.a}
-                      onChange={(e) =>
-                        updateChapter(index, 'a', parseInt(e.target.value) || 0)
-                      }
-                    />
-                  </td>
-                  <td>
-                    <input
-                      type="number"
-                      min="0"
-                      value={chapter.b}
-                      onChange={(e) =>
-                        updateChapter(index, 'b', parseInt(e.target.value) || 0)
-                      }
-                    />
-                  </td>
-                  <td>
-                    <input
-                      type="number"
-                      min="0"
-                      value={chapter.e}
-                      onChange={(e) =>
-                        updateChapter(index, 'e', parseInt(e.target.value) || 0)
-                      }
-                    />
-                  </td>
-                  <td>
-                    <input
-                      type="number"
-                      min="0"
-                      value={chapter.m}
-                      onChange={(e) =>
-                        updateChapter(index, 'm', parseInt(e.target.value) || 0)
-                      }
-                    />
-                  </td>
-                  <td>
-                    <input
-                      type="number"
-                      min="0"
-                      value={chapter.h}
-                      onChange={(e) =>
-                        updateChapter(index, 'h', parseInt(e.target.value) || 0)
-                      }
-                    />
-                  </td>
-                  <td className="row-total">{rowTotal}</td>
+      <div>
+        <h3 className="text-lg font-semibold mb-4">Alpha Constraints</h3>
+        <div className="overflow-x-auto rounded-lg border border-border-light dark:border-border-dark">
+          <table className="min-w-full divide-y divide-border-light dark:divide-border-dark text-sm">
+            <thead className="bg-background-light dark:bg-background-dark">
+              <tr>
+                <th className="px-4 py-2 text-left font-medium text-text-secondary">Chapter</th>
+                {['A (Div 1)', 'B (Div 2)', 'Easy', 'Medium', 'Hard', 'Total'].map(h => <th key={h} className="px-4 py-2 text-center font-medium text-text-secondary">{h}</th>)}
+              </tr>
+            </thead>
+            <tbody className="bg-surface-light dark:bg-surface-dark divide-y divide-border-light dark:divide-border-dark">
+              {alphaDataWithValidation.map((chapter, index) => (
+                <tr key={chapter.chapterCode} className={!chapter.isRowValid ? 'bg-red-50 dark:bg-red-900/20' : ''}>
+                  <td className="px-4 py-2 font-medium whitespace-nowrap">{chapter.chapterName}</td>
+                  {['a', 'b', 'e', 'm', 'h'].map(field => (
+                    <td key={field} className="px-4 py-2 text-center">
+                      <input type="number" min="0" value={chapter[field as keyof ChapterDistribution]} onChange={(e) => updateChapter(index, field as keyof ChapterDistribution, parseInt(e.target.value) || 0)} className="w-16 text-center bg-transparent border-border-light dark:border-border-dark rounded-md focus:ring-primary focus:border-primary" />
+                    </td>
+                  ))}
+                  <td className="px-4 py-2 text-center font-semibold">{chapter.a + chapter.b}</td>
                 </tr>
-              );
-            })}
-            <tr className="totals-row">
-              <td><strong>TOTALS</strong></td>
-              <td className={totals.a === 20 ? 'valid' : 'invalid'}>
-                <strong>{totals.a}</strong> / 20
-              </td>
-              <td className={totals.b === 5 ? 'valid' : 'invalid'}>
-                <strong>{totals.b}</strong> / 5
-              </td>
-              <td><strong>{totals.e}</strong></td>
-              <td><strong>{totals.m}</strong></td>
-              <td><strong>{totals.h}</strong></td>
-              <td><strong>{totals.a + totals.b}</strong> / 25</td>
-            </tr>
-          </tbody>
-        </table>
-
+              ))}
+            </tbody>
+            <tfoot className="bg-background-light dark:bg-background-dark font-bold">
+              <tr>
+                <td className="px-4 py-2 text-left">TOTALS</td>
+                <td className={`px-4 py-2 text-center ${totals.a === 20 ? 'text-green-600' : 'text-red-600'}`}>{totals.a} / 20</td>
+                <td className={`px-4 py-2 text-center ${totals.b === 5 ? 'text-green-600' : 'text-red-600'}`}>{totals.b} / 5</td>
+                <td className="px-4 py-2 text-center">{totals.e}</td>
+                <td className="px-4 py-2 text-center">{totals.m}</td>
+                <td className="px-4 py-2 text-center">{totals.h}</td>
+                <td className="px-4 py-2 text-center">{totals.a + totals.b} / 25</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
         {!isValid && (
-          <div className="validation-message error">
-            Total A must be 20 and total B must be 5
+          <div className="mt-4 p-3 bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-200 rounded-md text-sm">
+            <p className="font-bold mb-1">Please correct the errors:</p>
+            <ul className="list-disc list-inside ml-4">
+                {totals.a !== 20 && <li>Total Division 1 (A) questions must be 20.</li>}
+                {totals.b !== 5 && <li>Total Division 2 (B) questions must be 5.</li>}
+                {hasRowErrors && <li>For each chapter, the sum of difficulties (E+M+H) must equal the total questions (A+B). Invalid rows are highlighted.</li>}
+            </ul>
           </div>
         )}
       </div>
 
-      <div className="beta-configuration">
-        <h3>Beta Constraints</h3>
-        <p className="placeholder-text">
-          Beta constraints will be defined per user requirements.
-          This section is reserved for future implementation.
-        </p>
+      <div className="mt-8">
+        <h3 className="text-lg font-semibold mb-2">Beta Constraints</h3>
+        <div className="p-4 bg-gray-100 dark:bg-gray-800 text-text-secondary rounded-md text-sm italic">Beta constraints are reserved for future implementation.</div>
       </div>
 
-      <div className="form-actions">
-        <button
-          type="button"
-          className="btn-primary"
-          onClick={handleSubmit}
-          disabled={!isValid}
-        >
+      <div className="mt-8 pt-6 border-t border-border-light dark:border-border-dark flex justify-end">
+        <button type="button" onClick={handleSubmit} disabled={!isValid} className="bg-primary text-white px-6 py-2 rounded-lg font-semibold flex items-center gap-2 hover:bg-primary/90 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors">
           Continue to Question Selection
         </button>
       </div>

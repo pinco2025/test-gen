@@ -9,7 +9,7 @@ interface QuestionRowProps {
   isDivision2Question: boolean;
   onToggle: (question: Question) => void;
   onEdit: (e: React.MouseEvent, question: Question) => void;
-  onCloneAndEdit: (e: React.MouseEvent, question: Question) => void;
+  onClone?: (e: React.MouseEvent, question: Question) => void;
   highlightCorrectAnswer?: boolean;
   zoomLevel?: number;
 }
@@ -21,14 +21,13 @@ const QuestionRow: React.FC<QuestionRowProps> = React.memo(({
   isDivision2Question,
   onToggle,
   onEdit,
-  onCloneAndEdit,
+  onClone,
   highlightCorrectAnswer,
   zoomLevel = 1
 }) => {
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Close menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -36,153 +35,62 @@ const QuestionRow: React.FC<QuestionRowProps> = React.memo(({
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleClick = useCallback(() => {
-    onToggle(question);
-  }, [onToggle, question]);
+  const handleClick = useCallback(() => onToggle(question), [onToggle, question]);
 
   return (
-    <div
-      id={`question-row-${question.uuid}`}
-      className="question-row-container"
-      style={{
-        paddingBottom: '1.5rem',
-        marginRight: '0.5rem',
-        width: '100%',
-        // @ts-ignore - zoom is a non-standard property but works in Electron/Chrome
-        zoom: zoomLevel
-      }}
-    >
+    <div id={`question-row-${question.uuid}`} className="pb-6 pr-2" style={{ zoom: zoomLevel }}>
       <div
-        className={`selectable-question ${selected ? 'selected' : ''}`}
         onClick={handleClick}
-        style={{
-          cursor: 'pointer',
-          border: selected ? '2px solid var(--primary)' : '1px solid var(--border-color)',
-          borderRadius: 'var(--radius-lg)',
-          padding: '1rem',
-          transition: 'border-color 0.15s, background-color 0.15s',
-          backgroundColor: selected ? 'var(--primary-light)' : 'var(--bg-card)'
-        }}
+        className={`cursor-pointer rounded-lg p-4 transition-all ${
+          selected
+            ? 'border-2 border-primary bg-primary/5'
+            : 'border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark hover:border-primary/50'
+        }`}
       >
-        <div className="question-card-header" style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'flex-start',
-          marginBottom: '0.5rem'
-        }}>
-          <div style={{ flex: 1 }}>
+        <div className="flex justify-between items-start mb-2">
+          <div className="flex-1">
             {isDivision2Question && (
-              <div style={{
-                background: 'var(--amber)',
-                color: 'white',
-                padding: '0.25rem 0.625rem',
-                borderRadius: 'var(--radius)',
-                fontSize: '0.75rem',
-                fontWeight: '600',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.375rem'
-              }}>
-                <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>edit_note</span>
-                NUMERICAL ANSWER ({question.answer}) - Division 2 (B) Only
+              <div className="inline-flex items-center gap-1.5 bg-yellow-500 text-white text-xs font-semibold px-2 py-1 rounded">
+                <span className="material-symbols-outlined text-sm">edit_note</span>
+                NUMERICAL ({question.answer}) - Division 2 Only
               </div>
             )}
           </div>
 
-          <div style={{ position: 'relative' }} ref={menuRef}>
+          <div className="relative" ref={menuRef}>
             <button
-              className="question-edit-btn"
               onClick={(e) => {
                 e.stopPropagation();
                 setShowMenu(!showMenu);
               }}
               title="Actions"
-              style={{
-                background: 'var(--bg-main)',
-                border: '1px solid var(--border-color)',
-                borderRadius: 'var(--radius)',
-                padding: '0.375rem 0.5rem',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.25rem',
-                fontSize: '0.75rem',
-                color: 'var(--text-secondary)',
-                transition: 'var(--transition)'
-              }}
+              className="flex items-center gap-1 px-2 py-1 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded text-xs text-text-secondary hover:border-primary hover:text-primary"
             >
-              <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>more_vert</span>
+              <span className="material-symbols-outlined text-base">more_vert</span>
               Actions
             </button>
 
             {showMenu && (
-              <div style={{
-                position: 'absolute',
-                top: '100%',
-                right: 0,
-                backgroundColor: 'var(--bg-card)',
-                boxShadow: 'var(--shadow-md)',
-                borderRadius: 'var(--radius)',
-                zIndex: 10,
-                minWidth: '180px',
-                overflow: 'hidden',
-                border: '1px solid var(--border-color)'
-              }}>
+              <div className="absolute top-full right-0 mt-1 w-48 bg-surface-light dark:bg-surface-dark shadow-lg rounded-md z-10 border border-border-light dark:border-border-dark overflow-hidden">
                 <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowMenu(false);
-                    onEdit(e, question);
-                  }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    width: '100%',
-                    padding: '0.75rem 1rem',
-                    border: 'none',
-                    background: 'none',
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                    fontSize: '0.875rem',
-                    color: 'var(--text-primary)'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-light)'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  onClick={(e) => { e.stopPropagation(); setShowMenu(false); onEdit(e, question); }}
+                  className="flex items-center gap-2 w-full px-3 py-2 text-sm text-left hover:bg-gray-100 dark:hover:bg-gray-700"
                 >
-                  <span className="material-symbols-outlined" style={{ fontSize: '1.25rem' }}>edit</span>
+                  <span className="material-symbols-outlined text-base">edit</span>
                   Edit Properties
                 </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowMenu(false);
-                    onCloneAndEdit(e, question);
-                  }}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem',
-                    width: '100%',
-                    padding: '0.75rem 1rem',
-                    border: 'none',
-                    background: 'none',
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                    fontSize: '0.875rem',
-                    color: 'var(--text-primary)'
-                  }}
-                   onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-light)'}
-                   onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                >
-                  <span className="material-symbols-outlined" style={{ fontSize: '1.25rem' }}>content_copy</span>
-                  Clone & Edit
-                </button>
+                {onClone && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setShowMenu(false); onClone(e, question); }}
+                    className="flex items-center gap-2 w-full px-3 py-2 text-sm text-left hover:bg-gray-100 dark:hover:bg-gray-700"
+                  >
+                    <span className="material-symbols-outlined text-base">content_copy</span>
+                    Clone & Edit
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -190,7 +98,6 @@ const QuestionRow: React.FC<QuestionRowProps> = React.memo(({
         <QuestionDisplay
           question={question}
           showAnswer={highlightCorrectAnswer && !isDivision2Question}
-          showCheckbox={false}
           isSelected={selected}
           hideOptions={isDivision2Question}
           questionNumber={index + 1}

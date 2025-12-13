@@ -22,6 +22,7 @@ interface QuestionSelectionProps {
   onComplete: (selectedQuestions: SelectedQuestion[]) => void;
   onBack: () => void;
   onStartEditing: (question: Question) => void;
+  onClone: (question: Question) => void;
   initialSelectedQuestions?: SelectedQuestion[];
   onChange?: (selectedQuestions: SelectedQuestion[]) => void;
 }
@@ -31,42 +32,25 @@ interface ItemData {
   selectedUuids: Set<string>;
   onToggle: (question: Question) => void;
   onEdit: (e: React.MouseEvent, question: Question) => void;
+  onClone: (e: React.MouseEvent, question: Question) => void;
   setSize: (index: number, size: number) => void;
   zoomLevel: number;
 }
 
-// Helper function to check if a question should go to Division 2 (B)
-const isNumericalAnswer = (question: Question): boolean => {
-  const answerUpper = question.answer.toUpperCase().trim();
-  return !['A', 'B', 'C', 'D'].includes(answerUpper);
-};
+const isNumericalAnswer = (question: Question): boolean => !['A', 'B', 'C', 'D'].includes(question.answer.toUpperCase().trim());
 
 const Row = ({ index, style, data }: ListChildComponentProps<ItemData>) => {
-  const { questions, selectedUuids, onToggle, onEdit, setSize, zoomLevel } = data;
+  const { questions, selectedUuids, onToggle, onEdit, onClone, setSize, zoomLevel } = data;
   const question = questions[index];
   const rowRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const element = rowRef.current;
     if (!element) return;
-
-    // Initial measurement
-    setSize(index, element.getBoundingClientRect().height);
-
-    // Observer for changes
-    const observer = new ResizeObserver(() => {
-      setSize(index, element.getBoundingClientRect().height);
-    });
-
+    const observer = new ResizeObserver(() => setSize(index, element.getBoundingClientRect().height));
     observer.observe(element);
-
-    return () => {
-      observer.disconnect();
-    };
+    return () => observer.disconnect();
   }, [setSize, index]);
-
-  const isDivision2Question = isNumericalAnswer(question);
-  const selected = selectedUuids.has(question.uuid);
 
   return (
     <div style={style}>
@@ -74,10 +58,11 @@ const Row = ({ index, style, data }: ListChildComponentProps<ItemData>) => {
         <QuestionRow
           question={question}
           index={index}
-          selected={selected}
-          isDivision2Question={isDivision2Question}
+          selected={selectedUuids.has(question.uuid)}
+          isDivision2Question={isNumericalAnswer(question)}
           onToggle={onToggle}
           onEdit={onEdit}
+          onClone={onClone}
           highlightCorrectAnswer={true}
           zoomLevel={zoomLevel}
         />
@@ -93,6 +78,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
   onComplete,
   onBack,
   onStartEditing,
+  onClone,
   initialSelectedQuestions = [],
   onChange
 }) => {
@@ -101,96 +87,66 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
   const [availableQuestions, setAvailableQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState('');
-  
-  const [filters, setFilters] = useState<FilterState>({
-    chapter: 'all',
-    difficulty: 'all',
-    division: 'all',
-    type: 'all',
-    year: 'all',
-    tag1: '',
-    tag4: '',
-    sort: 'default'
-  });
+  const [filters, setFilters] = useState<FilterState>({ chapter: 'all', difficulty: 'all', division: 'all', type: 'all', year: 'all', tag1: '', tag4: '', sort: 'default' });
+
+  const handleFilterChange = (newFilters: Partial<FilterState>) => {
+    setFilters(prev => ({ ...prev, ...newFilters }));
+  };
 
   const handleEdit = (e: React.MouseEvent, question: Question) => {
     e.stopPropagation();
     onStartEditing(question);
   };
 
-  // Sync selections to parent immediately when they change
+  const handleClone = (e: React.MouseEvent, question: Question) => {
+    e.stopPropagation();
+    onClone(question);
+  };
+
   useEffect(() => {
-    if (onChange) {
-      onChange(selectedQuestions);
-    }
+    onChange?.(selectedQuestions);
   }, [selectedQuestions, onChange]);
 
-
-  // Virtualization refs
   const listRef = useRef<List>(null);
   const sizeMap = useRef<{ [index: number]: number }>({});
   const setSize = useCallback((index: number, size: number) => {
     if (sizeMap.current[index] !== size) {
       sizeMap.current[index] = size;
-      if (listRef.current) {
-        listRef.current.resetAfterIndex(index);
-      }
+      listRef.current?.resetAfterIndex(index);
     }
   }, []);
-  const getSize = useCallback((index: number) => sizeMap.current[index] || 300, []); // Default to 300
+  const getSize = useCallback((index: number) => sizeMap.current[index] || 300, []);
 
-  // Extract unique Types and Years for filters
   const { availableTypes, availableYears } = useMemo(() => {
     const types = new Set<string>();
     const years = new Set<string>();
     availableQuestions.forEach(q => {
-        if (q.type) types.add(q.type);
-        if (q.year) years.add(q.year);
+      if (q.type) types.add(q.type);
+      if (q.year) years.add(q.year);
     });
-    return {
-        availableTypes: Array.from(types).sort(),
-        availableYears: Array.from(years).sort().reverse()
-    };
+    return { availableTypes: Array.from(types).sort(), availableYears: Array.from(years).sort().reverse() };
   }, [availableQuestions]);
 
-  // Reset list scroll when filters change
   useEffect(() => {
-    // Clear size map on filter change as indices mean different questions now
     sizeMap.current = {};
-    if (listRef.current) {
-      listRef.current.scrollTo(0);
-    }
+    listRef.current?.scrollTo(0);
   }, [filters, searchText]);
 
-  // Reset size map when zoom changes
   useEffect(() => {
     sizeMap.current = {};
-    if (listRef.current) {
-      listRef.current.resetAfterIndex(0);
-    }
+    listRef.current?.resetAfterIndex(0);
   }, [zoomLevel]);
 
-  // Load questions based on selected chapters
   useEffect(() => {
     const loadQuestions = async () => {
       setLoading(true);
       try {
         const chapterCodes = chapters.map(ch => ch.code);
-        const typeMap: { [key in SectionName]: string } = {
-          'Physics': 'physics',
-          'Chemistry': 'chemistry',
-          'Mathematics': 'mathematics'
-        };
-
-        const questions = await window.electronAPI.questions.getByChapterCodes(
-          typeMap[sectionName],
-          chapterCodes
-        );
-
+        const typeMap = { 'Physics': 'physics', 'Chemistry': 'chemistry', 'Mathematics': 'mathematics' };
+        const questions = await window.electronAPI.questions.getByChapterCodes(typeMap[sectionName] as any, chapterCodes);
         setAvailableQuestions(questions);
       } catch (error) {
         console.error('Failed to load questions:', error);
-        setAvailableQuestions([]);
       } finally {
         setLoading(false);
       }
@@ -198,562 +154,169 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
     loadQuestions();
   }, [sectionName, chapters]);
 
-  // Auto-correct existing selections: move numerical answers from Division 1 to Division 2
-  useEffect(() => {
-    let correctionsMade = false;
-    const correctedSelections = selectedQuestions.map(sq => {
-      // If this question has numerical answer but is in Division 1, move to Division 2
-      if (isNumericalAnswer(sq.question) && sq.division === 1) {
-        correctionsMade = true;
-        return { ...sq, division: 2 as 1 | 2 };
-      }
-      return sq;
-    });
-
-    if (correctionsMade) {
-      setSelectedQuestions(correctedSelections);
-    }
-  }, [selectedQuestions]);
-
-  // Memoize summary calculation - only recompute when selectedQuestions or alphaConstraint changes
   const summary = useMemo((): SelectionSummary => {
-    const byChapter: SelectionSummary['byChapter'] = {};
-    let totalE = 0, totalM = 0, totalH = 0;
-    let requiredE = 0, requiredM = 0, requiredH = 0;
     let div1Count = 0, div2Count = 0;
-
-    // Initialize byChapter with alpha constraints
+    const byChapter: SelectionSummary['byChapter'] = {};
     alphaConstraint.chapters.forEach(ch => {
-      byChapter[ch.chapterCode] = {
-        chapterName: ch.chapterName,
-        a: 0,
-        b: 0,
-        required_a: ch.a,
-        required_b: ch.b
-      };
-      requiredE += ch.e;
-      requiredM += ch.m;
-      requiredH += ch.h;
+      byChapter[ch.chapterCode] = { chapterName: ch.chapterName, a: 0, b: 0, required_a: ch.a, required_b: ch.b };
     });
-
-    // Count current selections - single pass
     selectedQuestions.forEach(sq => {
+      if (sq.division === 1) div1Count++; else div2Count++;
       if (byChapter[sq.chapterCode]) {
-        if (sq.division === 1) {
-          byChapter[sq.chapterCode].a++;
-          div1Count++;
-        } else {
-          byChapter[sq.chapterCode].b++;
-          div2Count++;
-        }
-      } else {
-        // Question not in any tracked chapter
-        if (sq.division === 1) div1Count++;
-        else div2Count++;
+        if (sq.division === 1) byChapter[sq.chapterCode].a++; else byChapter[sq.chapterCode].b++;
       }
-
-      if (sq.difficulty === 'E') totalE++;
-      else if (sq.difficulty === 'M') totalM++;
-      else if (sq.difficulty === 'H') totalH++;
     });
-
-    return {
-      total: selectedQuestions.length,
-      division1: div1Count,
-      division2: div2Count,
-      byChapter,
-      byDifficulty: {
-        easy: totalE,
-        medium: totalM,
-        hard: totalH,
-        required_e: requiredE,
-        required_m: requiredM,
-        required_h: requiredH
-      }
-    };
+    return { total: selectedQuestions.length, division1: div1Count, division2: div2Count, byChapter, byDifficulty: { easy: 0, medium: 0, hard: 0, required_e: 0, required_m: 0, required_h: 0 } };
   }, [selectedQuestions, alphaConstraint]);
 
-  // Create a Set for O(1) lookup of selected question UUIDs
-  const selectedUuids = useMemo(() => {
-    return new Set(selectedQuestions.map(sq => sq.question.uuid));
-  }, [selectedQuestions]);
+  const selectedUuids = useMemo(() => new Set(selectedQuestions.map(sq => sq.question.uuid)), [selectedQuestions]);
 
-  // Memoize toggleQuestion to prevent recreation on every render
   const toggleQuestion = useCallback(async (question: Question) => {
     const isSelected = selectedUuids.has(question.uuid);
     const isDiv2 = isNumericalAnswer(question);
-
-    // Check constraints before selecting
-    if (!isSelected) {
-        if (isDiv2) {
-          if (summary.division2 >= 5) {
-            // alert(`This question has numerical answer (${question.answer}) and can only be placed in Division 2 (B), which is already full (5/5).`);
-            return;
-          }
-        } else {
-          if (summary.division1 >= 20) {
-            // alert(`Division 1 (A) is already full (20/20). Cannot select more Multiple Choice Questions.`);
-            return;
-          }
-        }
-    }
+    if (!isSelected && ((isDiv2 && summary.division2 >= 5) || (!isDiv2 && summary.division1 >= 20))) return;
 
     if (isSelected) {
-      // Deselecting - decrement frequency
-      try {
-        await window.electronAPI.questions.decrementFrequency(question.uuid);
-        // Update the local question's frequency
-        setAvailableQuestions(prev => prev.map(q =>
-          q.uuid === question.uuid
-            ? { ...q, frequency: Math.max((q.frequency || 0) - 1, 0) }
-            : q
-        ));
-      } catch (error) {
-        console.error('[FREQUENCY] Error decrementing frequency:', error);
-      }
-      setSelectedQuestions(prev =>
-        prev.filter(sq => sq.question.uuid !== question.uuid)
-      );
+      await window.electronAPI.questions.decrementFrequency(question.uuid);
+      setSelectedQuestions(prev => prev.filter(sq => sq.question.uuid !== question.uuid));
     } else {
-      // Selecting - increment frequency
-      const chapterCode = question.tag_2 || chapters[0]?.code || '';
-      const chapter = chapters.find(ch => ch.code === chapterCode);
-      const chapterName = chapter ? chapter.name : chapters[0]?.name || '';
-      const difficulty: Difficulty = (question.tag_3 as Difficulty) || 'M';
-      const division: 1 | 2 = isDiv2 ? 2 : 1;
-
-      try {
-        await window.electronAPI.questions.incrementFrequency(question.uuid);
-        // Update the local question's frequency
-        setAvailableQuestions(prev => prev.map(q =>
-          q.uuid === question.uuid
-            ? { ...q, frequency: (q.frequency || 0) + 1 }
-            : q
-        ));
-      } catch (error) {
-        console.error('[FREQUENCY] Error incrementing frequency:', error);
-      }
-      const newSelection: SelectedQuestion = {
-        question,
-        chapterCode,
-        chapterName,
-        difficulty,
-        division,
-        status: 'pending'
-      };
-      setSelectedQuestions(prev => [...prev, newSelection]);
+      await window.electronAPI.questions.incrementFrequency(question.uuid);
+      const chapter = chapters.find(ch => ch.code === question.tag_2);
+      setSelectedQuestions(prev => [...prev, { question, chapterCode: question.tag_2 || '', chapterName: chapter?.name || '', difficulty: (question.tag_3 as Difficulty) || 'M', division: isDiv2 ? 2 : 1, status: 'pending' }]);
     }
-  }, [selectedUuids, summary.division1, summary.division2, chapters]);
+  }, [selectedUuids, summary, chapters]);
 
-  // Memoize filtered questions - only recompute when filters or data changes
   const filteredQuestions = useMemo(() => {
-    const searchLower = searchText.toLowerCase();
-
-    let result = availableQuestions.filter(q => {
-      // Filter by chapter
-      if (filters.chapter !== 'all' && q.tag_2 !== filters.chapter) {
-        return false;
-      }
-
-      // Filter by difficulty
-      if (filters.difficulty !== 'all' && q.tag_3 !== filters.difficulty) {
-        return false;
-      }
-
-      // Filter by division type (numerical vs multiple choice)
-      if (filters.division !== 'all') {
-        const isDiv2Type = isNumericalAnswer(q);
-        if (filters.division === '1' && isDiv2Type) return false;
-        if (filters.division === '2' && !isDiv2Type) return false;
-      }
-
-      // Filter by Type
-      if (filters.type !== 'all' && q.type !== filters.type) {
-        return false;
-      }
-
-      // Filter by Year
-      if (filters.year !== 'all' && q.year !== filters.year) {
-        return false;
-      }
-
-      // Filter by Tag 1 (Partial Match)
-      if (filters.tag1 && (!q.tag_1 || !q.tag_1.toLowerCase().includes(filters.tag1.toLowerCase()))) {
-        return false;
-      }
-
-      // Filter by Tag 4 (Partial Match)
-      if (filters.tag4 && (!q.tag_4 || !q.tag_4.toLowerCase().includes(filters.tag4.toLowerCase()))) {
-        return false;
-      }
-
-      // Filter by search text
-      if (searchText && !q.question.toLowerCase().includes(searchLower)) {
-        return false;
-      }
-
-      return true;
-    });
-
-    // Apply Sorting
-    if (filters.sort !== 'default') {
-        result.sort((a, b) => {
-            switch (filters.sort) {
-                case 'year_desc':
-                    return (b.year || '').localeCompare(a.year || '');
-                case 'year_asc':
-                    return (a.year || '').localeCompare(b.year || '');
-                case 'freq_asc':
-                    return (a.frequency || 0) - (b.frequency || 0);
-                case 'freq_desc':
-                    return (b.frequency || 0) - (a.frequency || 0);
-                default:
-                    return 0;
-            }
-        });
-    }
-
-    return result;
+    return availableQuestions
+      .filter(q => {
+        if (filters.chapter !== 'all' && q.tag_2 !== filters.chapter) return false;
+        if (filters.difficulty !== 'all' && q.tag_3 !== filters.difficulty) return false;
+        if (filters.division !== 'all') {
+            if (filters.division === '1' && isNumericalAnswer(q)) return false;
+            if (filters.division === '2' && !isNumericalAnswer(q)) return false;
+        }
+        if (filters.type !== 'all' && q.type !== filters.type) return false;
+        if (filters.year !== 'all' && q.year !== filters.year) return false;
+        if (searchText && !q.question.toLowerCase().includes(searchText.toLowerCase())) return false;
+        return true;
+      })
+      .sort((a, b) => {
+        switch (filters.sort) {
+          case 'year_desc': return (b.year || '').localeCompare(a.year || '');
+          case 'year_asc': return (a.year || '').localeCompare(b.year || '');
+          case 'freq_desc': return (b.frequency || 0) - (a.frequency || 0);
+          case 'freq_asc': return (a.frequency || 0) - (b.frequency || 0);
+          default: return 0;
+        }
+      });
   }, [availableQuestions, filters, searchText]);
 
-  // Memoize isSelectionValid
-  const isSelectionValid = useMemo(() => {
-    return summary.division1 === 20 && summary.division2 === 5;
-  }, [summary.division1, summary.division2]);
-
-  // Track visible range for scrolling logic
-  const visibleRangeRef = useRef({ start: 0, stop: 0 });
-  const onItemsRendered = ({ visibleStartIndex, visibleStopIndex }: { visibleStartIndex: number; visibleStopIndex: number }) => {
-    visibleRangeRef.current = { start: visibleStartIndex, stop: visibleStopIndex };
-  };
-
-  // Navigation handlers
-  const scrollToSelected = (direction: 'next' | 'prev') => {
-    const selectedIndices = filteredQuestions
-      .map((q, index) => selectedUuids.has(q.uuid) ? index : -1)
-      .filter(index => index !== -1);
-
-    if (selectedIndices.length === 0) return;
-
-    const { start } = visibleRangeRef.current;
-    let targetIndex = -1;
-
-    if (direction === 'next') {
-        // Find first selected index greater than current start (roughly)
-        // If within view, go to next. If fully below, go to that.
-        // Actually, let's find the first selected index AFTER the current visible stop.
-        // Or if we are at the top, just the first one.
-        
-        // Simple logic: find first index > start + 1 (to skip top one if slightly visible)
-        // But better: find first index > start.
-        for (const idx of selectedIndices) {
-            if (idx > start) {
-                targetIndex = idx;
-                break;
-            }
-        }
-        // Wrap around
-        if (targetIndex === -1) targetIndex = selectedIndices[0];
-    } else {
-        // Find last index < start
-        for (let i = selectedIndices.length - 1; i >= 0; i--) {
-            if (selectedIndices[i] < start) {
-                targetIndex = selectedIndices[i];
-                break;
-            }
-        }
-        // Wrap around
-        if (targetIndex === -1) targetIndex = selectedIndices[selectedIndices.length - 1];
-    }
-
-    if (targetIndex !== -1 && listRef.current) {
-         listRef.current.scrollToItem(targetIndex, 'start');
-    }
-  };
-
-  const scrollToList = (position: 'top' | 'bottom') => {
-    if (listRef.current) {
-      if (position === 'top') {
-        listRef.current.scrollToItem(0);
-      } else {
-        // Scroll to the last item, aligning it to the end (bottom) of the container
-        listRef.current.scrollToItem(filteredQuestions.length - 1, 'end');
-      }
-    }
-  };
-
-  // Zoom handlers
-  const handleZoomIn = () => {
-    setZoomLevel(prev => Math.min(prev + 0.1, 1.5));
-  };
-
-  const handleZoomOut = () => {
-    setZoomLevel(prev => Math.max(prev - 0.1, 0.5));
-  };
+  const isSelectionValid = useMemo(() => summary.division1 === 20 && summary.division2 === 5, [summary]);
 
   const itemData = useMemo(() => ({
-      questions: filteredQuestions,
-      selectedUuids,
-      onToggle: toggleQuestion,
-      onEdit: handleEdit,
-      setSize,
-      zoomLevel
-  }), [filteredQuestions, selectedUuids, toggleQuestion, setSize, zoomLevel]);
+    questions: filteredQuestions,
+    selectedUuids,
+    onToggle: toggleQuestion,
+    onEdit: handleEdit,
+    onClone: handleClone,
+    setSize,
+    zoomLevel
+  }), [filteredQuestions, selectedUuids, toggleQuestion, handleEdit, handleClone, setSize, zoomLevel]);
+
+  const handleZoom = (direction: 'in' | 'out') => {
+    setZoomLevel(prev => {
+      const newZoom = direction === 'in' ? prev + 0.1 : prev - 0.1;
+      return Math.max(0.5, Math.min(1.5, newZoom));
+    });
+  };
+
+  const scrollToTop = () => listRef.current?.scrollToItem(0);
+  const scrollToBottom = () => listRef.current?.scrollToItem(filteredQuestions.length - 1);
 
   return (
-    <div className="question-selection">
-      <div className="selection-header">
-        <h2>
-          <span className="material-symbols-outlined" style={{ marginRight: '0.5rem', verticalAlign: 'middle' }}>
-            {sectionName === 'Physics' ? 'science' : sectionName === 'Chemistry' ? 'biotech' : 'calculate'}
-          </span>
+    <div className="p-4">
+      <div className="bg-surface-light dark:bg-surface-dark p-4 rounded-xl mb-4 border border-border-light dark:border-border-dark flex justify-between items-center">
+        <h2 className="text-xl font-bold flex items-center gap-2">
+          <span className="material-symbols-outlined">{sectionName === 'Physics' ? 'science' : sectionName === 'Chemistry' ? 'biotech' : 'calculate'}</span>
           {sectionName} - Question Selection
         </h2>
-        <div className="selection-progress">
-          <span className={summary.division1 === 20 ? 'valid' : 'invalid'}>
-            Division 1: {summary.division1}/20
-          </span>
-          <span className={summary.division2 === 5 ? 'valid' : 'invalid'}>
-            Division 2: {summary.division2}/5
-          </span>
-          <span>Total: {summary.total}/25</span>
+        <div className="flex gap-2 text-sm font-semibold">
+          <span className={`px-3 py-1 rounded-full ${summary.division1 === 20 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>Div 1: {summary.division1}/20</span>
+          <span className={`px-3 py-1 rounded-full ${summary.division2 === 5 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>Div 2: {summary.division2}/5</span>
+          <span className="px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-700">Total: {summary.total}/25</span>
         </div>
       </div>
 
-      <div className="selection-layout">
-        {/* Left Panel - Constraints Summary */}
-        <div className="constraints-panel">
-          <h3>
-            <span className="material-symbols-outlined" style={{ marginRight: '0.375rem', fontSize: '1.125rem' }}>tune</span>
-            Alpha Constraints
-          </h3>
-
-          <div className="constraint-section">
-            <h4>By Chapter</h4>
-            <table className="summary-table">
-              <thead>
-                <tr>
-                  <th>Chapter</th>
-                  <th>A</th>
-                  <th>B</th>
-                </tr>
-              </thead>
-              <tbody>
-                {Object.entries(summary.byChapter).map(([chapterCode, counts]) => (
-                  <tr key={chapterCode}>
-                    <td>
-                      <span className="chapter-code-small">{chapterCode}</span>
-                      {counts.chapterName}
-                    </td>
-                    <td className={counts.a === counts.required_a ? 'valid' : 'invalid'}>
-                      {counts.a}/{counts.required_a}
-                    </td>
-                    <td className={counts.b === counts.required_b ? 'valid' : 'invalid'}>
-                      {counts.b}/{counts.required_b}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="constraint-section">
-            <h4>By Difficulty</h4>
-            <div className="difficulty-summary">
-              <div className={summary.byDifficulty.easy === summary.byDifficulty.required_e ? 'valid' : ''}>
-                Easy: {summary.byDifficulty.easy}/{summary.byDifficulty.required_e}
-              </div>
-              <div className={summary.byDifficulty.medium === summary.byDifficulty.required_m ? 'valid' : ''}>
-                Medium: {summary.byDifficulty.medium}/{summary.byDifficulty.required_m}
-              </div>
-              <div className={summary.byDifficulty.hard === summary.byDifficulty.required_h ? 'valid' : ''}>
-                Hard: {summary.byDifficulty.hard}/{summary.byDifficulty.required_h}
-              </div>
+      <div className="grid grid-cols-12 gap-4">
+        <div className="col-span-3">
+          <div className="sticky top-4 bg-surface-light dark:bg-surface-dark p-4 rounded-xl border border-border-light dark:border-border-dark">
+            <h3 className="font-semibold mb-4 flex items-center gap-2"><span className="material-symbols-outlined text-lg">tune</span>Constraints</h3>
+            <div className="text-xs">
+              <h4 className="font-bold uppercase text-text-secondary mb-2">By Chapter</h4>
+              <table className="w-full">
+                <thead><tr><th className="text-left">Chapter</th><th>A</th><th>B</th></tr></thead>
+                <tbody>
+                  {Object.entries(summary.byChapter).map(([code, counts]) => (
+                    <tr key={code}>
+                      <td>{counts.chapterName}</td>
+                      <td className={`text-center ${counts.a === counts.required_a ? 'text-green-500' : 'text-red-500'}`}>{counts.a}/{counts.required_a}</td>
+                      <td className={`text-center ${counts.b === counts.required_b ? 'text-green-500' : 'text-red-500'}`}>{counts.b}/{counts.required_b}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
 
-        {/* Right Panel - Question List */}
-        <div className="questions-panel" style={{
-          position: 'relative',
-          display: 'flex',
-          flexDirection: 'column',
-          maxHeight: 'calc(100vh - 220px)', /* Match constraints panel height */
-          height: '100%',
-          overflow: 'hidden'
-        }}>
-
-          {/* Filters moved to top */}
-          <div className="filters" style={{ position: 'relative', display: 'flex', alignItems: 'center', flexShrink: 0, marginBottom: '1rem' }}>
-             <div style={{ flex: 1, position: 'relative', marginRight: '0.75rem' }}>
-                <span className="material-symbols-outlined" style={{
-                    position: 'absolute',
-                    left: '12px',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    color: 'var(--text-secondary)',
-                    fontSize: '1.25rem'
-                }}>search</span>
-                <input
-                type="text"
-                placeholder="Search questions..."
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                className="search-input"
-                style={{
-                    paddingLeft: '2.5rem',
-                    width: '100%'
-                }}
-                />
-            </div>
-
-            <FilterMenu
-                chapters={chapters}
-                availableTypes={availableTypes}
-                availableYears={availableYears}
-                currentFilters={filters}
-                onFilterChange={(newFilters) => {
-                    setFilters(prev => ({ ...prev, ...newFilters }));
-                }}
-            />
-          </div>
-
-          <div
-            className="question-list"
-            style={{
-                flex: 1, /* Fill remaining space */
-                display: 'block',
-                position: 'relative',
-                width: '100%',
-                boxSizing: 'border-box'
-            }}
-          >
-            {loading && (
-                 <div className="loading" style={{
-                     position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 10
-                 }}>Loading questions...</div>
-             )}
-
-            {!loading && filteredQuestions.length === 0 ? (
-              <div className="no-questions">
-                No questions available. Please adjust filters or load a database.
+        <div className="col-span-9">
+          <div className="bg-surface-light dark:bg-surface-dark p-4 rounded-xl border border-border-light dark:border-border-dark">
+            <div className="flex gap-4 mb-4">
+              <div className="relative flex-grow">
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary">search</span>
+                <input type="text" placeholder="Search questions..." value={searchText} onChange={(e) => setSearchText(e.target.value)} className="w-full pl-10 pr-4 py-2 border border-border-light dark:border-border-dark rounded-full bg-background-light dark:bg-background-dark" />
               </div>
-            ) : (
-                !loading && (
-                    <AutoSizer onResize={() => {
-                        // Clear cached sizes when container width changes (e.g. window resize)
-                        if (listRef.current) {
-                            sizeMap.current = {};
-                            listRef.current.resetAfterIndex(0);
-                        }
-                    }}>
-                        {({ height, width }) => (
-                            <List
-                                ref={listRef}
-                                height={height}
-                                width={width}
-                                itemCount={filteredQuestions.length}
-                                itemSize={getSize}
-                                itemData={itemData}
-                                onItemsRendered={onItemsRendered}
-                            >
-                                {Row}
-                            </List>
-                        )}
-                    </AutoSizer>
-                )
-            )}
-          </div>
-
-          {/* Floating Navigation Buttons - Fixed relative to panel */}
-          <div style={{
-            position: 'absolute',
-            top: '80px', /* Adjusted for filters at top */
-            right: '40px',
-            zIndex: 100,
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '5px'
-          }}>
-            {/* Zoom Controls - Updated */}
-            <div className="zoom-controls">
-                <button
-                onClick={handleZoomIn}
-                className="zoom-btn"
-                title="Zoom In"
-                disabled={zoomLevel >= 1.5}
-                >
-                <span className="material-symbols-outlined">add</span>
-                </button>
-                <button
-                onClick={handleZoomOut}
-                className="zoom-btn"
-                title="Zoom Out"
-                disabled={zoomLevel <= 0.5}
-                >
-                <span className="material-symbols-outlined">remove</span>
-                </button>
+              <FilterMenu chapters={chapters} availableTypes={availableTypes} availableYears={availableYears} currentFilters={filters} onFilterChange={handleFilterChange} />
             </div>
 
-            <button
-              onClick={() => scrollToList('top')}
-              className="zoom-btn float-nav-btn"
-              style={{ background: 'var(--bg-card)', marginTop: '0.5rem' }}
-              title="Scroll to Top"
-            >
-              <span className="material-symbols-outlined">vertical_align_top</span>
-            </button>
+            <div className="h-[calc(100vh-300px)] relative questions-panel">
+              <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
+                  <button onClick={() => handleZoom('in')} className="bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-full size-8 flex items-center justify-center shadow-md hover:bg-gray-100 dark:hover:bg-gray-700">
+                      <span className="material-symbols-outlined">add</span>
+                  </button>
+                  <button onClick={() => handleZoom('out')} className="bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-full size-8 flex items-center justify-center shadow-md hover:bg-gray-100 dark:hover:bg-gray-700">
+                      <span className="material-symbols-outlined">remove</span>
+                  </button>
+                   <div className="h-px bg-border-light dark:bg-border-dark my-1"></div>
+                  <button onClick={scrollToTop} className="bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-full size-8 flex items-center justify-center shadow-md hover:bg-gray-100 dark:hover:bg-gray-700">
+                      <span className="material-symbols-outlined">vertical_align_top</span>
+                  </button>
+                  <button onClick={scrollToBottom} className="bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-full size-8 flex items-center justify-center shadow-md hover:bg-gray-100 dark:hover:bg-gray-700">
+                      <span className="material-symbols-outlined">vertical_align_bottom</span>
+                  </button>
+              </div>
 
-            {selectedQuestions.length > 0 && (
-              <>
-                <button
-                  onClick={() => scrollToSelected('prev')}
-                  className="zoom-btn float-nav-btn"
-                  style={{ background: 'var(--bg-card)' }}
-                  title="Previous Selected"
-                >
-                  <span className="material-symbols-outlined">arrow_upward</span>
-                </button>
-                <button
-                  onClick={() => scrollToSelected('next')}
-                  className="zoom-btn float-nav-btn"
-                  style={{ background: 'var(--bg-card)' }}
-                  title="Next Selected"
-                >
-                  <span className="material-symbols-outlined">arrow_downward</span>
-                </button>
-              </>
-            )}
-
-            <button
-              onClick={() => scrollToList('bottom')}
-              className="zoom-btn float-nav-btn"
-              style={{ background: 'var(--bg-card)' }}
-              title="Scroll to Bottom"
-            >
-              <span className="material-symbols-outlined">vertical_align_bottom</span>
-            </button>
+              {loading ? <div className="text-center p-8">Loading...</div> :
+                !loading && filteredQuestions.length === 0 ? <div className="text-center p-8">No questions found.</div> :
+                <AutoSizer>
+                  {({ height, width }) => (
+                    <List ref={listRef} height={height} width={width} itemCount={filteredQuestions.length} itemSize={getSize} itemData={itemData}>
+                      {Row}
+                    </List>
+                  )}
+                </AutoSizer>
+              }
+            </div>
           </div>
-
         </div>
       </div>
 
-      <div className="selection-actions">
-        <button className="btn-secondary" onClick={onBack}>
-          <span className="material-symbols-outlined">arrow_back</span>
-          Back to Configuration
-        </button>
-        <button
-          className="btn-primary"
-          onClick={() => onComplete(selectedQuestions)}
-          disabled={!isSelectionValid}
-        >
-          {isSelectionValid
-            ? <>Continue to Next Section <span className="material-symbols-outlined">arrow_forward</span></>
-            : `Need ${20 - summary.division1} more for Div1, ${5 - summary.division2} more for Div2`}
+      <div className="mt-4 pt-4 border-t border-border-light dark:border-border-dark flex justify-between">
+        <button onClick={onBack} className="px-4 py-2 rounded-lg border border-border-light dark:border-border-dark text-text-secondary hover:bg-gray-100 dark:hover:bg-gray-700">Back</button>
+        <button onClick={() => onComplete(selectedQuestions)} disabled={!isSelectionValid} className="px-4 py-2 rounded-lg bg-primary text-white disabled:bg-gray-400">
+          {isSelectionValid ? 'Continue' : `Need ${20 - summary.division1} for Div1, ${5 - summary.division2} for Div2`}
         </button>
       </div>
-
     </div>
   );
 };
