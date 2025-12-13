@@ -222,21 +222,25 @@ export const SectionConfiguration: React.FC<SectionConfigurationProps> = ({
             <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
               Alpha Constraints
             </h3>
-            <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-[#2d2d3b] shadow-sm">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-[#2d2d3b]">
-                <thead className="bg-gray-50 dark:bg-[#121121]">
+            <div className="overflow-x-auto rounded-xl border-2 border-gray-300 dark:border-[#2d2d3b] shadow-md">
+              <table className="min-w-full divide-y-2 divide-gray-300 dark:divide-[#2d2d3b]">
+                <thead className="bg-gray-100 dark:bg-[#121121]">
                   <tr>
-                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider border-r border-gray-300 dark:border-[#2d2d3b]">
                       Chapter
                     </th>
                     {['A (Div 1)', 'B (Div 2)', 'Easy', 'Medium', 'Hard', 'Total'].map(h => (
-                      <th key={h} className="px-6 py-4 text-center text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                      <th key={h} className={`px-6 py-4 text-center text-xs font-bold uppercase tracking-wider border-r border-gray-300 dark:border-[#2d2d3b] ${
+                        h === 'Easy' || h === 'Medium' || h === 'Hard'
+                          ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-900 dark:text-blue-300'
+                          : 'text-gray-900 dark:text-white'
+                      }`}>
                         {h}
                       </th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="bg-white dark:bg-[#1e1e2d] divide-y divide-gray-200 dark:divide-[#2d2d3b]">
+                <tbody className="bg-white dark:bg-[#1e1e2d] divide-y-2 divide-gray-300 dark:divide-[#2d2d3b]">
                   {alphaDataWithValidation.map((chapter, index) => (
                     <tr
                       key={chapter.chapterCode}
@@ -246,39 +250,43 @@ export const SectionConfiguration: React.FC<SectionConfigurationProps> = ({
                           : 'hover:bg-gray-50 dark:hover:bg-[#252535]'
                       }`}
                     >
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white whitespace-nowrap">
+                      <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white whitespace-nowrap border-r border-gray-200 dark:border-[#2d2d3b]">
                         {chapter.chapterName}
                       </td>
                       {['a', 'b', 'e', 'm', 'h'].map(field => (
-                        <td key={field} className="px-6 py-4 text-center">
+                        <td key={field} className={`px-6 py-4 text-center border-r border-gray-200 dark:border-[#2d2d3b] ${
+                          field === 'e' || field === 'm' || field === 'h'
+                            ? 'bg-blue-50/30 dark:bg-blue-900/10'
+                            : ''
+                        }`}>
                           <input
                             type="number"
                             min="0"
                             value={chapter[field as keyof ChapterDistribution]}
                             onChange={(e) => updateChapter(index, field as keyof ChapterDistribution, parseInt(e.target.value) || 0)}
-                            className="w-20 px-3 py-2 text-center text-sm bg-white dark:bg-[#252535] border border-gray-300 dark:border-[#2d2d3b] rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-[#5248e5] focus:border-transparent transition-all"
+                            className="w-20 px-3 py-2 text-center text-base font-bold bg-white dark:bg-[#1e1e2d] border-2 border-gray-400 dark:border-gray-500 rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-[#5248e5] focus:border-[#5248e5] transition-all shadow-sm hover:border-[#5248e5]"
                           />
                         </td>
                       ))}
-                      <td className="px-6 py-4 text-center text-sm font-semibold text-gray-900 dark:text-white">
+                      <td className="px-6 py-4 text-center text-sm font-semibold text-gray-900 dark:text-white border-r border-gray-200 dark:border-[#2d2d3b]">
                         {chapter.a + chapter.b}
                       </td>
                     </tr>
                   ))}
                 </tbody>
-                <tfoot className="bg-gray-50 dark:bg-[#121121]">
-                  <tr>
-                    <td className="px-6 py-4 text-sm font-bold text-gray-900 dark:text-white">TOTALS</td>
-                    <td className={`px-6 py-4 text-center text-sm font-bold ${totals.a === 20 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                <tfoot className="bg-gray-100 dark:bg-[#121121]">
+                  <tr className="border-t-2 border-gray-300 dark:border-[#2d2d3b]">
+                    <td className="px-6 py-4 text-sm font-bold text-gray-900 dark:text-white border-r border-gray-300 dark:border-[#2d2d3b]">TOTALS</td>
+                    <td className={`px-6 py-4 text-center text-base font-bold border-r border-gray-300 dark:border-[#2d2d3b] ${totals.a === 20 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                       {totals.a} / 20
                     </td>
-                    <td className={`px-6 py-4 text-center text-sm font-bold ${totals.b === 5 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                    <td className={`px-6 py-4 text-center text-base font-bold border-r border-gray-300 dark:border-[#2d2d3b] ${totals.b === 5 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                       {totals.b} / 5
                     </td>
-                    <td className="px-6 py-4 text-center text-sm font-bold text-gray-900 dark:text-white">{totals.e}</td>
-                    <td className="px-6 py-4 text-center text-sm font-bold text-gray-900 dark:text-white">{totals.m}</td>
-                    <td className="px-6 py-4 text-center text-sm font-bold text-gray-900 dark:text-white">{totals.h}</td>
-                    <td className="px-6 py-4 text-center text-sm font-bold text-gray-900 dark:text-white">
+                    <td className="px-6 py-4 text-center text-lg font-bold text-blue-900 dark:text-blue-300 bg-blue-50/30 dark:bg-blue-900/10 border-r border-gray-300 dark:border-[#2d2d3b]">{totals.e}</td>
+                    <td className="px-6 py-4 text-center text-lg font-bold text-blue-900 dark:text-blue-300 bg-blue-50/30 dark:bg-blue-900/10 border-r border-gray-300 dark:border-[#2d2d3b]">{totals.m}</td>
+                    <td className="px-6 py-4 text-center text-lg font-bold text-blue-900 dark:text-blue-300 bg-blue-50/30 dark:bg-blue-900/10 border-r border-gray-300 dark:border-[#2d2d3b]">{totals.h}</td>
+                    <td className="px-6 py-4 text-center text-base font-bold text-gray-900 dark:text-white border-r border-gray-300 dark:border-[#2d2d3b]">
                       {totals.a + totals.b} / 25
                     </td>
                   </tr>
