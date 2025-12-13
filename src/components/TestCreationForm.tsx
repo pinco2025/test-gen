@@ -6,9 +6,6 @@ interface TestCreationFormProps {
   onSubmit: (metadata: TestMetadata, sectionsChapters: Chapter[][]) => void;
 }
 
-/**
- * Form to collect initial test details
- */
 export const TestCreationForm: React.FC<TestCreationFormProps> = ({
   onSubmit
 }) => {
@@ -16,42 +13,31 @@ export const TestCreationForm: React.FC<TestCreationFormProps> = ({
   const [description, setDescription] = useState('');
   const [testType, setTestType] = useState<TestType>('Full');
 
-  // Track which chapter codes are available in the database
   const [availableCodesInDb, setAvailableCodesInDb] = useState<Set<string>>(new Set());
   const [chaptersLoading, setChaptersLoading] = useState(true);
 
-  // Chapters for each section
   const [physicsChapters, setPhysicsChapters] = useState<Chapter[]>([]);
   const [chemistryChapters, setChemistryChapters] = useState<Chapter[]>([]);
   const [mathChapters, setMathChapters] = useState<Chapter[]>([]);
 
-  // Search terms for each section
   const [physicsSearch, setPhysicsSearch] = useState('');
   const [chemistrySearch, setChemistrySearch] = useState('');
   const [mathSearch, setMathSearch] = useState('');
 
-  // Load available chapter codes from database on mount
   useEffect(() => {
     const loadAvailableCodes = async () => {
       setChaptersLoading(true);
       try {
-        console.log('[TestCreationForm] Loading available chapter codes from database...');
         const dbChapters = await window.electronAPI.db.getChaptersByType();
-        console.log('[TestCreationForm] Database chapters:', dbChapters);
-
-        // Collect all unique codes from the database
         const codesSet = new Set<string>();
         Object.values(dbChapters).forEach((codes) => {
           if (Array.isArray(codes)) {
             codes.forEach(code => codesSet.add(code));
           }
         });
-
-        console.log('[TestCreationForm] Available codes in database:', Array.from(codesSet));
         setAvailableCodesInDb(codesSet);
       } catch (error) {
-        console.error('[TestCreationForm] Failed to load chapter codes:', error);
-        // On error, mark all chapters as unavailable (empty set)
+        console.error('Failed to load chapter codes:', error);
         setAvailableCodesInDb(new Set());
       } finally {
         setChaptersLoading(false);
@@ -63,259 +49,93 @@ export const TestCreationForm: React.FC<TestCreationFormProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
-    const metadata: TestMetadata = {
-      code,
-      description,
-      testType,
-      createdAt: new Date().toISOString()
-    };
-
+    const metadata: TestMetadata = { code, description, testType, createdAt: new Date().toISOString() };
     const sectionsChapters = [physicsChapters, chemistryChapters, mathChapters];
-
     onSubmit(metadata, sectionsChapters);
   };
 
-  const handleChapterToggle = (
-    section: 'physics' | 'chemistry' | 'math',
-    chapter: Chapter
-  ) => {
-    const setters = {
-      physics: setPhysicsChapters,
-      chemistry: setChemistryChapters,
-      math: setMathChapters
-    };
-
-    const getters = {
-      physics: physicsChapters,
-      chemistry: chemistryChapters,
-      math: mathChapters
-    };
-
+  const handleChapterToggle = (section: 'physics' | 'chemistry' | 'math', chapter: Chapter) => {
+    const setters = { physics: setPhysicsChapters, chemistry: setChemistryChapters, math: setMathChapters };
+    const getters = { physics: physicsChapters, chemistry: chemistryChapters, math: mathChapters };
     const current = getters[section];
     const setter = setters[section];
-
     const isSelected = current.some(ch => ch.code === chapter.code);
-    if (isSelected) {
-      setter(current.filter(c => c.code !== chapter.code));
-    } else {
-      setter([...current, chapter]);
-    }
+    setter(isSelected ? current.filter(c => c.code !== chapter.code) : [...current, chapter]);
   };
 
-  const isChapterSelected = (
-    section: 'physics' | 'chemistry' | 'math',
-    chapterCode: string
-  ): boolean => {
-    const getters = {
-      physics: physicsChapters,
-      chemistry: chemistryChapters,
-      math: mathChapters
-    };
+  const isChapterSelected = (section: 'physics' | 'chemistry' | 'math', chapterCode: string): boolean => {
+    const getters = { physics: physicsChapters, chemistry: chemistryChapters, math: mathChapters };
     return getters[section].some(ch => ch.code === chapterCode);
   };
 
-  const isChapterAvailable = (chapterCode: string): boolean => {
-    return availableCodesInDb.has(chapterCode);
-  };
+  const isChapterAvailable = (chapterCode: string): boolean => availableCodesInDb.has(chapterCode);
 
-  const getFilteredChapters = (
-    sectionChapters: Chapter[],
-    searchTerm: string
-  ): Chapter[] => {
+  const getFilteredChapters = (sectionChapters: Chapter[], searchTerm: string): Chapter[] => {
     if (!searchTerm.trim()) return sectionChapters;
     const lower = searchTerm.toLowerCase();
-    return sectionChapters.filter(
-      ch =>
-        ch.name.toLowerCase().includes(lower) ||
-        ch.code.toLowerCase().includes(lower)
-    );
+    return sectionChapters.filter(ch => ch.name.toLowerCase().includes(lower) || ch.code.toLowerCase().includes(lower));
   };
 
-  const isFormValid = () => {
-    return (
-      code.trim() !== '' &&
-      description.trim() !== '' &&
-      physicsChapters.length > 0 &&
-      chemistryChapters.length > 0 &&
-      mathChapters.length > 0
-    );
-  };
+  const isFormValid = () => code.trim() !== '' && description.trim() !== '' && physicsChapters.length > 0 && chemistryChapters.length > 0 && mathChapters.length > 0;
 
   return (
-    <div className="test-creation-form">
-      <h2>Create New Test</h2>
+    <div className="max-w-4xl mx-auto bg-surface-light dark:bg-surface-dark p-8 rounded-xl border border-border-light dark:border-border-dark shadow-sm">
+      <h2 className="text-2xl font-bold text-text-main dark:text-white mb-6">Create New Test</h2>
 
       <form onSubmit={handleSubmit}>
-        <div className="form-section">
-          <h3>Test Details</h3>
-
-          <div className="form-group">
-            <label htmlFor="code">Test Code *</label>
-            <input
-              id="code"
-              type="text"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              placeholder="e.g., JEE-2024-01"
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="description">Description *</label>
-            <textarea
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Brief description of the test"
-              rows={3}
-              required
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="testType">Test Type *</label>
-            <select
-              id="testType"
-              value={testType}
-              onChange={(e) => setTestType(e.target.value as TestType)}
-            >
-              <option value="Full">Full Test</option>
-              <option value="Part">Part Test</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="form-section">
-          <h3>Select Chapters for Each Section</h3>
-
-          <div className="section-chapters">
-            {/* Section 1: Physics */}
-            <div className="chapter-group">
-              <h4>Section 1: Physics ({physicsChapters.length} selected)</h4>
-              <input
-                type="text"
-                className="chapter-search"
-                placeholder="Search chapters..."
-                value={physicsSearch}
-                onChange={(e) => setPhysicsSearch(e.target.value)}
-              />
-              <div className="chapter-list">
-                {chaptersLoading ? (
-                  <div className="loading-chapters">Loading chapters from database...</div>
-                ) : (
-                  getFilteredChapters(chaptersData.Physics, physicsSearch).map(
-                    (chapter) => {
-                      const available = isChapterAvailable(chapter.code);
-                      return (
-                        <label
-                          key={chapter.code}
-                          className={`checkbox-label ${!available ? 'chapter-unavailable' : ''}`}
-                          title={available ? chapter.code : `${chapter.code} (No questions in database)`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isChapterSelected('physics', chapter.code)}
-                            onChange={() => handleChapterToggle('physics', chapter)}
-                            disabled={!available}
-                          />
-                          <span className="chapter-code">{chapter.code}</span>
-                          <span className="chapter-name">{chapter.name}</span>
-                        </label>
-                      );
-                    }
-                  )
-                )}
-              </div>
+        <div className="mb-8">
+          <h3 className="text-lg font-semibold text-text-main dark:text-white mb-4 border-b pb-2 border-border-light dark:border-border-dark">Test Details</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="form-group">
+              <label htmlFor="code" className="block text-sm font-medium text-text-secondary mb-1">Test Code *</label>
+              <input id="code" type="text" value={code} onChange={(e) => setCode(e.target.value)} placeholder="e.g., JEE-2024-01" required className="w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-background-light dark:bg-background-dark" />
             </div>
-
-            {/* Section 2: Chemistry */}
-            <div className="chapter-group">
-              <h4>Section 2: Chemistry ({chemistryChapters.length} selected)</h4>
-              <input
-                type="text"
-                className="chapter-search"
-                placeholder="Search chapters..."
-                value={chemistrySearch}
-                onChange={(e) => setChemistrySearch(e.target.value)}
-              />
-              <div className="chapter-list">
-                {chaptersLoading ? (
-                  <div className="loading-chapters">Loading chapters from database...</div>
-                ) : (
-                  getFilteredChapters(chaptersData.Chemistry, chemistrySearch).map(
-                    (chapter) => {
-                      const available = isChapterAvailable(chapter.code);
-                      return (
-                        <label
-                          key={chapter.code}
-                          className={`checkbox-label ${!available ? 'chapter-unavailable' : ''}`}
-                          title={available ? chapter.code : `${chapter.code} (No questions in database)`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isChapterSelected('chemistry', chapter.code)}
-                            onChange={() => handleChapterToggle('chemistry', chapter)}
-                            disabled={!available}
-                          />
-                          <span className="chapter-code">{chapter.code}</span>
-                          <span className="chapter-name">{chapter.name}</span>
-                        </label>
-                      );
-                    }
-                  )
-                )}
-              </div>
+            <div className="form-group">
+              <label htmlFor="testType" className="block text-sm font-medium text-text-secondary mb-1">Test Type *</label>
+              <select id="testType" value={testType} onChange={(e) => setTestType(e.target.value as TestType)} className="w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-background-light dark:bg-background-dark">
+                <option value="Full">Full Test</option>
+                <option value="Part">Part Test</option>
+              </select>
             </div>
-
-            {/* Section 3: Mathematics */}
-            <div className="chapter-group">
-              <h4>Section 3: Mathematics ({mathChapters.length} selected)</h4>
-              <input
-                type="text"
-                className="chapter-search"
-                placeholder="Search chapters..."
-                value={mathSearch}
-                onChange={(e) => setMathSearch(e.target.value)}
-              />
-              <div className="chapter-list">
-                {chaptersLoading ? (
-                  <div className="loading-chapters">Loading chapters from database...</div>
-                ) : (
-                  getFilteredChapters(chaptersData.Mathematics, mathSearch).map(
-                    (chapter) => {
-                      const available = isChapterAvailable(chapter.code);
-                      return (
-                        <label
-                          key={chapter.code}
-                          className={`checkbox-label ${!available ? 'chapter-unavailable' : ''}`}
-                          title={available ? chapter.code : `${chapter.code} (No questions in database)`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isChapterSelected('math', chapter.code)}
-                            onChange={() => handleChapterToggle('math', chapter)}
-                            disabled={!available}
-                          />
-                          <span className="chapter-code">{chapter.code}</span>
-                          <span className="chapter-name">{chapter.name}</span>
-                        </label>
-                      );
-                    }
-                  )
-                )}
-              </div>
+            <div className="form-group md:col-span-2">
+              <label htmlFor="description" className="block text-sm font-medium text-text-secondary mb-1">Description *</label>
+              <textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Brief description of the test" rows={3} required className="w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-background-light dark:bg-background-dark" />
             </div>
           </div>
         </div>
 
-        <div className="form-actions">
-          <button
-            type="submit"
-            className="btn-primary"
-            disabled={!isFormValid()}
-          >
+        <div>
+          <h3 className="text-lg font-semibold text-text-main dark:text-white mb-4 border-b pb-2 border-border-light dark:border-border-dark">Select Chapters for Each Section</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[
+              { title: 'Physics', chapters: chaptersData.Physics, selected: physicsChapters, search: physicsSearch, setSearch: setPhysicsSearch, section: 'physics' },
+              { title: 'Chemistry', chapters: chaptersData.Chemistry, selected: chemistryChapters, search: chemistrySearch, setSearch: setChemistrySearch, section: 'chemistry' },
+              { title: 'Mathematics', chapters: chaptersData.Mathematics, selected: mathChapters, search: mathSearch, setSearch: setMathSearch, section: 'math' },
+            ].map(({ title, chapters, selected, search, setSearch, section }) => (
+              <div key={section} className="bg-background-light dark:bg-background-dark p-4 rounded-lg border border-border-light dark:border-border-dark">
+                <h4 className="font-semibold mb-2 text-text-main dark:text-white">{title} ({selected.length} selected)</h4>
+                <input type="text" placeholder="Search chapters..." value={search} onChange={(e) => setSearch(e.target.value)} className="w-full px-2 py-1.5 mb-2 border border-border-light dark:border-border-dark rounded-md bg-surface-light dark:bg-surface-dark" />
+                <div className="h-64 overflow-y-auto border border-border-light dark:border-border-dark rounded-md">
+                  {chaptersLoading ? <div className="p-4 text-center text-text-secondary">Loading...</div> :
+                    getFilteredChapters(chapters, search).map((chapter) => {
+                      const available = isChapterAvailable(chapter.code);
+                      return (
+                        <label key={chapter.code} className={`flex items-center gap-3 p-2 border-b border-border-light dark:border-border-dark last:border-b-0 ${available ? 'cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700' : 'opacity-50 cursor-not-allowed'}`} title={available ? chapter.name : `${chapter.name} (No questions in database)`}>
+                          <input type="checkbox" checked={isChapterSelected(section as any, chapter.code)} onChange={() => handleChapterToggle(section as any, chapter)} disabled={!available} className="h-4 w-4 rounded text-primary focus:ring-primary" />
+                          <span className="text-xs font-mono bg-primary/10 text-primary px-1.5 py-0.5 rounded">{chapter.code}</span>
+                          <span className="text-sm text-text-main dark:text-white truncate">{chapter.name}</span>
+                        </label>
+                      );
+                    })
+                  }
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-8 pt-6 border-t border-border-light dark:border-border-dark flex justify-end">
+          <button type="submit" disabled={!isFormValid()} className="bg-primary text-white px-6 py-2 rounded-lg font-semibold flex items-center gap-2 hover:bg-primary/90 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors">
             Continue to Section Configuration
           </button>
         </div>

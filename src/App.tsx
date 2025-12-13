@@ -26,7 +26,6 @@ import TestNavigation from './components/TestNavigation';
 import AddQuestionModal from './components/AddQuestionModal';
 import Notification, { useNotification } from './components/Notification';
 import TitleBar from './components/TitleBar';
-import './styles/App.css';
 
 // In-memory project data
 interface ProjectData {
@@ -326,14 +325,6 @@ function App() {
   const handleDeleteProject = async (projectId: string) => {
     if (!window.electronAPI) return;
 
-    // const project = projects.find(p => p.id === projectId);
-    // if (project) {
-    //   const confirmed = confirm(
-    //     `Permanently delete project "${project.testCode}"?\n\nThis cannot be undone!`
-    //   );
-    //   if (!confirmed) return;
-    // }
-
     // Remove from open tabs
     setOpenProjectIds(prev => prev.filter(id => id !== projectId));
 
@@ -365,10 +356,7 @@ function App() {
   const handleDatabaseSelect = async () => {
     if (!window.electronAPI) return;
 
-    // Warn about existing projects
     if (projects.length > 0) {
-      // Proceed without native confirmation for now to satisfy UI requirements
-      // Delete all projects
       await window.electronAPI.config.deleteAllProjects();
       setProjects([]);
       setOpenProjectIds([]);
@@ -387,12 +375,10 @@ function App() {
     }
   };
 
-  // Handle database dropdown toggle
   const toggleDbDropdown = () => {
     setShowDbDropdown(!showDbDropdown);
   };
 
-  // Get filename from path
   const getDbFileName = (path: string | null): string => {
     if (!path) return 'Unknown';
     const parts = path.split(/[/\\]/);
@@ -400,10 +386,8 @@ function App() {
   };
 
   const handleTestCreation = async (metadata: TestMetadata, chapters: Chapter[][]) => {
-    // Create project ID based on test code
     let projectId = metadata.code.replace(/[^a-zA-Z0-9]/g, '-');
 
-    // Check if project already exists
     if (window.electronAPI) {
       const exists = await window.electronAPI.project.exists(projectId);
       if (exists) {
@@ -413,7 +397,6 @@ function App() {
       }
     }
 
-    // Initialize sections
     const sectionNames: SectionName[] = ['Physics', 'Chemistry', 'Mathematics'];
     const initialSections: SectionConfig[] = sectionNames.map((name, idx) => ({
       name,
@@ -425,7 +408,6 @@ function App() {
 
     const now = new Date().toISOString();
 
-    // Create new project in memory
     setProjectsData(prev => ({
       ...prev,
       [projectId]: {
@@ -438,10 +420,7 @@ function App() {
       }
     }));
 
-    // Add to open tabs
     setOpenProjectIds(prev => [...prev, projectId]);
-
-    // Switch to new project
     setCurrentProjectId(projectId);
     setIsCreatingNew(false);
   };
@@ -459,7 +438,6 @@ function App() {
       betaConstraint: beta
     };
 
-    // Move to question selection for this section
     const stepMap: { [key: number]: WorkflowStep } = {
       0: 'question-select-physics',
       1: 'question-select-chemistry',
@@ -472,7 +450,6 @@ function App() {
     });
   };
 
-  // Immediate sync of question selections (saves on every change, not just on "Continue")
   const handleSelectionChange = useCallback((selectedQuestions: SelectedQuestion[]) => {
     if (!currentProjectId) return;
 
@@ -506,7 +483,6 @@ function App() {
       selectedQuestions
     };
 
-    // Move to next section or review
     if (currentSectionIndex < 2) {
       const newIndex = currentSectionIndex + 1;
       const stepMap: { [key: number]: WorkflowStep } = {
@@ -556,7 +532,6 @@ function App() {
   const handleExportTest = async () => {
     if (!testMetadata) return;
 
-    // Create a copy of sections with sorted questions
     const sortedSections = sections.map(section => ({
       ...section,
       selectedQuestions: sortQuestionsForSection(section.selectedQuestions)
@@ -570,7 +545,6 @@ function App() {
     if (window.electronAPI) {
       const result = await window.electronAPI.test.export(test);
       if (result.success) {
-        // Stay on the current screen (Test Review) instead of redirecting to 'complete'
         updateCurrentProject({ currentStep: 'complete' });
         addNotification('success', 'Test exported successfully!');
       } else {
@@ -586,15 +560,11 @@ function App() {
   const handleQuestionUpdate = useCallback((updatedQuestion: any) => {
     if (!currentProjectId) return;
 
-    // We need to update the question in the sections state
     const updatedSections = sections.map(section => ({
       ...section,
       selectedQuestions: section.selectedQuestions.map(sq => {
         if (sq.question.uuid === updatedQuestion.uuid) {
-          return {
-            ...sq,
-            question: updatedQuestion
-          };
+          return { ...sq, question: updatedQuestion };
         }
         return sq;
       })
@@ -617,15 +587,11 @@ function App() {
   const handleQuestionStatusUpdate = useCallback((questionUuid: string, status: 'accepted' | 'review' | 'pending') => {
     if (!currentProjectId) return;
 
-    // We need to update the status in the sections state
     const updatedSections = sections.map(section => ({
       ...section,
       selectedQuestions: section.selectedQuestions.map(sq => {
         if (sq.question.uuid === questionUuid) {
-          return {
-            ...sq,
-            status: status
-          };
+          return { ...sq, status: status };
         }
         return sq;
       })
@@ -641,9 +607,19 @@ function App() {
     updateCurrentProject({ currentStep: 'edit-question' });
   };
 
+  const handleCloneQuestion = (question: Question) => {
+    const clonedQuestion = {
+      ...question,
+      uuid: crypto.randomUUID(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      frequency: 0,
+    };
+    handleStartEditing(clonedQuestion);
+  };
+
   const handleFinishEditing = (updatedQuestion: Question | null, updatedSolution?: Solution) => {
     if (!updatedQuestion) {
-      // Cancelled
       if (previousStep) {
         updateCurrentProject({ currentStep: previousStep });
       }
@@ -651,10 +627,8 @@ function App() {
       return;
     }
 
-    // Save the changes
     handleQuestionUpdate(updatedQuestion);
 
-    // Also save solution
     if (updatedSolution && window.electronAPI) {
         window.electronAPI.questions.saveSolution(
             updatedSolution.uuid,
@@ -663,16 +637,13 @@ function App() {
         );
     }
 
-
     if (previousStep) {
       updateCurrentProject({ currentStep: previousStep });
     }
     setEditingQuestion(null);
   };
 
-  // Render different steps
   const renderStep = () => {
-    // Show navigation for selection and review steps
     const showNavigation = [
       'question-select-physics',
       'question-select-chemistry',
@@ -684,13 +655,11 @@ function App() {
       switch (step) {
       case 'database-connect':
         return (
-          <div className="connect-screen animate-fade-in">
-            <div style={{ marginBottom: '1.5rem' }}>
-              <span className="material-symbols-outlined" style={{ fontSize: '4rem', color: 'var(--primary)' }}>database</span>
-            </div>
-            <h1>Test Generation System</h1>
-            <p>Please connect to a question database to begin.</p>
-            <button className="btn-primary" onClick={handleDatabaseSelect}>
+          <div className="flex flex-col items-center justify-center h-full text-center">
+            <span className="material-symbols-outlined text-6xl text-primary mb-6">database</span>
+            <h1 className="text-2xl font-bold mb-2">Test Generation System</h1>
+            <p className="text-text-secondary mb-8">Please connect to a question database to begin.</p>
+            <button className="bg-primary text-white px-6 py-3 rounded-lg font-semibold flex items-center gap-2 hover:bg-primary/90 transition-colors" onClick={handleDatabaseSelect}>
               <span className="material-symbols-outlined">folder_open</span>
               Select Database File
             </button>
@@ -699,87 +668,42 @@ function App() {
 
       case 'dashboard':
         return (
-          <div className="dashboard animate-fade-in">
-            <div className="dashboard-header" style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '1.5rem'
-            }}>
-              <h2>Your Projects</h2>
-              <button className="btn-primary" onClick={createNewProject}>
+          <div className="max-w-6xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-3xl font-bold text-text-main dark:text-white">Your Projects</h2>
+              <button className="bg-primary text-white px-4 py-2 rounded-lg font-semibold flex items-center gap-2 hover:bg-primary/90 transition-colors" onClick={createNewProject}>
                 <span className="material-symbols-outlined">add</span>
                 Create New Project
               </button>
             </div>
-            <div className="project-list-container" style={{
-              backgroundColor: 'var(--bg-card)',
-              borderRadius: '8px',
-              border: '1px solid var(--border-color)',
-              overflow: 'hidden'
-            }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead style={{
-                  backgroundColor: 'var(--bg-main)',
-                  borderBottom: '1px solid var(--border-color)'
-                }}>
+            <div className="bg-surface-light dark:bg-surface-dark rounded-lg border border-border-light dark:border-border-dark overflow-hidden">
+              <table className="min-w-full divide-y divide-border-light dark:divide-border-dark">
+                <thead className="bg-background-light dark:bg-background-dark">
                   <tr>
-                    <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 600 }}>Name</th>
-                    <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 600 }}>Description</th>
-                    <th style={{ padding: '1rem', textAlign: 'left', fontWeight: 600 }}>Date Modified</th>
-                    <th style={{ padding: '1rem', textAlign: 'right', fontWeight: 600 }}>Actions</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Name</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Description</th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-text-secondary uppercase tracking-wider">Date Modified</th>
+                    <th scope="col" className="relative px-6 py-3"><span className="sr-only">Actions</span></th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="bg-surface-light dark:bg-surface-dark divide-y divide-border-light dark:divide-border-dark">
                   {projects.length === 0 ? (
                     <tr>
-                      <td colSpan={4} style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                      <td colSpan={4} className="px-6 py-12 text-center text-sm text-text-secondary">
                         No projects found. Create a new one to get started.
                       </td>
                     </tr>
                   ) : (
                     projects.map((project) => (
-                      <tr
-                        key={project.id}
-                        onClick={() => loadProject(project.id)}
-                        style={{
-                          borderBottom: '1px solid var(--border-color)',
-                          cursor: 'pointer',
-                          transition: 'background-color 0.2s'
-                        }}
-                        className="project-list-row"
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-main)'}
-                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                      >
-                        <td style={{ padding: '1rem' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                            <span className="material-symbols-outlined" style={{ color: 'var(--primary)' }}>folder</span>
-                            <span style={{ fontWeight: 500 }}>{project.testCode}</span>
-                          </div>
-                        </td>
-                        <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>
-                          {project.description || 'No description'}
-                        </td>
-                        <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}>
-                          {new Date(project.lastModified).toLocaleString()}
-                        </td>
-                        <td style={{ padding: '1rem', textAlign: 'right' }}>
+                      <tr key={project.id} onClick={() => loadProject(project.id)} className="hover:bg-background-light dark:hover:bg-background-dark cursor-pointer group">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-text-main dark:text-white">{project.testCode}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-text-secondary">{project.description || 'No description'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-text-secondary">{new Date(project.lastModified).toLocaleString()}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                           <button
-                            className="project-delete-btn"
-                            style={{
-                              background: 'transparent',
-                              border: 'none',
-                              color: 'var(--text-secondary)',
-                              cursor: 'pointer',
-                              padding: '0.25rem'
-                            }}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteProject(project.id);
-                            }}
+                            className="text-red-600 hover:text-red-900 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={(e) => { e.stopPropagation(); handleDeleteProject(project.id); }}
                             title="Delete project permanently"
-                            onMouseEnter={(e) => e.currentTarget.style.color = 'var(--danger)'}
-                            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-secondary)'}
                           >
                             <span className="material-symbols-outlined">delete</span>
                           </button>
@@ -794,11 +718,7 @@ function App() {
         );
 
       case 'test-creation':
-        return (
-          <TestCreationForm
-            onSubmit={handleTestCreation}
-          />
-        );
+        return <TestCreationForm onSubmit={handleTestCreation} />;
 
       case 'section-config-physics':
       case 'section-config-chemistry':
@@ -818,7 +738,6 @@ function App() {
       case 'question-select-math':
         const currentSection = sections[currentSectionIndex];
         if (!currentSection) return <div>Loading...</div>;
-
         return (
           <QuestionSelection
             key={`${currentProjectId}-${currentSectionIndex}`}
@@ -829,6 +748,7 @@ function App() {
             onComplete={handleQuestionSelection}
             onBack={handleBackFromSelection}
             onStartEditing={handleStartEditing}
+            onClone={handleCloneQuestion}
             initialSelectedQuestions={currentSection.selectedQuestions}
             onChange={handleSelectionChange}
           />
@@ -860,24 +780,16 @@ function App() {
 
       case 'complete':
         return (
-          <div className="complete-screen">
-            <div style={{ marginBottom: '1.5rem' }}>
-              <span className="material-symbols-outlined" style={{ fontSize: '4rem', color: 'var(--success)' }}>check_circle</span>
-            </div>
-            <h2>Test Generated Successfully!</h2>
-            <p>Your test has been exported as a JSON file.</p>
-            <div style={{ display: 'flex', gap: '1rem' }}>
-              <button
-                className="btn-secondary"
-                onClick={() => updateCurrentProject({ currentStep: 'test-review' })}
-              >
+          <div className="flex flex-col items-center justify-center h-full text-center">
+            <span className="material-symbols-outlined text-6xl text-green-500 mb-6">check_circle</span>
+            <h2 className="text-2xl font-bold mb-2">Test Generated Successfully!</h2>
+            <p className="text-text-secondary mb-8">Your test has been exported as a JSON file.</p>
+            <div className="flex gap-4">
+              <button className="bg-gray-200 text-gray-800 px-6 py-3 rounded-lg font-semibold flex items-center gap-2 hover:bg-gray-300 transition-colors" onClick={() => updateCurrentProject({ currentStep: 'test-review' })}>
                 <span className="material-symbols-outlined">arrow_back</span>
                 Back to Review
               </button>
-              <button
-                className="btn-primary"
-                onClick={createNewProject}
-              >
+              <button className="bg-primary text-white px-6 py-3 rounded-lg font-semibold flex items-center gap-2 hover:bg-primary/90 transition-colors" onClick={createNewProject}>
                 <span className="material-symbols-outlined">add</span>
                 Create Another Test
               </button>
@@ -904,7 +816,6 @@ function App() {
     );
   };
 
-  // Get open projects info for tabs
   const openProjects = openProjectIds
     .map(id => projects.find(p => p.id === id) || {
       id,
@@ -916,82 +827,64 @@ function App() {
     })
     .filter(Boolean) as ProjectInfo[];
 
-  // Check if we are in a question selection step to adjust layout
   const isSelectionStep = [
     'question-select-physics',
     'question-select-chemistry',
     'question-select-math'
   ].includes(step);
 
+  const saveStatusClasses = {
+    saved: 'bg-green-100 text-green-700',
+    saving: 'bg-yellow-100 text-yellow-700 animate-pulse',
+    unsaved: 'bg-red-100 text-red-700',
+  };
+
   return (
-    <div className="app">
+    <div className="flex flex-col h-screen bg-background-light dark:bg-background-dark text-text-main dark:text-white">
       <TitleBar />
       <Notification notifications={notifications} removeNotification={removeNotification} />
-      <div className="app-header">
-        <div className="header-left">
-          <img src="https://drive.google.com/thumbnail?id=1yLtX3YxubbDBsKYDj82qiaGbSkSX7aLv&sz=w1000" alt="Logo" className="header-logo" onClick={goToDashboard} />
-          <h1 onClick={goToDashboard}>Test Generation System</h1>
+      <header className="flex items-center justify-between px-6 py-3 border-b border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark">
+        <div className="flex items-center gap-4">
+          <img src="https://drive.google.com/thumbnail?id=1yLtX3YxubbDBsKYDj82qiaGbSkSX7aLv&sz=w1000" alt="Logo" className="h-6 w-6 cursor-pointer" onClick={goToDashboard} />
+          <h1 className="text-lg font-bold cursor-pointer" onClick={goToDashboard}>Test Generation System</h1>
         </div>
-        <div className="header-right">
-          <button
-            className="theme-toggle-btn"
-            onClick={() => setIsAddQuestionModalOpen(true)}
-            title="Add New Question"
-            style={{ marginRight: '0.5rem' }}
-          >
+        <div className="flex items-center gap-4">
+          <button onClick={() => setIsAddQuestionModalOpen(true)} title="Add New Question" className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
             <span className="material-symbols-outlined">add_circle</span>
           </button>
-          <button
-            className="theme-toggle-btn"
-            onClick={toggleDarkMode}
-            title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
-          >
-            <span className="material-symbols-outlined">
-              {darkMode ? 'light_mode' : 'dark_mode'}
-            </span>
+          <button onClick={toggleDarkMode} title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
+            <span className="material-symbols-outlined">{darkMode ? 'light_mode' : 'dark_mode'}</span>
           </button>
           {currentProjectId && (
-            <div className={`save-status ${saveStatus}`}>
-              <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>
-                {saveStatus === 'saving' ? 'sync' : saveStatus === 'saved' ? 'check_circle' : 'pending'}
-              </span>
-              {saveStatus === 'saving' && 'Saving...'}
-              {saveStatus === 'saved' && 'Saved'}
-              {saveStatus === 'unsaved' && 'Unsaved'}
+            <div className={`text-xs px-3 py-1 rounded-full font-medium flex items-center gap-1.5 ${saveStatusClasses[saveStatus]}`}>
+              <span className="material-symbols-outlined text-sm">{saveStatus === 'saving' ? 'sync' : saveStatus === 'saved' ? 'check_circle' : 'pending'}</span>
+              {saveStatus.charAt(0).toUpperCase() + saveStatus.slice(1)}
             </div>
           )}
-          <div className="db-status-container">
-            <div
-              className={`db-status ${dbConnected ? 'connected' : 'disconnected'}`}
-              onClick={toggleDbDropdown}
-            >
-              <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>database</span>
+          <div className="relative">
+            <div onClick={toggleDbDropdown} className={`flex items-center gap-1.5 text-xs px-3 py-1 rounded-full font-medium cursor-pointer ${dbConnected ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+              <span className="material-symbols-outlined text-sm">database</span>
               {dbConnected ? 'Connected' : 'Disconnected'}
-              <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>
-                {showDbDropdown ? 'expand_less' : 'expand_more'}
-              </span>
+              <span className="material-symbols-outlined text-sm">{showDbDropdown ? 'expand_less' : 'expand_more'}</span>
             </div>
             {showDbDropdown && (
-              <div className="db-dropdown">
-                <div className="db-dropdown-header">
-                  <span className="material-symbols-outlined">storage</span>
-                  Database Connection
-                </div>
+              <div className="absolute top-full right-0 mt-2 w-72 bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-lg shadow-lg z-50">
+                <div className="p-3 font-semibold border-b border-border-light dark:border-border-dark">Database Connection</div>
                 {dbConnected && dbPath && (
-                  <div className="db-dropdown-info">
-                    <div className="db-file-name">{getDbFileName(dbPath)}</div>
-                    <div className="db-file-path" title={dbPath}>{dbPath}</div>
+                  <div className="p-3 border-b border-border-light dark:border-border-dark">
+                    <div className="text-sm font-medium truncate">{getDbFileName(dbPath)}</div>
+                    <div className="text-xs text-text-secondary truncate">{dbPath}</div>
                   </div>
                 )}
-                <button className="db-dropdown-btn" onClick={handleDatabaseSelect}>
-                  <span className="material-symbols-outlined">folder_open</span>
+                <button className="w-full text-left p-3 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2" onClick={handleDatabaseSelect}>
+                  <span className="material-symbols-outlined text-sm">folder_open</span>
                   {dbConnected ? 'Change Database' : 'Select Database'}
                 </button>
               </div>
             )}
           </div>
         </div>
-      </div>
+      </header>
       {dbConnected && (
         <ProjectTabs
           projects={openProjects}
@@ -1002,9 +895,9 @@ function App() {
           onDashboard={goToDashboard}
         />
       )}
-      <div className={`app-content ${isSelectionStep ? 'app-content-full' : ''}`} key={currentProjectId || 'new'}>
+      <main className={`flex-1 overflow-y-auto ${isSelectionStep ? '' : 'p-4 sm:p-6 lg:p-8'}`} key={currentProjectId || 'new'}>
         {renderStep()}
-      </div>
+      </main>
       {isAddQuestionModalOpen && (
         <AddQuestionModal
           onClose={() => setIsAddQuestionModalOpen(false)}

@@ -54,296 +54,183 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
 
   const menuContent = (
     <div
-      className="filter-modal-overlay"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
       onClick={() => setIsOpen(false)}
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        width: '100vw',
-        height: '100vh',
-        background: 'rgba(0, 0, 0, 0.5)',
-        backdropFilter: 'blur(2px)',
-        zIndex: 9999,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
     >
       <div
-        className="filter-modal-content"
+        className="flex flex-col w-full max-w-md max-h-[85vh] overflow-hidden bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-xl shadow-lg"
         onClick={(e) => e.stopPropagation()}
-        style={{
-          width: '400px',
-          maxHeight: '85vh',
-          background: 'var(--bg-card)',
-          border: '1px solid var(--border-color)',
-          borderRadius: 'var(--radius-lg)',
-          boxShadow: 'var(--shadow-lg)',
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden' // Ensure header/footer stick if content scrolls
-        }}
       >
         {/* Header */}
-        <div className="filter-header" style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '1rem',
-            borderBottom: '1px solid var(--border-color)',
-            background: 'var(--bg-main)'
-        }}>
-          <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600 }}>Filters & Sorting</h3>
+        <div className="flex items-center justify-between p-4 border-b border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark">
+          <h3 className="text-lg font-bold">Filters & Sorting</h3>
           <button
             onClick={() => setIsOpen(false)}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              padding: '0.25rem',
-              color: 'var(--text-secondary)',
-              display: 'flex'
-            }}
+            className="p-1 rounded-full text-text-secondary hover:bg-black/5 dark:hover:bg-white/10"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>
 
         {/* Scrollable Content */}
-        <div className="filter-body" style={{
-            padding: '1.25rem',
-            overflowY: 'auto',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '1.25rem'
-        }}>
+        <div className="flex-1 p-5 overflow-y-auto space-y-6">
 
             {/* Sort Section */}
-            <div className="filter-group">
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>
-                Sort By
+            <div className="space-y-2">
+                <label className="block text-xs font-semibold uppercase text-text-secondary">
+                  Sort By
                 </label>
                 <select
-                value={currentFilters.sort}
-                onChange={(e) => onFilterChange({ sort: e.target.value })}
-                style={{
-                    width: '100%',
-                    padding: '0.5rem',
-                    borderRadius: 'var(--radius)',
-                    border: '1px solid var(--border-color)',
-                    background: 'var(--bg-main)',
-                    color: 'var(--text-primary)',
-                    fontSize: '0.9rem'
-                }}
+                  value={currentFilters.sort}
+                  onChange={(e) => onFilterChange({ sort: e.target.value })}
+                  className="w-full p-2 text-sm border rounded-md bg-surface-light dark:bg-surface-dark border-border-light dark:border-border-dark focus:ring-2 focus:ring-primary/20 focus:border-primary"
                 >
-                <option value="default">Default</option>
-                <option value="year_desc">Year (Newest First)</option>
-                <option value="year_asc">Year (Oldest First)</option>
-                <option value="freq_asc">Frequency (Low to High)</option>
-                <option value="freq_desc">Frequency (High to Low)</option>
+                  <option value="default">Default</option>
+                  <option value="year_desc">Year (Newest First)</option>
+                  <option value="year_asc">Year (Oldest First)</option>
+                  <option value="freq_asc">Frequency (Low to High)</option>
+                  <option value="freq_desc">Frequency (High to Low)</option>
                 </select>
             </div>
 
             {/* Difficulty Filter */}
-            <div className="filter-group">
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>
-                Difficulty
+            <div className="space-y-2">
+                <label className="block text-xs font-semibold uppercase text-text-secondary">
+                  Difficulty
                 </label>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                {['all', 'E', 'M', 'H'].map(opt => (
+                <div className="grid grid-cols-4 gap-2">
+                  {['all', 'E', 'M', 'H'].map(opt => (
                     <button
-                    key={opt}
-                    onClick={() => onFilterChange({ difficulty: opt })}
-                    style={{
-                        flex: 1,
-                        padding: '0.375rem',
-                        borderRadius: 'var(--radius)',
-                        border: '1px solid',
-                        borderColor: currentFilters.difficulty === opt ? 'var(--primary)' : 'var(--border-color)',
-                        background: currentFilters.difficulty === opt ? 'var(--primary-light)' : 'var(--bg-main)',
-                        color: currentFilters.difficulty === opt ? 'var(--primary)' : 'var(--text-primary)',
-                        cursor: 'pointer',
-                        fontSize: '0.85rem'
-                    }}
+                      key={opt}
+                      onClick={() => onFilterChange({ difficulty: opt })}
+                      className={`px-3 py-1.5 text-sm rounded-md border transition-colors ${
+                        currentFilters.difficulty === opt
+                          ? 'bg-primary/10 border-primary text-primary font-semibold'
+                          : 'bg-transparent border-border-light dark:border-border-dark hover:border-border-dark dark:hover:border-border-light'
+                      }`}
                     >
-                    {opt === 'all' ? 'All' : opt === 'E' ? 'Easy' : opt === 'M' ? 'Medium' : 'Hard'}
+                      {opt === 'all' ? 'All' : opt === 'E' ? 'Easy' : opt === 'M' ? 'Medium' : 'Hard'}
                     </button>
-                ))}
+                  ))}
                 </div>
             </div>
 
             {/* Division Filter */}
-            <div className="filter-group">
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>
-                Division
+            <div className="space-y-2">
+                <label className="block text-xs font-semibold uppercase text-text-secondary">
+                  Division
                 </label>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                {[
-                    { val: 'all', label: 'All' },
-                    { val: '1', label: 'Div 1 (MCQ)' },
-                    { val: '2', label: 'Div 2 (Num)' }
-                ].map(opt => (
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                      { val: 'all', label: 'All' },
+                      { val: '1', label: 'Div 1 (MCQ)' },
+                      { val: '2', label: 'Div 2 (Num)' }
+                  ].map(opt => (
                     <button
-                    key={opt.val}
-                    onClick={() => onFilterChange({ division: opt.val })}
-                    style={{
-                        flex: 1,
-                        padding: '0.375rem',
-                        borderRadius: 'var(--radius)',
-                        border: '1px solid',
-                        borderColor: currentFilters.division === opt.val ? 'var(--primary)' : 'var(--border-color)',
-                        background: currentFilters.division === opt.val ? 'var(--primary-light)' : 'var(--bg-main)',
-                        color: currentFilters.division === opt.val ? 'var(--primary)' : 'var(--text-primary)',
-                        cursor: 'pointer',
-                        fontSize: '0.85rem'
-                    }}
+                      key={opt.val}
+                      onClick={() => onFilterChange({ division: opt.val })}
+                      className={`px-3 py-1.5 text-sm rounded-md border transition-colors ${
+                        currentFilters.division === opt.val
+                          ? 'bg-primary/10 border-primary text-primary font-semibold'
+                          : 'bg-transparent border-border-light dark:border-border-dark hover:border-border-dark dark:hover:border-border-light'
+                      }`}
                     >
-                    {opt.label}
+                      {opt.label}
                     </button>
-                ))}
+                  ))}
                 </div>
             </div>
 
             {/* Type Filter */}
-            <div className="filter-group">
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>
-                Type
+            <div className="space-y-2">
+                <label className="block text-xs font-semibold uppercase text-text-secondary">
+                  Type
                 </label>
                 <select
-                value={currentFilters.type}
-                onChange={(e) => onFilterChange({ type: e.target.value })}
-                style={{
-                    width: '100%',
-                    padding: '0.5rem',
-                    borderRadius: 'var(--radius)',
-                    border: '1px solid var(--border-color)',
-                    background: 'var(--bg-main)',
-                    color: 'var(--text-primary)',
-                    fontSize: '0.9rem'
-                }}
+                  value={currentFilters.type}
+                  onChange={(e) => onFilterChange({ type: e.target.value })}
+                  className="w-full p-2 text-sm border rounded-md bg-surface-light dark:bg-surface-dark border-border-light dark:border-border-dark focus:ring-2 focus:ring-primary/20 focus:border-primary"
                 >
-                <option value="all">All Types</option>
-                {availableTypes.map(type => (
-                    <option key={type} value={type}>{type}</option>
-                ))}
+                  <option value="all">All Types</option>
+                  {availableTypes.map(type => (
+                      <option key={type} value={type}>{type}</option>
+                  ))}
                 </select>
             </div>
 
             {/* Year Filter */}
-            <div className="filter-group">
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>
-                Year
+            <div className="space-y-2">
+                <label className="block text-xs font-semibold uppercase text-text-secondary">
+                  Year
                 </label>
                 <select
-                value={currentFilters.year}
-                onChange={(e) => onFilterChange({ year: e.target.value })}
-                style={{
-                    width: '100%',
-                    padding: '0.5rem',
-                    borderRadius: 'var(--radius)',
-                    border: '1px solid var(--border-color)',
-                    background: 'var(--bg-main)',
-                    color: 'var(--text-primary)',
-                    fontSize: '0.9rem'
-                }}
+                  value={currentFilters.year}
+                  onChange={(e) => onFilterChange({ year: e.target.value })}
+                  className="w-full p-2 text-sm border rounded-md bg-surface-light dark:bg-surface-dark border-border-light dark:border-border-dark focus:ring-2 focus:ring-primary/20 focus:border-primary"
                 >
-                <option value="all">All Years</option>
-                {availableYears.map(year => (
-                    <option key={year} value={year}>{year}</option>
-                ))}
+                  <option value="all">All Years</option>
+                  {availableYears.map(year => (
+                      <option key={year} value={year}>{year}</option>
+                  ))}
                 </select>
             </div>
 
             {/* Chapter Filter */}
-            <div className="filter-group">
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>
-                Chapter
+            <div className="space-y-2">
+                <label className="block text-xs font-semibold uppercase text-text-secondary">
+                  Chapter
                 </label>
                 <select
-                value={currentFilters.chapter}
-                onChange={(e) => onFilterChange({ chapter: e.target.value })}
-                style={{
-                    width: '100%',
-                    padding: '0.5rem',
-                    borderRadius: 'var(--radius)',
-                    border: '1px solid var(--border-color)',
-                    background: 'var(--bg-main)',
-                    color: 'var(--text-primary)',
-                    fontSize: '0.9rem'
-                }}
+                  value={currentFilters.chapter}
+                  onChange={(e) => onFilterChange({ chapter: e.target.value })}
+                  className="w-full p-2 text-sm border rounded-md bg-surface-light dark:bg-surface-dark border-border-light dark:border-border-dark focus:ring-2 focus:ring-primary/20 focus:border-primary"
                 >
-                <option value="all">All Chapters</option>
-                {chapters.map(ch => (
-                    <option key={ch.code} value={ch.code}>
-                    {ch.code} - {ch.name}
-                    </option>
-                ))}
+                  <option value="all">All Chapters</option>
+                  {chapters.map(ch => (
+                      <option key={ch.code} value={ch.code}>
+                      {ch.code} - {ch.name}
+                      </option>
+                  ))}
                 </select>
             </div>
 
             {/* Tags Filter */}
-            <div className="filter-group">
-                <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>
-                Additional Tags
+            <div className="space-y-2">
+                <label className="block text-xs font-semibold uppercase text-text-secondary">
+                  Additional Tags
                 </label>
-                <div style={{ display: 'flex', gap: '0.75rem', flexDirection: 'column' }}>
+                <div className="space-y-3">
                     <input
                         type="text"
                         placeholder="Tag 1 (e.g. Topic)"
                         value={currentFilters.tag1}
                         onChange={(e) => onFilterChange({ tag1: e.target.value })}
-                        style={{
-                            width: '100%',
-                            padding: '0.5rem',
-                            borderRadius: 'var(--radius)',
-                            border: '1px solid var(--border-color)',
-                            background: 'var(--bg-main)',
-                            color: 'var(--text-primary)',
-                            fontSize: '0.9rem'
-                        }}
+                        className="w-full p-2 text-sm border rounded-md bg-surface-light dark:bg-surface-dark border-border-light dark:border-border-dark focus:ring-2 focus:ring-primary/20 focus:border-primary"
                     />
                     <input
                         type="text"
                         placeholder="Tag 4 (e.g. Sub-topic)"
                         value={currentFilters.tag4}
                         onChange={(e) => onFilterChange({ tag4: e.target.value })}
-                        style={{
-                            width: '100%',
-                            padding: '0.5rem',
-                            borderRadius: 'var(--radius)',
-                            border: '1px solid var(--border-color)',
-                            background: 'var(--bg-main)',
-                            color: 'var(--text-primary)',
-                            fontSize: '0.9rem'
-                        }}
+                        className="w-full p-2 text-sm border rounded-md bg-surface-light dark:bg-surface-dark border-border-light dark:border-border-dark focus:ring-2 focus:ring-primary/20 focus:border-primary"
                     />
                 </div>
             </div>
         </div>
 
         {/* Footer */}
-        <div className="filter-footer" style={{
-            padding: '1rem',
-            borderTop: '1px solid var(--border-color)',
-            background: 'var(--bg-main)',
-            display: 'flex',
-            justifyContent: 'flex-end',
-            gap: '0.75rem'
-        }}>
+        <div className="flex items-center justify-end gap-3 p-4 border-t border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark">
              {activeFilterCount > 0 && (
                 <button
                     onClick={resetFilters}
-                    className="btn-secondary"
-                    style={{ fontSize: '0.9rem', padding: '0.5rem 1rem' }}
+                    className="px-4 py-2 text-sm font-semibold transition-colors border rounded-md text-text-secondary border-border-light dark:border-border-dark hover:bg-black/5 dark:hover:bg-white/5"
                 >
                     Clear All
                 </button>
             )}
             <button
-                className="btn-primary"
+                className="px-6 py-2 text-sm font-bold text-white transition-all bg-primary rounded-md shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 hover:bg-primary/90"
                 onClick={() => setIsOpen(false)}
-                style={{ fontSize: '0.9rem', padding: '0.5rem 1.5rem' }}
             >
                 Done
             </button>
@@ -353,36 +240,19 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
   );
 
   return (
-    <div className="filter-menu-container">
+    <div>
       <button
-        className={`btn-secondary ${activeFilterCount > 0 ? 'active' : ''}`}
+        className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold transition-colors border rounded-lg ${
+          activeFilterCount > 0
+            ? 'bg-primary/10 border-primary/50 text-primary'
+            : 'bg-surface-light dark:bg-surface-dark border-border-light dark:border-border-dark hover:border-border-dark dark:hover:border-border-light'
+        }`}
         onClick={() => setIsOpen(true)}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.5rem',
-          padding: '0.625rem 1rem',
-          margin: 0,
-          background: activeFilterCount > 0 ? 'var(--primary-light)' : 'var(--bg-card)',
-          borderColor: activeFilterCount > 0 ? 'var(--primary)' : 'var(--border-color)',
-          color: activeFilterCount > 0 ? 'var(--primary)' : 'var(--text-primary)'
-        }}
       >
-        <span className="material-symbols-outlined">filter_list</span>
+        <span className="material-symbols-outlined text-base">filter_list</span>
         Filter / Sort
         {activeFilterCount > 0 && (
-          <span style={{
-            background: 'var(--primary)',
-            color: 'white',
-            borderRadius: '50%',
-            width: '20px',
-            height: '20px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '0.75rem',
-            fontWeight: 'bold'
-          }}>
+          <span className="flex items-center justify-center text-xs font-bold text-white rounded-full size-5 bg-primary">
             {activeFilterCount}
           </span>
         )}

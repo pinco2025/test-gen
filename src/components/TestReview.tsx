@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { SectionConfig, Question, SelectedQuestion } from '../types';
 import { sortQuestionsForSection } from '../utils/sorting';
 import QuestionDisplay from './QuestionDisplay';
-import '../styles/TestReview.css';
 
 interface TestReviewProps {
   sections: SectionConfig[];
@@ -22,11 +21,6 @@ const TestReview: React.FC<TestReviewProps> = ({
   onUpdateQuestionStatus
 }) => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-  // Palette is always visible, no toggling state needed for sidebar
-
-  // All editing state and modals are removed in favor of the global QuestionEditor
-
-  // Acceptance Checklist Modal State
   const [isAcceptModalOpen, setIsAcceptModalOpen] = useState(false);
   const [checklist, setChecklist] = useState({
     questionContent: false,
@@ -37,61 +31,41 @@ const TestReview: React.FC<TestReviewProps> = ({
     solutionExistence: false,
     solutionFormatting: false
   });
-
-  // Store fresh questions from DB
   const [freshQuestionsMap, setFreshQuestionsMap] = useState<Record<string, Question>>({});
 
-  // Fetch fresh question data on mount
   useEffect(() => {
     const fetchFreshData = async () => {
       if (!window.electronAPI) return;
-
       const allUuids = sections.flatMap(s => s.selectedQuestions.map(sq => sq.question.uuid));
       if (allUuids.length === 0) return;
-
       try {
         const freshQuestions = await window.electronAPI.questions.getByUUIDs(allUuids);
         const map: Record<string, Question> = {};
-        freshQuestions.forEach(q => {
-          map[q.uuid] = q;
-        });
+        freshQuestions.forEach(q => { map[q.uuid] = q; });
         setFreshQuestionsMap(map);
       } catch (error) {
         console.error('Failed to fetch fresh question data:', error);
       }
     };
-
     fetchFreshData();
   }, [sections]);
 
-  // Flatten questions with sorted order
   const allQuestions = useMemo(() => {
     const flat: Array<{ sq: SelectedQuestion; sectionIndex: number; absoluteIndex: number }> = [];
     let count = 0;
     sections.forEach((section, sIdx) => {
-      // Sort questions: First 20 Div 1, then Last 5 Div 2
       const sortedQuestions = sortQuestionsForSection(section.selectedQuestions);
-
       sortedQuestions.forEach((sq) => {
         count++;
-        // Use fresh question data if available
         const freshQuestion = freshQuestionsMap[sq.question.uuid] || sq.question;
-
-        flat.push({
-          sq: { ...sq, question: freshQuestion },
-          sectionIndex: sIdx,
-          absoluteIndex: count
-        });
+        flat.push({ sq: { ...sq, question: freshQuestion }, sectionIndex: sIdx, absoluteIndex: count });
       });
     });
     return flat;
   }, [sections, freshQuestionsMap]);
 
-  // Adjust index if out of bounds (e.g. after deletion)
   useEffect(() => {
-    if (allQuestions.length === 0) {
-      setCurrentQuestionIndex(0);
-    } else if (currentQuestionIndex >= allQuestions.length) {
+    if (currentQuestionIndex >= allQuestions.length) {
       setCurrentQuestionIndex(Math.max(0, allQuestions.length - 1));
     }
   }, [allQuestions.length, currentQuestionIndex]);
@@ -99,45 +73,24 @@ const TestReview: React.FC<TestReviewProps> = ({
   const currentItem = allQuestions[currentQuestionIndex];
   const currentQuestion = currentItem?.sq.question;
 
-  // Navigation
-  const handleNext = () => {
-    if (currentQuestionIndex < allQuestions.length - 1) {
-      setCurrentQuestionIndex(prev => prev + 1);
-    }
-  };
+  const handleNext = () => setCurrentQuestionIndex(prev => Math.min(prev + 1, allQuestions.length - 1));
+  const handlePrev = () => setCurrentQuestionIndex(prev => Math.max(prev - 1, 0));
+  const handleJumpToQuestion = (index: number) => setCurrentQuestionIndex(index);
 
-  const handlePrev = () => {
-    if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(prev => prev - 1);
-    }
-  };
-
-  const handleJumpToQuestion = (index: number) => {
-    setCurrentQuestionIndex(index);
-    // Palette is always visible, no need to close
-  };
-
-  // Status Actions
   const handleAcceptClick = () => {
-    // Open checklist modal
     setChecklist({
-        questionContent: false,
-        optionContent: false,
-        questionFormatting: false,
-        optionFormatting: false,
-        figureFormatting: false,
-        solutionExistence: false,
-        solutionFormatting: false
+      questionContent: false, optionContent: false, questionFormatting: false,
+      optionFormatting: false, figureFormatting: false, solutionExistence: false,
+      solutionFormatting: false
     });
     setIsAcceptModalOpen(true);
   };
 
   const confirmAccept = () => {
-      if (!currentQuestion) return;
-      onUpdateQuestionStatus(currentQuestion.uuid, 'accepted');
-      setIsAcceptModalOpen(false);
-      // Auto-advance
-      handleNext();
+    if (!currentQuestion) return;
+    onUpdateQuestionStatus(currentQuestion.uuid, 'accepted');
+    setIsAcceptModalOpen(false);
+    handleNext();
   };
 
   const handleMarkReview = () => {
@@ -147,258 +100,187 @@ const TestReview: React.FC<TestReviewProps> = ({
   };
 
   const handleReject = () => {
-    if (!currentQuestion) return;
-    // Remove from test
-    onRemoveQuestion(currentQuestion.uuid);
-    // Note: useEffect will handle index adjustment
+    if (currentQuestion) onRemoveQuestion(currentQuestion.uuid);
   };
 
-  // Export Check
   const canExport = useMemo(() => {
     if (allQuestions.length === 0) return false;
     return allQuestions.every(item => item.sq.status === 'accepted');
   }, [allQuestions]);
 
   const handleEditClick = () => {
-    if (currentQuestion) {
-      onStartEditing(currentQuestion);
-    }
+    if (currentQuestion) onStartEditing(currentQuestion);
+  };
+
+  const statusClasses = {
+    pending: 'bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200',
+    review: 'bg-yellow-200 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200',
+    accepted: 'bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-200',
+    current: 'ring-2 ring-primary ring-offset-2 ring-offset-background-light dark:ring-offset-background-dark'
   };
 
   return (
-    <div className="test-review-container">
+    <div className="flex flex-col h-screen bg-background-light dark:bg-background-dark text-text-main dark:text-text-dark">
       {/* Header */}
-      <div className="review-header">
-        <div className="header-left">
-          <button
-            className="btn-secondary"
-            onClick={onBack}
-            title="Back to Configuration"
-            style={{marginRight: '1rem'}}
-          >
+      <header className="flex items-center justify-between p-4 border-b border-border-light dark:border-border-dark shrink-0">
+        <div className="flex items-center gap-4">
+          <button onClick={onBack} title="Back to Configuration" className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10">
             <span className="material-symbols-outlined">arrow_back</span>
           </button>
-          <h2>Review Test</h2>
+          <h2 className="text-xl font-bold">Review Test</h2>
         </div>
-        <div className="header-right">
-          <span className="progress-text">
-             {allQuestions.length > 0 ? `${currentQuestionIndex + 1} / ${allQuestions.length}` : '0 / 0'}
+        <div className="flex items-center gap-4">
+          <span className="font-semibold text-text-secondary dark:text-gray-400">
+            {allQuestions.length > 0 ? `${currentQuestionIndex + 1} / ${allQuestions.length}` : '0 / 0'}
           </span>
           <button
-            className="btn-primary"
             onClick={onExport}
             disabled={!canExport}
             title={!canExport ? "All questions must be accepted to export" : "Export Test"}
+            className="px-5 py-2 text-sm font-bold text-white transition-all bg-primary rounded-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 hover:bg-primary/90"
           >
             Export Test
           </button>
         </div>
-      </div>
+      </header>
 
-      {/* Main Body: Sidebar + Content */}
-      <div className="review-body">
-
+      {/* Main Body */}
+      <main className="grid flex-1 grid-cols-12 gap-6 p-6 overflow-hidden">
         {/* Palette Sidebar */}
-        <div className="palette-sidebar">
-          <h3>Question Palette</h3>
-          <div className="palette-sidebar-content">
-              {sections.map((section, idx) => {
-                const sectionQuestions = allQuestions.filter(q => q.sectionIndex === idx);
-                if (sectionQuestions.length === 0) return null;
-
-                return (
-                  <div key={idx} className="palette-section">
-                    <h4>{section.name}</h4>
-                    <div className="palette-grid">
-                      {sectionQuestions.map((item) => {
-                        const status = item.sq.status || 'pending';
-                        const isActive = currentQuestionIndex === allQuestions.findIndex(q => q.sq.question.uuid === item.sq.question.uuid);
-                        return (
-                          <button
-                            key={item.sq.question.uuid}
-                            className={`palette-item ${status} ${isActive ? 'current' : ''}`}
-                            onClick={() => handleJumpToQuestion(allQuestions.findIndex(q => q.sq.question.uuid === item.sq.question.uuid))}
-                          >
-                            {item.absoluteIndex}
-                          </button>
-                        );
-                      })}
-                    </div>
+        <aside className="flex flex-col col-span-3 overflow-y-auto border rounded-lg bg-surface-light dark:bg-surface-dark border-border-light dark:border-border-dark">
+          <h3 className="p-4 text-lg font-bold border-b border-border-light dark:border-border-dark">Question Palette</h3>
+          <div className="p-4 space-y-6">
+            {sections.map((section, idx) => {
+              const sectionQuestions = allQuestions.filter(q => q.sectionIndex === idx);
+              if (sectionQuestions.length === 0) return null;
+              return (
+                <div key={idx} className="space-y-3">
+                  <h4 className="font-semibold">{section.name}</h4>
+                  <div className="grid grid-cols-5 gap-2">
+                    {sectionQuestions.map((item) => {
+                      const status = item.sq.status || 'pending';
+                      const isActive = currentQuestionIndex === allQuestions.findIndex(q => q.sq.question.uuid === item.sq.question.uuid);
+                      return (
+                        <button
+                          key={item.sq.question.uuid}
+                          onClick={() => handleJumpToQuestion(allQuestions.findIndex(q => q.sq.question.uuid === item.sq.question.uuid))}
+                          className={`flex items-center justify-center w-full aspect-square rounded-md text-sm font-bold transition-all ${statusClasses[status]} ${isActive ? statusClasses.current : ''}`}
+                        >
+                          {item.absoluteIndex}
+                        </button>
+                      );
+                    })}
                   </div>
-                );
-              })}
+                </div>
+              );
+            })}
           </div>
-        </div>
+        </aside>
 
         {/* Main Question Content */}
-        <div className="review-main-single">
+        <section className="flex flex-col col-span-9 overflow-hidden">
           {allQuestions.length === 0 ? (
-            <div className="empty-state">
-              <p>No questions in this test.</p>
-              <button className="btn-secondary" onClick={onBack}>Back to Selection</button>
+            <div className="flex flex-col items-center justify-center h-full text-center text-text-secondary">
+              <p className="mb-4 text-lg">No questions in this test.</p>
+              <button onClick={onBack} className="px-5 py-2.5 rounded-lg border border-border-light dark:border-border-dark hover:bg-black/5 dark:hover:bg-white/5 text-sm font-semibold transition-all">Back to Selection</button>
             </div>
           ) : currentQuestion ? (
-            <div className="single-question-view">
-              <QuestionDisplay
-                question={currentQuestion}
-                // questionNumber is no longer used for Q# display but might be used for logic if needed,
-                // but we removed its usage in QuestionDisplay for Q#.
-                // We can pass it if we want to retain sequential numbering for other purposes or just pass 0.
-                // However, QuestionDisplay still accepts it.
-                questionNumber={currentItem.absoluteIndex}
-                showAnswer={true}
-              />
-
-              <div className="question-actions-bar">
-                  <button className="btn-text" onClick={handleEditClick}>
-                    <span className="material-symbols-outlined">edit</span> Edit Question
-                  </button>
+            <div className="flex-1 overflow-y-auto">
+              <QuestionDisplay question={currentQuestion} questionNumber={currentItem.absoluteIndex} showAnswer={true} />
+              <div className="p-4 text-right">
+                <button onClick={handleEditClick} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold transition-colors rounded-md text-primary hover:bg-primary/10">
+                  <span className="material-symbols-outlined text-base">edit</span> Edit Question
+                </button>
               </div>
             </div>
           ) : (
-            <div>Loading...</div>
+            <div className="flex items-center justify-center h-full text-text-secondary">Loading...</div>
           )}
-        </div>
-      </div>
+        </section>
+      </main>
 
       {/* Footer Controls */}
-      <div className="review-footer">
-         <div className="nav-controls">
-            <button className="btn-secondary" onClick={handlePrev} disabled={currentQuestionIndex === 0}>
-              <span className="material-symbols-outlined">chevron_left</span> Prev
-            </button>
-         </div>
-
-         <div className="status-controls">
-            <button className="btn-reject" onClick={handleReject}>
-               <span className="material-symbols-outlined">close</span> Reject
-            </button>
-            <button
-              className={`btn-review ${currentItem?.sq.status === 'review' ? 'active' : ''}`}
-              onClick={handleMarkReview}
-            >
-               <span className="material-symbols-outlined">flag</span> Mark for Review
-            </button>
-            <button
-              className={`btn-accept ${currentItem?.sq.status === 'accepted' ? 'active' : ''}`}
-              onClick={handleAcceptClick}
-            >
-               <span className="material-symbols-outlined">check</span> Accept
-            </button>
-         </div>
-
-         <div className="nav-controls">
-            <button className="btn-secondary" onClick={handleNext} disabled={currentQuestionIndex === allQuestions.length - 1}>
-               Next <span className="material-symbols-outlined">chevron_right</span>
-            </button>
-         </div>
-      </div>
+      <footer className="flex items-center justify-between p-4 border-t border-border-light dark:border-border-dark shrink-0">
+        <div className="w-1/3">
+          <button onClick={handlePrev} disabled={currentQuestionIndex === 0} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-border-light dark:border-border-dark hover:bg-black/5 dark:hover:bg-white/5 text-sm font-semibold transition-all disabled:opacity-50">
+            <span className="material-symbols-outlined">chevron_left</span> Prev
+          </button>
+        </div>
+        <div className="flex justify-center flex-1 gap-3">
+          <button onClick={handleReject} className="px-5 py-2.5 rounded-lg bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/50 text-sm font-semibold transition-all flex items-center gap-2">
+            <span className="material-symbols-outlined text-base">close</span> Reject
+          </button>
+          <button onClick={handleMarkReview} className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${currentItem?.sq.status === 'review' ? 'bg-yellow-400/80 text-yellow-900' : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300 hover:bg-yellow-200 dark:hover:bg-yellow-900/50'}`}>
+            <span className="material-symbols-outlined text-base">flag</span> Mark for Review
+          </button>
+          <button onClick={handleAcceptClick} className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${currentItem?.sq.status === 'accepted' ? 'bg-green-600 text-white' : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-900/50'}`}>
+            <span className="material-symbols-outlined text-base">check</span> Accept
+          </button>
+        </div>
+        <div className="flex justify-end w-1/3">
+          <button onClick={handleNext} disabled={currentQuestionIndex === allQuestions.length - 1} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-border-light dark:border-border-dark hover:bg-black/5 dark:hover:bg-white/5 text-sm font-semibold transition-all disabled:opacity-50">
+            Next <span className="material-symbols-outlined">chevron_right</span>
+          </button>
+        </div>
+      </footer>
 
       {/* Acceptance Checklist Modal */}
       {isAcceptModalOpen && (
-          <div className="modal-overlay animate-fade-in">
-              <div className="edit-modal animate-fade-in" style={{ maxWidth: '500px', width: '90%' }}>
-                  <div className="edit-modal-header">
-                      <h3>Review Verification</h3>
-                      <button className="edit-modal-close" onClick={() => setIsAcceptModalOpen(false)}>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+              <div className="w-full max-w-lg bg-surface-light dark:bg-surface-dark rounded-xl shadow-lg border border-border-light dark:border-border-dark flex flex-col">
+                  <header className="flex items-center justify-between p-4 border-b border-border-light dark:border-border-dark">
+                      <h3 className="text-lg font-bold">Review Verification</h3>
+                      <button onClick={() => setIsAcceptModalOpen(false)} className="p-1 rounded-full hover:bg-black/5 dark:hover:bg-white/10">
                           <span className="material-symbols-outlined">close</span>
                       </button>
-                  </div>
-                  <div className="edit-modal-body">
-                      <p style={{ marginBottom: '1rem', color: 'var(--text-secondary)' }}>
+                  </header>
+                  <div className="p-6 space-y-4">
+                      <p className="text-sm text-text-secondary">
                           Please confirm you have verified the following items. If an item does not exist (e.g., no figure), mark it as checked.
                       </p>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                          <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', fontWeight: 'bold' }}>
-                              <input
-                                  type="checkbox"
+                      <div className="space-y-3">
+                          <label className="flex items-center gap-3 font-semibold cursor-pointer">
+                              <input type="checkbox" className="w-5 h-5 rounded text-primary focus:ring-primary"
                                   checked={Object.values(checklist).every(Boolean)}
                                   onChange={(e) => {
                                       const checked = e.target.checked;
                                       setChecklist({
-                                          questionContent: checked,
-                                          optionContent: checked,
-                                          questionFormatting: checked,
-                                          optionFormatting: checked,
-                                          figureFormatting: checked,
-                                          solutionExistence: checked,
+                                          questionContent: checked, optionContent: checked, questionFormatting: checked,
+                                          optionFormatting: checked, figureFormatting: checked, solutionExistence: checked,
                                           solutionFormatting: checked
                                       });
                                   }}
                               />
                               <span>Select All</span>
                           </label>
-                          <hr style={{ border: 'none', borderTop: '1px solid var(--border-color)', margin: '0 0 0.5rem' }} />
-
-                          <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
-                              <input
-                                  type="checkbox"
-                                  checked={checklist.questionContent}
-                                  onChange={(e) => setChecklist(prev => ({ ...prev, questionContent: e.target.checked }))}
-                              />
-                              <span>Question Content</span>
-                          </label>
-                          <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
-                              <input
-                                  type="checkbox"
-                                  checked={checklist.optionContent}
-                                  onChange={(e) => setChecklist(prev => ({ ...prev, optionContent: e.target.checked }))}
-                              />
-                              <span>Option Content</span>
-                          </label>
-                          <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
-                              <input
-                                  type="checkbox"
-                                  checked={checklist.questionFormatting}
-                                  onChange={(e) => setChecklist(prev => ({ ...prev, questionFormatting: e.target.checked }))}
-                              />
-                              <span>Question Formatting</span>
-                          </label>
-                          <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
-                              <input
-                                  type="checkbox"
-                                  checked={checklist.optionFormatting}
-                                  onChange={(e) => setChecklist(prev => ({ ...prev, optionFormatting: e.target.checked }))}
-                              />
-                              <span>Option Formatting</span>
-                          </label>
-                          <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
-                              <input
-                                  type="checkbox"
-                                  checked={checklist.figureFormatting}
-                                  onChange={(e) => setChecklist(prev => ({ ...prev, figureFormatting: e.target.checked }))}
-                              />
-                              <span>Figure Formatting (If Exists)</span>
-                          </label>
-                          <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
-                              <input
-                                  type="checkbox"
-                                  checked={checklist.solutionExistence}
-                                  onChange={(e) => setChecklist(prev => ({ ...prev, solutionExistence: e.target.checked }))}
-                              />
-                              <span>Solution Existence</span>
-                          </label>
-                          <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
-                              <input
-                                  type="checkbox"
-                                  checked={checklist.solutionFormatting}
-                                  onChange={(e) => setChecklist(prev => ({ ...prev, solutionFormatting: e.target.checked }))}
-                              />
-                              <span>Solution Formatting (If image exists)</span>
-                          </label>
+                          <hr className="border-border-light dark:border-border-dark" />
+                          {Object.entries({
+                            questionContent: 'Question Content', optionContent: 'Option Content',
+                            questionFormatting: 'Question Formatting', optionFormatting: 'Option Formatting',
+                            figureFormatting: 'Figure Formatting (If Exists)', solutionExistence: 'Solution Existence',
+                            solutionFormatting: 'Solution Formatting (If image exists)'
+                          }).map(([key, label]) => (
+                            <label key={key} className="flex items-center gap-3 cursor-pointer">
+                                <input type="checkbox" className="w-5 h-5 rounded text-primary focus:ring-primary"
+                                    checked={checklist[key as keyof typeof checklist]}
+                                    onChange={(e) => setChecklist(prev => ({ ...prev, [key]: e.target.checked }))}
+                                />
+                                <span>{label}</span>
+                            </label>
+                          ))}
                       </div>
                   </div>
-                  <div className="edit-modal-footer">
-                      <button className="btn-secondary" onClick={() => setIsAcceptModalOpen(false)}>Cancel</button>
+                  <footer className="flex justify-end gap-3 p-4 bg-background-light dark:bg-background-dark/50 border-t border-border-light dark:border-border-dark">
+                      <button onClick={() => setIsAcceptModalOpen(false)} className="px-5 py-2.5 rounded-lg border border-border-light dark:border-border-dark text-text-secondary hover:text-text-main dark:hover:text-white hover:bg-white dark:hover:bg-white/5 text-sm font-semibold transition-all">Cancel</button>
                       <button
-                          className="btn-primary"
                           onClick={confirmAccept}
                           disabled={!Object.values(checklist).every(Boolean)}
+                          className="px-5 py-2.5 rounded-lg bg-primary text-white shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 hover:bg-primary/90 text-sm font-bold transition-all flex items-center gap-2 disabled:opacity-50"
                       >
-                          <span className="material-symbols-outlined">check</span>
+                          <span className="material-symbols-outlined text-base">check</span>
                           Confirm Accept
                       </button>
-                  </div>
+                  </footer>
               </div>
           </div>
       )}
