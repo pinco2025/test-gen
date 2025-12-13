@@ -92,115 +92,245 @@ export const SectionConfiguration: React.FC<SectionConfigurationProps> = ({
   };
 
   return (
-    <div className="max-w-6xl mx-auto bg-surface-light dark:bg-surface-dark p-8 rounded-xl border border-border-light dark:border-border-dark shadow-sm">
-      <h2 className="text-2xl font-bold text-text-main dark:text-white mb-6">Configure {sectionName} Section</h2>
+    <div className="w-full h-full overflow-y-auto">
+      <div className="max-w-7xl mx-auto p-8">
+        <div className="bg-white dark:bg-[#1e1e2d] rounded-2xl border border-gray-200 dark:border-[#2d2d3b] shadow-sm p-8">
+          <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">
+            Configure {sectionName} Section
+          </h2>
 
-      <div className="mb-6 p-4 bg-blue-50 dark:bg-primary/10 border-l-4 border-blue-400 dark:border-primary text-blue-800 dark:text-blue-200">
-        <p>Define the Alpha constraints for this section. Each section must have:</p>
-        <ul className="list-disc list-inside ml-4 mt-2 text-sm">
-          <li>Total of 20 questions in Division 1 (A)</li>
-          <li>Total of 5 questions in Division 2 (B)</li>
-          <li>A valid distribution of Easy (E), Medium (M), and Hard (H) questions</li>
-        </ul>
-      </div>
-
-      <div className="bg-background-light dark:bg-background-dark p-4 rounded-lg border border-border-light dark:border-border-dark mb-6">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold">Constraint Auto-Generation</h3>
-          <button type="button" onClick={() => setShowConfig(!showConfig)} className="text-sm font-medium text-primary hover:underline">
-            {showConfig ? 'Hide' : 'Show'} Algorithm Settings
-          </button>
-        </div>
-        {showConfig && (
-          <div className="p-4 bg-surface-light dark:bg-surface-dark rounded-md border border-border-light dark:border-border-dark mb-4">
-            <p className="text-sm text-text-secondary italic mb-4">Configure the algorithm for auto-generating constraints.</p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-text-secondary">Min Questions/Chapter</label>
-                <input type="number" min="1" max="5" value={constraintConfig.minIdx} onChange={(e) => onConfigChange({ ...constraintConfig, minIdx: parseInt(e.target.value) || 1 })} className="mt-1 w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-md" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-text-secondary">Medium Slope</label>
-                <input type="number" step="0.01" value={constraintConfig.Sm} onChange={(e) => onConfigChange({ ...constraintConfig, Sm: parseFloat(e.target.value) || 0 })} className="mt-1 w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-md" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-text-secondary">Hard Slope</label>
-                <input type="number" step="0.01" value={constraintConfig.Sh} onChange={(e) => onConfigChange({ ...constraintConfig, Sh: parseFloat(e.target.value) || 0 })} className="mt-1 w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-md" />
-              </div>
-            </div>
-          </div>
-        )}
-        <div className="flex justify-between items-center bg-green-50 dark:bg-green-900/20 p-3 rounded-md">
-            <p className="text-sm text-green-800 dark:text-green-200">Constraints auto-generated. You can manually edit values below.</p>
-            {!pendingReset ? (
-                <button type="button" onClick={() => setPendingReset(true)} className="text-sm font-semibold text-blue-600 hover:text-blue-800">Reset</button>
-            ) : (
-                <div className="flex items-center gap-2">
-                    <span className="text-sm text-text-secondary">Are you sure?</span>
-                    <button onClick={confirmReset} className="px-3 py-1 text-sm rounded-md bg-primary text-white">Yes</button>
-                    <button onClick={() => setPendingReset(false)} className="px-3 py-1 text-sm rounded-md border border-border-light dark:border-border-dark">No</button>
-                </div>
-            )}
-        </div>
-      </div>
-
-      <div>
-        <h3 className="text-lg font-semibold mb-4">Alpha Constraints</h3>
-        <div className="overflow-x-auto rounded-lg border border-border-light dark:border-border-dark">
-          <table className="min-w-full divide-y divide-border-light dark:divide-border-dark text-sm">
-            <thead className="bg-background-light dark:bg-background-dark">
-              <tr>
-                <th className="px-4 py-2 text-left font-medium text-text-secondary">Chapter</th>
-                {['A (Div 1)', 'B (Div 2)', 'Easy', 'Medium', 'Hard', 'Total'].map(h => <th key={h} className="px-4 py-2 text-center font-medium text-text-secondary">{h}</th>)}
-              </tr>
-            </thead>
-            <tbody className="bg-surface-light dark:bg-surface-dark divide-y divide-border-light dark:divide-border-dark">
-              {alphaDataWithValidation.map((chapter, index) => (
-                <tr key={chapter.chapterCode} className={!chapter.isRowValid ? 'bg-red-50 dark:bg-red-900/20' : ''}>
-                  <td className="px-4 py-2 font-medium whitespace-nowrap">{chapter.chapterName}</td>
-                  {['a', 'b', 'e', 'm', 'h'].map(field => (
-                    <td key={field} className="px-4 py-2 text-center">
-                      <input type="number" min="0" value={chapter[field as keyof ChapterDistribution]} onChange={(e) => updateChapter(index, field as keyof ChapterDistribution, parseInt(e.target.value) || 0)} className="w-16 text-center bg-transparent border-border-light dark:border-border-dark rounded-md focus:ring-primary focus:border-primary" />
-                    </td>
-                  ))}
-                  <td className="px-4 py-2 text-center font-semibold">{chapter.a + chapter.b}</td>
-                </tr>
-              ))}
-            </tbody>
-            <tfoot className="bg-background-light dark:bg-background-dark font-bold">
-              <tr>
-                <td className="px-4 py-2 text-left">TOTALS</td>
-                <td className={`px-4 py-2 text-center ${totals.a === 20 ? 'text-green-600' : 'text-red-600'}`}>{totals.a} / 20</td>
-                <td className={`px-4 py-2 text-center ${totals.b === 5 ? 'text-green-600' : 'text-red-600'}`}>{totals.b} / 5</td>
-                <td className="px-4 py-2 text-center">{totals.e}</td>
-                <td className="px-4 py-2 text-center">{totals.m}</td>
-                <td className="px-4 py-2 text-center">{totals.h}</td>
-                <td className="px-4 py-2 text-center">{totals.a + totals.b} / 25</td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
-        {!isValid && (
-          <div className="mt-4 p-3 bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-200 rounded-md text-sm">
-            <p className="font-bold mb-1">Please correct the errors:</p>
-            <ul className="list-disc list-inside ml-4">
-                {totals.a !== 20 && <li>Total Division 1 (A) questions must be 20.</li>}
-                {totals.b !== 5 && <li>Total Division 2 (B) questions must be 5.</li>}
-                {hasRowErrors && <li>For each chapter, the sum of difficulties (E+M+H) must equal the total questions (A+B). Invalid rows are highlighted.</li>}
+          {/* Info Banner */}
+          <div className="mb-8 p-5 bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 rounded-r-lg transition-all duration-200">
+            <p className="text-blue-900 dark:text-blue-100 font-medium mb-2">
+              Define the Alpha constraints for this section. Each section must have:
+            </p>
+            <ul className="list-disc list-inside ml-4 space-y-1 text-sm text-blue-800 dark:text-blue-200">
+              <li>Total of <strong>20 questions</strong> in Division 1 (A)</li>
+              <li>Total of <strong>5 questions</strong> in Division 2 (B)</li>
+              <li>A valid distribution of <strong>Easy (E), Medium (M), and Hard (H)</strong> questions</li>
             </ul>
           </div>
-        )}
-      </div>
 
-      <div className="mt-8">
-        <h3 className="text-lg font-semibold mb-2">Beta Constraints</h3>
-        <div className="p-4 bg-gray-100 dark:bg-gray-800 text-text-secondary rounded-md text-sm italic">Beta constraints are reserved for future implementation.</div>
-      </div>
+          {/* Algorithm Settings */}
+          <div className="mb-8 bg-gray-50 dark:bg-[#252535] p-5 rounded-xl border border-gray-200 dark:border-[#2d2d3b] transition-all duration-200">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Constraint Auto-Generation
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowConfig(!showConfig)}
+                className="text-sm font-medium text-[#5248e5] hover:text-[#4339d9] transition-colors flex items-center gap-1"
+              >
+                {showConfig ? 'Hide' : 'Show'} Algorithm Settings
+                <span className="material-symbols-outlined text-base">
+                  {showConfig ? 'expand_less' : 'expand_more'}
+                </span>
+              </button>
+            </div>
 
-      <div className="mt-8 pt-6 border-t border-border-light dark:border-border-dark flex justify-end">
-        <button type="button" onClick={handleSubmit} disabled={!isValid} className="bg-primary text-white px-6 py-2 rounded-lg font-semibold flex items-center gap-2 hover:bg-primary/90 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors">
-          Continue to Question Selection
-        </button>
+            {/* Collapsible Config */}
+            <div
+              className={`overflow-hidden transition-all duration-300 ${
+                showConfig ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+              }`}
+            >
+              <div className="p-5 bg-white dark:bg-[#1e1e2d] rounded-lg border border-gray-200 dark:border-[#2d2d3b] mb-4">
+                <p className="text-sm text-gray-600 dark:text-gray-400 italic mb-4">
+                  Configure the algorithm for auto-generating constraints.
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Min Questions/Chapter
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="5"
+                      value={constraintConfig.minIdx}
+                      onChange={(e) => onConfigChange({ ...constraintConfig, minIdx: parseInt(e.target.value) || 1 })}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-[#2d2d3b] rounded-lg bg-white dark:bg-[#1e1e2d] text-gray-900 dark:text-white focus:ring-2 focus:ring-[#5248e5] focus:border-transparent transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Medium Slope
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={constraintConfig.Sm}
+                      onChange={(e) => onConfigChange({ ...constraintConfig, Sm: parseFloat(e.target.value) || 0 })}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-[#2d2d3b] rounded-lg bg-white dark:bg-[#1e1e2d] text-gray-900 dark:text-white focus:ring-2 focus:ring-[#5248e5] focus:border-transparent transition-all"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Hard Slope
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={constraintConfig.Sh}
+                      onChange={(e) => onConfigChange({ ...constraintConfig, Sh: parseFloat(e.target.value) || 0 })}
+                      className="w-full px-4 py-2 border border-gray-300 dark:border-[#2d2d3b] rounded-lg bg-white dark:bg-[#1e1e2d] text-gray-900 dark:text-white focus:ring-2 focus:ring-[#5248e5] focus:border-transparent transition-all"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Success Message with Reset */}
+            <div className="flex justify-between items-center bg-green-50 dark:bg-green-900/20 p-4 rounded-lg border border-green-200 dark:border-green-800 transition-all duration-200">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-green-600 dark:text-green-400">check_circle</span>
+                <p className="text-sm font-medium text-green-800 dark:text-green-200">
+                  Constraints auto-generated. You can manually edit values below.
+                </p>
+              </div>
+              {!pendingReset ? (
+                <button
+                  type="button"
+                  onClick={() => setPendingReset(true)}
+                  className="text-sm font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors px-3 py-1 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/20"
+                >
+                  Reset
+                </button>
+              ) : (
+                <div className="flex items-center gap-2 animate-fade-in">
+                  <span className="text-sm text-gray-600 dark:text-gray-400">Are you sure?</span>
+                  <button
+                    onClick={confirmReset}
+                    className="px-4 py-1.5 text-sm rounded-lg bg-[#5248e5] text-white hover:bg-[#4339d9] transition-all shadow-sm hover:shadow-md"
+                  >
+                    Yes
+                  </button>
+                  <button
+                    onClick={() => setPendingReset(false)}
+                    className="px-4 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-[#2d2d3b] hover:bg-gray-100 dark:hover:bg-[#252535] transition-all"
+                  >
+                    No
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Alpha Constraints Table */}
+          <div>
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+              Alpha Constraints
+            </h3>
+            <div className="overflow-x-auto rounded-xl border border-gray-200 dark:border-[#2d2d3b] shadow-sm">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-[#2d2d3b]">
+                <thead className="bg-gray-50 dark:bg-[#121121]">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                      Chapter
+                    </th>
+                    {['A (Div 1)', 'B (Div 2)', 'Easy', 'Medium', 'Hard', 'Total'].map(h => (
+                      <th key={h} className="px-6 py-4 text-center text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wider">
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="bg-white dark:bg-[#1e1e2d] divide-y divide-gray-200 dark:divide-[#2d2d3b]">
+                  {alphaDataWithValidation.map((chapter, index) => (
+                    <tr
+                      key={chapter.chapterCode}
+                      className={`transition-colors duration-150 ${
+                        !chapter.isRowValid
+                          ? 'bg-red-50 dark:bg-red-900/20'
+                          : 'hover:bg-gray-50 dark:hover:bg-[#252535]'
+                      }`}
+                    >
+                      <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white whitespace-nowrap">
+                        {chapter.chapterName}
+                      </td>
+                      {['a', 'b', 'e', 'm', 'h'].map(field => (
+                        <td key={field} className="px-6 py-4 text-center">
+                          <input
+                            type="number"
+                            min="0"
+                            value={chapter[field as keyof ChapterDistribution]}
+                            onChange={(e) => updateChapter(index, field as keyof ChapterDistribution, parseInt(e.target.value) || 0)}
+                            className="w-20 px-3 py-2 text-center text-sm bg-white dark:bg-[#252535] border border-gray-300 dark:border-[#2d2d3b] rounded-lg text-gray-900 dark:text-white focus:ring-2 focus:ring-[#5248e5] focus:border-transparent transition-all"
+                          />
+                        </td>
+                      ))}
+                      <td className="px-6 py-4 text-center text-sm font-semibold text-gray-900 dark:text-white">
+                        {chapter.a + chapter.b}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot className="bg-gray-50 dark:bg-[#121121]">
+                  <tr>
+                    <td className="px-6 py-4 text-sm font-bold text-gray-900 dark:text-white">TOTALS</td>
+                    <td className={`px-6 py-4 text-center text-sm font-bold ${totals.a === 20 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                      {totals.a} / 20
+                    </td>
+                    <td className={`px-6 py-4 text-center text-sm font-bold ${totals.b === 5 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                      {totals.b} / 5
+                    </td>
+                    <td className="px-6 py-4 text-center text-sm font-bold text-gray-900 dark:text-white">{totals.e}</td>
+                    <td className="px-6 py-4 text-center text-sm font-bold text-gray-900 dark:text-white">{totals.m}</td>
+                    <td className="px-6 py-4 text-center text-sm font-bold text-gray-900 dark:text-white">{totals.h}</td>
+                    <td className="px-6 py-4 text-center text-sm font-bold text-gray-900 dark:text-white">
+                      {totals.a + totals.b} / 25
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            {/* Error Messages */}
+            {!isValid && (
+              <div className="mt-4 p-4 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 rounded-r-lg animate-fade-in">
+                <p className="font-bold text-red-800 dark:text-red-200 mb-2 flex items-center gap-2">
+                  <span className="material-symbols-outlined">error</span>
+                  Please correct the errors:
+                </p>
+                <ul className="list-disc list-inside ml-6 space-y-1 text-sm text-red-700 dark:text-red-300">
+                  {totals.a !== 20 && <li>Total Division 1 (A) questions must be 20.</li>}
+                  {totals.b !== 5 && <li>Total Division 2 (B) questions must be 5.</li>}
+                  {hasRowErrors && <li>For each chapter, the sum of difficulties (E+M+H) must equal the total questions (A+B). Invalid rows are highlighted.</li>}
+                </ul>
+              </div>
+            )}
+          </div>
+
+          {/* Beta Constraints */}
+          <div className="mt-8">
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+              Beta Constraints
+            </h3>
+            <div className="p-6 bg-gray-100 dark:bg-[#252535] border border-gray-200 dark:border-[#2d2d3b] rounded-lg">
+              <p className="text-sm text-gray-600 dark:text-gray-400 italic text-center">
+                Beta constraints are reserved for future implementation.
+              </p>
+            </div>
+          </div>
+
+          {/* Submit Button */}
+          <div className="mt-8 pt-6 border-t border-gray-200 dark:border-[#2d2d3b] flex justify-end">
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={!isValid}
+              className={`px-8 py-3 rounded-lg font-semibold flex items-center gap-2 transition-all duration-200 ${
+                isValid
+                  ? 'bg-[#5248e5] text-white hover:bg-[#4339d9] shadow-lg hover:shadow-xl'
+                  : 'bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-500 cursor-not-allowed'
+              }`}
+            >
+              <span>Continue to Question Selection</span>
+              <span className="material-symbols-outlined">arrow_forward</span>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
