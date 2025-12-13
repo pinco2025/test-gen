@@ -216,14 +216,10 @@ function App() {
 
     // If we're in edit-question state but have no editingQuestion (e.g., after app restart)
     if (currentProject.currentStep === 'edit-question' && !editingQuestion) {
-      console.warn('Invalid state detected: edit-question step without editingQuestion. Resetting to test-review.');
+      console.warn('Invalid state detected: edit-question step without editingQuestion. Resetting to first section (Physics).');
 
-      // Reset to test-review (or section-config if no sections selected yet)
-      const safeStep: WorkflowStep = sections.length > 0 && sections.some(s => s.selectedQuestions.length > 0)
-        ? 'test-review'
-        : 'section-config';
-
-      updateCurrentProject({ currentStep: safeStep });
+      // Reset to first section (Physics) for smooth UX
+      updateCurrentProject({ currentStep: 'question-select-physics', currentSectionIndex: 0 });
     }
   }, [currentProject, editingQuestion, sections, updateCurrentProject]);
 
