@@ -115,7 +115,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
       listRef.current?.resetAfterIndex(index);
     }
   }, []);
-  const getSize = useCallback((index: number) => sizeMap.current[index] || 300, []);
+  const getSize = useCallback((index: number) => sizeMap.current[index] || 500, []);
 
   const { availableTypes, availableYears } = useMemo(() => {
     const types = new Set<string>();

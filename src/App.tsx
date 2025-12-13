@@ -210,6 +210,23 @@ function App() {
     }
   }, [currentProjectId, projectsData, autoSave]);
 
+  // Validate state after loading: if we're in edit mode but have no question, reset to safe state
+  useEffect(() => {
+    if (!currentProject || isLoadingRef.current) return;
+
+    // If we're in edit-question state but have no editingQuestion (e.g., after app restart)
+    if (currentProject.currentStep === 'edit-question' && !editingQuestion) {
+      console.warn('Invalid state detected: edit-question step without editingQuestion. Resetting to test-review.');
+
+      // Reset to test-review (or section-config if no sections selected yet)
+      const safeStep: WorkflowStep = sections.length > 0 && sections.some(s => s.selectedQuestions.length > 0)
+        ? 'test-review'
+        : 'section-config';
+
+      updateCurrentProject({ currentStep: safeStep });
+    }
+  }, [currentProject, editingQuestion, sections, updateCurrentProject]);
+
   const handleAddQuestion = async (question: Question, solution?: Partial<Solution>) => {
     if (!window.electronAPI) return;
 

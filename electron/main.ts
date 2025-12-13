@@ -4,6 +4,7 @@ import { google } from 'googleapis';
 import mime from 'mime-types';
 import { dbService } from './database';
 import { projectService } from './projectService';
+import { oauthService } from './oauthService';
 import { Question, QuestionFilter, Test, ProjectState, ProjectInfo, AppConfig } from '../src/types';
 import fs from 'fs';
 
@@ -168,36 +169,25 @@ ipcMain.handle('questions:saveSolution', async (_, uuid: string, solutionText: s
   return dbService.saveSolution(uuid, solutionText, solutionImageUrl);
 });
 
-// Image Upload
+// Image Upload with OAuth 2.0
 ipcMain.handle('upload-image', async (_, filePath: string) => {
   try {
-    const FOLDER_ID = 'YOUR_FOLDER_ID_HERE'; // <-- PASTE YOUR FOLDER ID HERE
-    const KEY_FILE_PATH = path.join(app.getAppPath(), 'gdrive-credentials.json');
-
-    if (!fs.existsSync(KEY_FILE_PATH)) {
-      throw new Error(
-        `Google Drive credentials file not found at ${KEY_FILE_PATH}. Please follow the setup instructions in GDRIVE_API_SETUP.md.`
-      );
-    }
-
-    const auth = new google.auth.GoogleAuth({
-      keyFile: KEY_FILE_PATH,
-      scopes: ['https://www.googleapis.com/auth/drive'],
-    });
-
+    // Get authenticated OAuth client
+    const auth = await oauthService.getAuthClient();
     const drive = google.drive({ version: 'v3', auth });
     const fileName = path.basename(filePath);
 
+    // Upload file to user's Google Drive root (or you can specify a folder)
     const response = await drive.files.create({
       requestBody: {
         name: fileName,
-        parents: [FOLDER_ID],
+        // Optionally specify a folder: parents: [FOLDER_ID]
       },
       media: {
         mimeType: mime.lookup(filePath) || 'application/octet-stream',
         body: fs.createReadStream(filePath),
       },
-      fields: 'id',
+      fields: 'id, webViewLink, webContentLink',
     });
 
     const fileId = response.data.id;
@@ -207,24 +197,50 @@ ipcMain.handle('upload-image', async (_, filePath: string) => {
 
     // Make the file publicly readable
     await drive.permissions.create({
-        fileId: fileId,
-        requestBody: {
+      fileId: fileId,
+      requestBody: {
         role: 'reader',
         type: 'anyone',
-        },
+      },
     });
 
+    // Use Google Drive's thumbnail URL
     const thumbnailUrl = `https://lh3.googleusercontent.com/d/${fileId}`;
     return { success: true, url: thumbnailUrl };
   } catch (error: any) {
     console.error('Failed to upload file to Google Drive:', error);
-    // Send a more user-friendly error to the frontend
+
+    // More helpful error message for OAuth issues
+    let errorMessage = error.message;
+    if (error.message.includes('OAuth') || error.message.includes('credentials')) {
+      errorMessage = 'Google Drive authentication required. Please ensure oauth-credentials.json is configured correctly.';
+    }
+
     dialog.showErrorBox(
-        'Image Upload Failed',
-        `Could not upload the image to Google Drive. Please check your configuration and network connection. Details: ${error.message}`
+      'Image Upload Failed',
+      `Could not upload the image to Google Drive. ${errorMessage}`
     );
+    return { success: false, error: errorMessage };
+  }
+});
+
+// OAuth management handlers
+ipcMain.handle('oauth:authenticate', async () => {
+  try {
+    await oauthService.authenticate();
+    return { success: true };
+  } catch (error: any) {
     return { success: false, error: error.message };
   }
+});
+
+ipcMain.handle('oauth:isAuthenticated', () => {
+  return oauthService.isAuthenticated();
+});
+
+ipcMain.handle('oauth:clearTokens', () => {
+  oauthService.clearTokens();
+  return { success: true };
 });
 
 

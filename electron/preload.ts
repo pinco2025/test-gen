@@ -7,6 +7,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Image Upload
   uploadImage: (filePath: string) => ipcRenderer.invoke('upload-image', filePath),
 
+  // OAuth operations
+  oauth: {
+    authenticate: () => ipcRenderer.invoke('oauth:authenticate'),
+    isAuthenticated: () => ipcRenderer.invoke('oauth:isAuthenticated'),
+    clearTokens: () => ipcRenderer.invoke('oauth:clearTokens')
+  },
+
   // Database operations
   db: {
     connect: (dbPath?: string) => ipcRenderer.invoke('db:connect', dbPath),
