@@ -960,7 +960,7 @@ function App() {
       )}
 
       {/* Main Content - Each page handles its own scrolling */}
-      <main className="flex-1 overflow-hidden" key={currentProjectId || 'new'}>
+      <main className="flex-1 overflow-hidden flex flex-col" key={currentProjectId || 'new'}>
         {renderStep()}
       </main>
 

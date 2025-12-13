@@ -291,7 +291,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
   };
 
   return (
-    <div className="w-full h-full flex flex-col overflow-hidden">
+    <div className="w-full flex-1 min-h-0 flex flex-col overflow-hidden">
       {/* Header */}
       <div className="flex-shrink-0 p-4 pb-0">
         <div className="bg-white dark:bg-[#1e1e2d] p-4 rounded-xl mb-4 border border-gray-200 dark:border-[#2d2d3b] shadow-sm flex justify-between items-center">

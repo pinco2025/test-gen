@@ -120,7 +120,7 @@ const TestReview: React.FC<TestReviewProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-screen bg-background-light dark:bg-background-dark text-text-main dark:text-text-dark">
+    <div className="flex flex-col flex-1 min-h-0 bg-background-light dark:bg-background-dark text-text-main dark:text-text-dark">
       {/* Header */}
       <header className="flex items-center justify-between p-4 border-b border-border-light dark:border-border-dark shrink-0">
         <div className="flex items-center gap-4">
