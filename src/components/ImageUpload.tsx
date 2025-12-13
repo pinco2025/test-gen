@@ -56,9 +56,9 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ label, imageUrl, onImageUrlCh
   };
 
   const processFile = async (file: File) => {
-    if (!file || !file.type.startsWith('image/')) {
-        alert('Please select an image file.');
-        return;
+    if (!file || (!file.type.startsWith('image/') && file.type !== 'application/pdf')) {
+      alert('Please select an image or PDF file.');
+      return;
     }
 
     setIsUploading(true);
@@ -162,14 +162,14 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ label, imageUrl, onImageUrlCh
             <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/*,.pdf"
                 onChange={handleFileSelect}
                 className="hidden"
             />
             <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center">
                 <span className="material-symbols-outlined text-3xl text-text-secondary/60">upload_file</span>
                 <p className="mb-2 text-sm text-text-secondary"><span className="font-semibold">Click to upload</span> or drag and drop</p>
-                <p className="text-xs text-text-secondary/70">PNG, JPG, GIF</p>
+                <p className="text-xs text-text-secondary/70">PNG, JPG, GIF, PDF</p>
             </div>
         </div>
       ) : (
