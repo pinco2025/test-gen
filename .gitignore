@@ -41,3 +41,7 @@ yarn-error.log*
 !package.json
 !tsconfig.json
 !tsconfig.node.json
+
+# OAuth Credentials (sensitive)
+oauth-credentials.json
+google-oauth-tokens.json

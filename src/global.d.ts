@@ -4,6 +4,11 @@ declare global {
   interface Window {
     electronAPI: {
       uploadImage: (filePath: string) => Promise<{ success: boolean; url?: string; error?: string }>;
+      oauth: {
+        authenticate: () => Promise<{ success: boolean; error?: string }>;
+        isAuthenticated: () => Promise<boolean>;
+        clearTokens: () => Promise<{ success: boolean }>;
+      };
       db: {
         connect: (dbPath?: string) => Promise<{ success: boolean; error?: string }>;
         selectFile: () => Promise<{ success: boolean; path?: string; error?: string }>;
