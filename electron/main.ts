@@ -1,5 +1,7 @@
 import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import path from 'path';
+import { google } from 'googleapis';
+import mime from 'mime-types';
 import { dbService } from './database';
 import { projectService } from './projectService';
 import { Question, QuestionFilter, Test, ProjectState, ProjectInfo, AppConfig } from '../src/types';
@@ -165,6 +167,66 @@ ipcMain.handle('questions:getSolution', async (_, uuid: string) => {
 ipcMain.handle('questions:saveSolution', async (_, uuid: string, solutionText: string, solutionImageUrl: string) => {
   return dbService.saveSolution(uuid, solutionText, solutionImageUrl);
 });
+
+// Image Upload
+ipcMain.handle('upload-image', async (_, filePath: string) => {
+  try {
+    const FOLDER_ID = 'YOUR_FOLDER_ID_HERE'; // <-- PASTE YOUR FOLDER ID HERE
+    const KEY_FILE_PATH = path.join(app.getAppPath(), 'gdrive-credentials.json');
+
+    if (!fs.existsSync(KEY_FILE_PATH)) {
+      throw new Error(
+        `Google Drive credentials file not found at ${KEY_FILE_PATH}. Please follow the setup instructions in GDRIVE_API_SETUP.md.`
+      );
+    }
+
+    const auth = new google.auth.GoogleAuth({
+      keyFile: KEY_FILE_PATH,
+      scopes: ['https://www.googleapis.com/auth/drive'],
+    });
+
+    const drive = google.drive({ version: 'v3', auth });
+    const fileName = path.basename(filePath);
+
+    const response = await drive.files.create({
+      requestBody: {
+        name: fileName,
+        parents: [FOLDER_ID],
+      },
+      media: {
+        mimeType: mime.lookup(filePath) || 'application/octet-stream',
+        body: fs.createReadStream(filePath),
+      },
+      fields: 'id',
+    });
+
+    const fileId = response.data.id;
+    if (!fileId) {
+      throw new Error('File ID not returned from Google Drive API.');
+    }
+
+    // Make the file publicly readable
+    await drive.permissions.create({
+        fileId: fileId,
+        requestBody: {
+        role: 'reader',
+        type: 'anyone',
+        },
+    });
+
+    const thumbnailUrl = `https://lh3.googleusercontent.com/d/${fileId}`;
+    return { success: true, url: thumbnailUrl };
+  } catch (error: any) {
+    console.error('Failed to upload file to Google Drive:', error);
+    // Send a more user-friendly error to the frontend
+    dialog.showErrorBox(
+        'Image Upload Failed',
+        `Could not upload the image to Google Drive. Please check your configuration and network connection. Details: ${error.message}`
+    );
+    return { success: false, error: error.message };
+  }
+});
+
 
 // Metadata queries
 ipcMain.handle('db:getTypes', async (): Promise<string[]> => {

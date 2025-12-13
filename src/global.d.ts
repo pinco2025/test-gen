@@ -3,6 +3,7 @@ import { Question, QuestionFilter, Test, ProjectState, ProjectInfo, AppConfig, S
 declare global {
   interface Window {
     electronAPI: {
+      uploadImage: (filePath: string) => Promise<{ success: boolean; url?: string; error?: string }>;
       db: {
         connect: (dbPath?: string) => Promise<{ success: boolean; error?: string }>;
         selectFile: () => Promise<{ success: boolean; path?: string; error?: string }>;

@@ -209,25 +209,31 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
                         <div className="space-y-1.5">
                             <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Difficulty</label>
                             <div className="flex gap-2">
-                                {(['Easy', 'Medium', 'Hard'] as const).map(d => (
-                                    <label key={d} className="cursor-pointer">
-                                        <input
-                                            className="peer sr-only"
-                                            name="difficulty"
-                                            type="radio"
-                                            value={d}
-                                            checked={editedQuestion.tag_3 === d}
-                                            onChange={() => handleQuestionChange('tag_3', d)}
-                                        />
-                                        <div className={`px-3 py-2 rounded-lg border border-border-light dark:border-border-dark text-xs font-medium text-text-secondary
-                                            ${editedQuestion.tag_3 === 'Easy' ? 'peer-checked:bg-green-50 peer-checked:text-green-600 peer-checked:border-green-200 dark:peer-checked:bg-green-900/20 dark:peer-checked:border-green-800' : ''}
-                                            ${editedQuestion.tag_3 === 'Medium' ? 'peer-checked:bg-yellow-50 peer-checked:text-yellow-600 peer-checked:border-yellow-200 dark:peer-checked:bg-yellow-900/20 dark:peer-checked:border-yellow-800' : ''}
-                                            ${editedQuestion.tag_3 === 'Hard' ? 'peer-checked:bg-red-50 peer-checked:text-red-600 peer-checked:border-red-200 dark:peer-checked:bg-red-900/20 dark:peer-checked:border-red-800' : ''}
-                                        `}>
-                                            {d}
-                                        </div>
-                                    </label>
-                                ))}
+                                {(['Easy', 'Medium', 'Hard'] as const).map(d => {
+                                    const getDifficultyClasses = () => {
+                                        switch (d) {
+                                            case 'Easy': return 'peer-checked:bg-green-50 peer-checked:text-green-600 peer-checked:border-green-200 dark:peer-checked:bg-green-900/20 dark:peer-checked:border-green-800';
+                                            case 'Medium': return 'peer-checked:bg-yellow-50 peer-checked:text-yellow-600 peer-checked:border-yellow-200 dark:peer-checked:bg-yellow-900/20 dark:peer-checked:border-yellow-800';
+                                            case 'Hard': return 'peer-checked:bg-red-50 peer-checked:text-red-600 peer-checked:border-red-200 dark:peer-checked:bg-red-900/20 dark:peer-checked:border-red-800';
+                                            default: return '';
+                                        }
+                                    };
+                                    return (
+                                        <label key={d} className="cursor-pointer">
+                                            <input
+                                                className="peer sr-only"
+                                                name="difficulty"
+                                                type="radio"
+                                                value={d}
+                                                checked={editedQuestion.tag_3 === d}
+                                                onChange={() => handleQuestionChange('tag_3', d)}
+                                            />
+                                            <div className={`px-3 py-2 rounded-lg border border-border-light dark:border-border-dark text-xs font-medium text-text-secondary ${getDifficultyClasses()}`}>
+                                                {d}
+                                            </div>
+                                        </label>
+                                    );
+                                })}
                             </div>
                         </div>
                         <div className="col-span-1 md:col-span-2 space-y-1.5">

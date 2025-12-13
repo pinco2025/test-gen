@@ -6,16 +6,23 @@ interface ImageUploadProps {
   onImageUrlChange: (newUrl: string | null) => void;
 }
 
-// Mock function to simulate a file upload
+// This function now calls the backend IPC handler
 const uploadFile = async (file: File): Promise<string> => {
-  console.log(`Simulating upload for: ${file.name}`);
-  // Simulate network delay
-  await new Promise(resolve => setTimeout(resolve, 1500));
-  // In a real app, this would return the actual URL from the server.
-  // We'll return a placeholder that looks like a GDrive thumbnail link.
-  const placeholderId = `placeholder_${Date.now()}`;
-  console.log('Upload complete!');
-  return `https://lh3.googleusercontent.com/d/${placeholderId}`;
+  // In Electron, the File object from a file input includes a 'path' property
+  const filePath = (file as any).path;
+  if (!filePath) {
+    throw new Error('File path is not available. This must be run in an Electron environment.');
+  }
+
+  const result = await window.electronAPI.uploadImage(filePath);
+
+  if (result.success && result.url) {
+    console.log('Upload complete!');
+    return result.url;
+  } else {
+    // The main process will show a dialog box, but we throw here to handle UI state
+    throw new Error(result.error || 'An unknown error occurred during the upload.');
+  }
 };
 
 
@@ -62,9 +69,10 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ label, imageUrl, onImageUrlCh
         const uploadedUrl = await uploadFile(file);
         const formattedUrl = convertToL3Thumbnail(uploadedUrl, width);
         handleUrlChange(formattedUrl);
-    } catch (error) {
+    } catch (error: any) {
         console.error("Upload failed:", error);
-        alert("Image upload failed. Please try again.");
+        // The main process shows a detailed error box. We just reset the UI here.
+        // alert(`Image upload failed: ${error.message}`);
         // Clear preview on failure
         URL.revokeObjectURL(previewUrl);
         setLocalPreview(null);
@@ -108,8 +116,12 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ label, imageUrl, onImageUrlCh
       const fileId = url.split('/d/')[1].split('/')[0];
       return `https://lh3.googleusercontent.com/d/${fileId}=w${newWidth}`;
     }
+    // Ensure the URL doesn't already have a width parameter before appending
     if (url.includes('lh3.googleusercontent.com')) {
-      return url.replace(/=w\d+/, `=w${newWidth}`);
+      if (url.includes('=w')) {
+        return url.replace(/=w\d+/, `=w${newWidth}`);
+      }
+      return `${url}=w${newWidth}`;
     }
     return `${url}=w${newWidth}`; // Append for placeholders
   };
