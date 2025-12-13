@@ -84,3 +84,103 @@ body {
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
 }
+
+/* Title Bar Styles */
+.title-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 32px;
+  background: linear-gradient(to bottom, #f9fafb, #f3f4f6);
+  border-bottom: 1px solid #e5e7eb;
+  padding: 0 12px;
+  user-select: none;
+  -webkit-app-region: drag;
+}
+
+.dark .title-bar {
+  background: linear-gradient(to bottom, #1e1e2d, #121121);
+  border-bottom: 1px solid #2d2d3b;
+}
+
+.title-bar-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.dark .title-bar-title {
+  color: #d1d5db;
+}
+
+.title-bar-controls {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  -webkit-app-region: no-drag;
+}
+
+.title-bar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  color: #6b7280;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.title-bar-btn:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  color: #111827;
+}
+
+.dark .title-bar-btn {
+  color: #9ca3af;
+}
+
+.dark .title-bar-btn:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #f3f4f6;
+}
+
+.title-bar-btn.close:hover {
+  background-color: #ef4444;
+  color: white;
+}
+
+.title-bar-btn .material-symbols-outlined {
+  font-size: 16px;
+}
+
+/* Smooth selection transitions */
+.question-row,
+[data-selectable],
+input[type="checkbox"],
+input[type="radio"] {
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Checkbox and radio smooth animations */
+input[type="checkbox"]:checked,
+input[type="radio"]:checked {
+  animation: checkPulse 0.2s ease-out;
+}
+
+@keyframes checkPulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}

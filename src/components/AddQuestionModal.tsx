@@ -164,7 +164,7 @@ const AddQuestionModal: React.FC<AddQuestionModalProps> = ({ onClose, onSave }) 
                     Paste
                   </button>
                 </div>
-                <div className={`flex-1 overflow-hidden border rounded-md ${error ? 'border-red-500' : 'border-border-light dark:border-border-dark'} bg-[#1e1e1e]`}>
+                <div className={`flex-1 overflow-hidden border rounded-md ${error ? 'border-red-500' : 'border-border-light dark:border-border-dark'} bg-white dark:bg-[#1e1e1e]`}>
                   <div className="h-full overflow-auto">
                     <Editor
                       value={jsonInput}
@@ -174,9 +174,11 @@ const AddQuestionModal: React.FC<AddQuestionModalProps> = ({ onClose, onSave }) 
                       style={{
                         fontFamily: '"Fira code", "Fira Mono", monospace',
                         fontSize: 14,
-                        minHeight: '100%'
+                        minHeight: '100%',
+                        color: '#1f2937'
                       }}
-                      textareaClassName="!outline-none"
+                      className="dark:text-gray-100"
+                      textareaClassName="!outline-none dark:!text-gray-100"
                     />
                   </div>
                 </div>

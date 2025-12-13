@@ -234,33 +234,34 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
   const scrollToBottom = () => listRef.current?.scrollToItem(filteredQuestions.length - 1);
 
   return (
-    <div className="p-4">
-      <div className="bg-surface-light dark:bg-surface-dark p-4 rounded-xl mb-4 border border-border-light dark:border-border-dark flex justify-between items-center">
-        <h2 className="text-xl font-bold flex items-center gap-2">
+    <div className="w-full h-full overflow-y-auto">
+      <div className="p-4">
+        <div className="bg-white dark:bg-[#1e1e2d] p-4 rounded-xl mb-4 border border-gray-200 dark:border-[#2d2d3b] shadow-sm flex justify-between items-center">
+        <h2 className="text-xl font-bold flex items-center gap-2 text-gray-900 dark:text-white">
           <span className="material-symbols-outlined">{sectionName === 'Physics' ? 'science' : sectionName === 'Chemistry' ? 'biotech' : 'calculate'}</span>
           {sectionName} - Question Selection
         </h2>
         <div className="flex gap-2 text-sm font-semibold">
-          <span className={`px-3 py-1 rounded-full ${summary.division1 === 20 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>Div 1: {summary.division1}/20</span>
-          <span className={`px-3 py-1 rounded-full ${summary.division2 === 5 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>Div 2: {summary.division2}/5</span>
-          <span className="px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-700">Total: {summary.total}/25</span>
+          <span className={`px-3 py-1 rounded-full ${summary.division1 === 20 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>Div 1: {summary.division1}/20</span>
+          <span className={`px-3 py-1 rounded-full ${summary.division2 === 5 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>Div 2: {summary.division2}/5</span>
+          <span className="px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white">Total: {summary.total}/25</span>
         </div>
       </div>
 
       <div className="grid grid-cols-12 gap-4">
         <div className="col-span-3">
-          <div className="sticky top-4 bg-surface-light dark:bg-surface-dark p-4 rounded-xl border border-border-light dark:border-border-dark">
-            <h3 className="font-semibold mb-4 flex items-center gap-2"><span className="material-symbols-outlined text-lg">tune</span>Constraints</h3>
+          <div className="sticky top-4 bg-white dark:bg-[#1e1e2d] p-4 rounded-xl border border-gray-200 dark:border-[#2d2d3b] shadow-sm">
+            <h3 className="font-semibold mb-4 flex items-center gap-2 text-gray-900 dark:text-white"><span className="material-symbols-outlined text-lg">tune</span>Constraints</h3>
             <div className="text-xs">
-              <h4 className="font-bold uppercase text-text-secondary mb-2">By Chapter</h4>
-              <table className="w-full">
-                <thead><tr><th className="text-left">Chapter</th><th>A</th><th>B</th></tr></thead>
+              <h4 className="font-bold uppercase text-gray-600 dark:text-gray-400 mb-2">By Chapter</h4>
+              <table className="w-full text-gray-900 dark:text-white">
+                <thead><tr><th className="text-left py-1">Chapter</th><th className="py-1">A</th><th className="py-1">B</th></tr></thead>
                 <tbody>
                   {Object.entries(summary.byChapter).map(([code, counts]) => (
-                    <tr key={code}>
-                      <td>{counts.chapterName}</td>
-                      <td className={`text-center ${counts.a === counts.required_a ? 'text-green-500' : 'text-red-500'}`}>{counts.a}/{counts.required_a}</td>
-                      <td className={`text-center ${counts.b === counts.required_b ? 'text-green-500' : 'text-red-500'}`}>{counts.b}/{counts.required_b}</td>
+                    <tr key={code} className="border-t border-gray-100 dark:border-[#2d2d3b]">
+                      <td className="py-1">{counts.chapterName}</td>
+                      <td className={`text-center py-1 ${counts.a === counts.required_a ? 'text-green-500' : 'text-red-500'}`}>{counts.a}/{counts.required_a}</td>
+                      <td className={`text-center py-1 ${counts.b === counts.required_b ? 'text-green-500' : 'text-red-500'}`}>{counts.b}/{counts.required_b}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -270,28 +271,28 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
         </div>
 
         <div className="col-span-9">
-          <div className="bg-surface-light dark:bg-surface-dark p-4 rounded-xl border border-border-light dark:border-border-dark">
+          <div className="bg-white dark:bg-[#1e1e2d] p-4 rounded-xl border border-gray-200 dark:border-[#2d2d3b] shadow-sm">
             <div className="flex gap-4 mb-4">
               <div className="relative flex-grow">
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary">search</span>
-                <input type="text" placeholder="Search questions..." value={searchText} onChange={(e) => setSearchText(e.target.value)} className="w-full pl-10 pr-4 py-2 border border-border-light dark:border-border-dark rounded-full bg-background-light dark:bg-background-dark" />
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">search</span>
+                <input type="text" placeholder="Search questions..." value={searchText} onChange={(e) => setSearchText(e.target.value)} className="w-full pl-10 pr-4 py-2 border border-gray-200 dark:border-[#2d2d3b] rounded-full bg-gray-50 dark:bg-[#252535] text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-[#5248e5] focus:border-transparent transition-all" />
               </div>
               <FilterMenu chapters={chapters} availableTypes={availableTypes} availableYears={availableYears} currentFilters={filters} onFilterChange={handleFilterChange} />
             </div>
 
             <div className="h-[calc(100vh-300px)] relative questions-panel">
               <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
-                  <button onClick={() => handleZoom('in')} className="bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-full size-8 flex items-center justify-center shadow-md hover:bg-gray-100 dark:hover:bg-gray-700">
+                  <button onClick={() => handleZoom('in')} className="bg-white dark:bg-[#1e1e2d] border border-gray-200 dark:border-[#2d2d3b] rounded-full size-8 flex items-center justify-center shadow-md hover:bg-gray-100 dark:hover:bg-[#252535] text-gray-900 dark:text-white transition-all">
                       <span className="material-symbols-outlined">add</span>
                   </button>
-                  <button onClick={() => handleZoom('out')} className="bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-full size-8 flex items-center justify-center shadow-md hover:bg-gray-100 dark:hover:bg-gray-700">
+                  <button onClick={() => handleZoom('out')} className="bg-white dark:bg-[#1e1e2d] border border-gray-200 dark:border-[#2d2d3b] rounded-full size-8 flex items-center justify-center shadow-md hover:bg-gray-100 dark:hover:bg-[#252535] text-gray-900 dark:text-white transition-all">
                       <span className="material-symbols-outlined">remove</span>
                   </button>
-                   <div className="h-px bg-border-light dark:bg-border-dark my-1"></div>
-                  <button onClick={scrollToTop} className="bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-full size-8 flex items-center justify-center shadow-md hover:bg-gray-100 dark:hover:bg-gray-700">
+                   <div className="h-px bg-gray-200 dark:bg-[#2d2d3b] my-1"></div>
+                  <button onClick={scrollToTop} className="bg-white dark:bg-[#1e1e2d] border border-gray-200 dark:border-[#2d2d3b] rounded-full size-8 flex items-center justify-center shadow-md hover:bg-gray-100 dark:hover:bg-[#252535] text-gray-900 dark:text-white transition-all">
                       <span className="material-symbols-outlined">vertical_align_top</span>
                   </button>
-                  <button onClick={scrollToBottom} className="bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-full size-8 flex items-center justify-center shadow-md hover:bg-gray-100 dark:hover:bg-gray-700">
+                  <button onClick={scrollToBottom} className="bg-white dark:bg-[#1e1e2d] border border-gray-200 dark:border-[#2d2d3b] rounded-full size-8 flex items-center justify-center shadow-md hover:bg-gray-100 dark:hover:bg-[#252535] text-gray-900 dark:text-white transition-all">
                       <span className="material-symbols-outlined">vertical_align_bottom</span>
                   </button>
               </div>
@@ -311,11 +312,12 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
         </div>
       </div>
 
-      <div className="mt-4 pt-4 border-t border-border-light dark:border-border-dark flex justify-between">
-        <button onClick={onBack} className="px-4 py-2 rounded-lg border border-border-light dark:border-border-dark text-text-secondary hover:bg-gray-100 dark:hover:bg-gray-700">Back</button>
-        <button onClick={() => onComplete(selectedQuestions)} disabled={!isSelectionValid} className="px-4 py-2 rounded-lg bg-primary text-white disabled:bg-gray-400">
+      <div className="mt-4 pt-4 border-t border-gray-200 dark:border-[#2d2d3b] flex justify-between">
+        <button onClick={onBack} className="px-6 py-2.5 rounded-lg border border-gray-200 dark:border-[#2d2d3b] text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#252535] font-semibold transition-all">Back</button>
+        <button onClick={() => onComplete(selectedQuestions)} disabled={!isSelectionValid} className="px-6 py-2.5 rounded-lg bg-[#5248e5] text-white disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:cursor-not-allowed font-semibold hover:bg-[#4339d9] transition-all shadow-md disabled:shadow-none">
           {isSelectionValid ? 'Continue' : `Need ${20 - summary.division1} for Div1, ${5 - summary.division2} for Div2`}
         </button>
+      </div>
       </div>
     </div>
   );
