@@ -41,13 +41,13 @@ const QuestionRow: React.FC<QuestionRowProps> = React.memo(({
   const handleClick = useCallback(() => onToggle(question), [onToggle, question]);
 
   return (
-    <div id={`question-row-${question.uuid}`} className="pb-6 pr-2" style={{ zoom: zoomLevel }}>
+    <div id={`question-row-${question.uuid}`} className="pb-6 pr-2 question-row" style={{ zoom: zoomLevel }}>
       <div
         onClick={handleClick}
-        className={`cursor-pointer rounded-lg p-4 transition-all ${
+        className={`cursor-pointer rounded-lg p-4 transition-all duration-150 ${
           selected
-            ? 'border-2 border-primary bg-primary/5'
-            : 'border border-border-light dark:border-border-dark bg-surface-light dark:bg-surface-dark hover:border-primary/50'
+            ? 'border-2 border-[#5248e5] bg-[#5248e5]/5 shadow-md scale-[1.01]'
+            : 'border border-gray-200 dark:border-[#2d2d3b] bg-white dark:bg-[#1e1e2d] hover:border-[#5248e5]/50 hover:shadow-sm'
         }`}
       >
         <div className="flex justify-between items-start mb-2">
@@ -67,17 +67,17 @@ const QuestionRow: React.FC<QuestionRowProps> = React.memo(({
                 setShowMenu(!showMenu);
               }}
               title="Actions"
-              className="flex items-center gap-1 px-2 py-1 bg-background-light dark:bg-background-dark border border-border-light dark:border-border-dark rounded text-xs text-text-secondary hover:border-primary hover:text-primary"
+              className="flex items-center gap-1 px-2 py-1 bg-gray-50 dark:bg-[#252535] border border-gray-200 dark:border-[#2d2d3b] rounded text-xs text-gray-700 dark:text-gray-300 hover:border-[#5248e5] hover:text-[#5248e5] transition-all"
             >
               <span className="material-symbols-outlined text-base">more_vert</span>
               Actions
             </button>
 
             {showMenu && (
-              <div className="absolute top-full right-0 mt-1 w-48 bg-surface-light dark:bg-surface-dark shadow-lg rounded-md z-10 border border-border-light dark:border-border-dark overflow-hidden">
+              <div className="absolute top-full right-0 mt-1 w-48 bg-white dark:bg-[#1e1e2d] shadow-lg rounded-md z-10 border border-gray-200 dark:border-[#2d2d3b] overflow-hidden animate-fade-in">
                 <button
                   onClick={(e) => { e.stopPropagation(); setShowMenu(false); onEdit(e, question); }}
-                  className="flex items-center gap-2 w-full px-3 py-2 text-sm text-left hover:bg-gray-100 dark:hover:bg-gray-700"
+                  className="flex items-center gap-2 w-full px-3 py-2 text-sm text-left text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#252535] transition-colors"
                 >
                   <span className="material-symbols-outlined text-base">edit</span>
                   Edit Properties
@@ -85,7 +85,7 @@ const QuestionRow: React.FC<QuestionRowProps> = React.memo(({
                 {onClone && (
                   <button
                     onClick={(e) => { e.stopPropagation(); setShowMenu(false); onClone(e, question); }}
-                    className="flex items-center gap-2 w-full px-3 py-2 text-sm text-left hover:bg-gray-100 dark:hover:bg-gray-700"
+                    className="flex items-center gap-2 w-full px-3 py-2 text-sm text-left text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#252535] transition-colors"
                   >
                     <span className="material-symbols-outlined text-base">content_copy</span>
                     Clone & Edit
