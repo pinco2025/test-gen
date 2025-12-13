@@ -46,7 +46,7 @@ const QuestionRow: React.FC<QuestionRowProps> = React.memo(({
         onClick={handleClick}
         className={`cursor-pointer rounded-lg p-4 transition-all duration-150 ${
           selected
-            ? 'border-2 border-[#5248e5] bg-[#5248e5]/5 shadow-md scale-[1.01]'
+            ? 'border-2 border-[#5248e5] bg-[#5248e5]/5 shadow-md'
             : 'border border-gray-200 dark:border-[#2d2d3b] bg-white dark:bg-[#1e1e2d] hover:border-[#5248e5]/50 hover:shadow-sm'
         }`}
       >

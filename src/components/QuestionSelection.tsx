@@ -250,8 +250,9 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
   const scrollToBottom = () => listRef.current?.scrollToItem(filteredQuestions.length - 1);
 
   return (
-    <div className="w-full h-full overflow-y-auto">
-      <div className="p-4">
+    <div className="w-full h-full flex flex-col overflow-hidden">
+      {/* Header */}
+      <div className="flex-shrink-0 p-4 pb-0">
         <div className="bg-white dark:bg-[#1e1e2d] p-4 rounded-xl mb-4 border border-gray-200 dark:border-[#2d2d3b] shadow-sm flex justify-between items-center">
         <h2 className="text-xl font-bold flex items-center gap-2 text-gray-900 dark:text-white">
           <span className="material-symbols-outlined">{sectionName === 'Physics' ? 'science' : sectionName === 'Chemistry' ? 'biotech' : 'calculate'}</span>
@@ -263,15 +264,19 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
           <span className="px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white">Total: {summary.total}/25</span>
         </div>
       </div>
+      </div>
 
-      <div className="grid grid-cols-12 gap-4">
-        <div className="col-span-3">
-          <div className="sticky top-4 bg-white dark:bg-[#1e1e2d] p-4 rounded-xl border-2 border-gray-300 dark:border-[#2d2d3b] shadow-md">
-            <h3 className="font-semibold mb-4 flex items-center gap-2 text-gray-900 dark:text-white"><span className="material-symbols-outlined text-lg">tune</span>Constraints</h3>
-            <div className="text-xs overflow-x-auto">
+      {/* Main Content Area */}
+      <div className="flex-1 overflow-hidden min-h-0 px-4">
+      <div className="grid grid-cols-12 gap-4 h-full">
+        {/* Left Sidebar: Constraints */}
+        <div className="col-span-3 h-full overflow-hidden flex flex-col">
+          <div className="bg-white dark:bg-[#1e1e2d] p-4 rounded-xl border-2 border-gray-300 dark:border-[#2d2d3b] shadow-md h-full overflow-hidden flex flex-col">
+            <h3 className="flex-shrink-0 font-semibold mb-4 flex items-center gap-2 text-gray-900 dark:text-white"><span className="material-symbols-outlined text-lg">tune</span>Constraints</h3>
+            <div className="flex-1 overflow-y-auto text-xs">
               <h4 className="font-bold uppercase text-gray-600 dark:text-gray-400 mb-2">By Chapter</h4>
               <table className="w-full text-gray-900 dark:text-white border-collapse">
-                <thead>
+                <thead className="sticky top-0 bg-white dark:bg-[#1e1e2d] z-10">
                   <tr className="border-b-2 border-gray-300 dark:border-[#2d2d3b]">
                     <th className="text-left py-2 pr-2 font-bold">Chapter</th>
                     <th className="text-center py-2 px-1 font-bold">A</th>
@@ -298,9 +303,11 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
           </div>
         </div>
 
-        <div className="col-span-9">
-          <div className="bg-white dark:bg-[#1e1e2d] p-4 rounded-xl border border-gray-200 dark:border-[#2d2d3b] shadow-sm">
-            <div className="flex gap-4 mb-4">
+        {/* Right Panel: Questions */}
+        <div className="col-span-9 h-full flex flex-col">
+          <div className="bg-white dark:bg-[#1e1e2d] p-4 rounded-xl border border-gray-200 dark:border-[#2d2d3b] shadow-sm flex flex-col h-full overflow-hidden">
+            {/* Search and Filters */}
+            <div className="flex-shrink-0 flex gap-4 mb-4">
               <div className="relative flex-grow">
                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">search</span>
                 <input type="text" placeholder="Search questions..." value={searchText} onChange={(e) => setSearchText(e.target.value)} className="w-full pl-10 pr-4 py-2 border border-gray-200 dark:border-[#2d2d3b] rounded-full bg-gray-50 dark:bg-[#252535] text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-[#5248e5] focus:border-transparent transition-all" />
@@ -308,7 +315,8 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
               <FilterMenu chapters={chapters} availableTypes={availableTypes} availableYears={availableYears} currentFilters={filters} onFilterChange={handleFilterChange} />
             </div>
 
-            <div className="h-[calc(100vh-300px)] relative questions-panel">
+            {/* Questions List */}
+            <div className="flex-1 relative questions-panel border-t border-gray-100 dark:border-[#2d2d3b] mt-1 pt-4">
               <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
                   <button onClick={() => handleZoom('in')} className="bg-white dark:bg-[#1e1e2d] border border-gray-200 dark:border-[#2d2d3b] rounded-full size-8 flex items-center justify-center shadow-md hover:bg-gray-100 dark:hover:bg-[#252535] text-gray-900 dark:text-white transition-all">
                       <span className="material-symbols-outlined">add</span>
@@ -339,13 +347,14 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
           </div>
         </div>
       </div>
+      </div>
 
-      <div className="mt-4 pt-4 border-t border-gray-200 dark:border-[#2d2d3b] flex justify-between">
+      {/* Footer */}
+      <div className="flex-shrink-0 p-4 pt-4 border-t border-gray-200 dark:border-[#2d2d3b] flex justify-between bg-gray-50 dark:bg-[#121121]">
         <button onClick={onBack} className="px-6 py-2.5 rounded-lg border border-gray-200 dark:border-[#2d2d3b] text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#252535] font-semibold transition-all">Back</button>
         <button onClick={() => onComplete(selectedQuestions)} disabled={!isSelectionValid} className="px-6 py-2.5 rounded-lg bg-[#5248e5] text-white disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:cursor-not-allowed font-semibold hover:bg-[#4339d9] transition-all shadow-md disabled:shadow-none">
           {isSelectionValid ? 'Continue' : `Need ${20 - summary.division1} for Div1, ${5 - summary.division2} for Div2`}
         </button>
-      </div>
       </div>
     </div>
   );

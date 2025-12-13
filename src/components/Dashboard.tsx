@@ -92,14 +92,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
         {/* Header Section */}
         <div className="flex items-center justify-between mb-10">
           <div className="flex-1">
-            {/* Logo and Title */}
-            <div className="flex items-center gap-3 mb-6">
-              <span className="material-symbols-outlined text-[#5248e5] text-4xl">star</span>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                Test Generator Pro
-              </h1>
-            </div>
-
             {/* Welcome Message */}
             <h2 className="text-5xl font-bold text-gray-900 dark:text-white mb-2">
               Welcome back, Admin!
@@ -116,12 +108,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
             >
               <span className="material-symbols-outlined">rocket_launch</span>
               Create New Test
-            </button>
-            <button
-              className="bg-white dark:bg-[#1e1e2d] border-2 border-gray-200 dark:border-[#2d2d3b] text-gray-900 dark:text-white px-6 py-3 rounded-lg font-semibold hover:bg-gray-50 dark:hover:bg-[#2a2a3a] transition-all flex items-center gap-2"
-            >
-              <span className="material-symbols-outlined">upload</span>
-              Import Questions
             </button>
           </div>
         </div>
