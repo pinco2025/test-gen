@@ -45,7 +45,7 @@ const TestNavigation: React.FC<TestNavigationProps> = ({ currentStep, sections, 
           className={`
             px-6 py-3 rounded-lg font-semibold transition-all duration-200 flex items-center gap-3
             ${currentStep === 'question-select-physics'
-              ? 'bg-[#5248e5] text-white shadow-md'
+              ? 'bg-primary text-white shadow-md'
               : 'bg-gray-100 dark:bg-[#252535] text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-[#2a2a3a] border border-gray-200 dark:border-[#2d2d3b]'
             }
           `}
@@ -55,7 +55,7 @@ const TestNavigation: React.FC<TestNavigationProps> = ({ currentStep, sections, 
             px-2.5 py-1 rounded-full text-xs font-bold
             ${currentStep === 'question-select-physics'
               ? 'bg-white/20 text-white'
-              : 'bg-[#5248e5]/10 text-[#5248e5]'
+              : 'bg-primary/10 text-primary'
             }
           `}>
             {physicsQuestions}
@@ -74,7 +74,7 @@ const TestNavigation: React.FC<TestNavigationProps> = ({ currentStep, sections, 
           className={`
             px-6 py-3 rounded-lg font-semibold transition-all duration-200 flex items-center gap-3
             ${currentStep === 'question-select-chemistry'
-              ? 'bg-[#5248e5] text-white shadow-md'
+              ? 'bg-primary text-white shadow-md'
               : 'bg-gray-100 dark:bg-[#252535] text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-[#2a2a3a] border border-gray-200 dark:border-[#2d2d3b]'
             }
           `}
@@ -84,7 +84,7 @@ const TestNavigation: React.FC<TestNavigationProps> = ({ currentStep, sections, 
             px-2.5 py-1 rounded-full text-xs font-bold
             ${currentStep === 'question-select-chemistry'
               ? 'bg-white/20 text-white'
-              : 'bg-[#5248e5]/10 text-[#5248e5]'
+              : 'bg-primary/10 text-primary'
             }
           `}>
             {chemistryQuestions}
@@ -103,7 +103,7 @@ const TestNavigation: React.FC<TestNavigationProps> = ({ currentStep, sections, 
           className={`
             px-6 py-3 rounded-lg font-semibold transition-all duration-200 flex items-center gap-3
             ${currentStep === 'question-select-math'
-              ? 'bg-[#5248e5] text-white shadow-md'
+              ? 'bg-primary text-white shadow-md'
               : 'bg-gray-100 dark:bg-[#252535] text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-[#2a2a3a] border border-gray-200 dark:border-[#2d2d3b]'
             }
           `}
@@ -113,7 +113,7 @@ const TestNavigation: React.FC<TestNavigationProps> = ({ currentStep, sections, 
             px-2.5 py-1 rounded-full text-xs font-bold
             ${currentStep === 'question-select-math'
               ? 'bg-white/20 text-white'
-              : 'bg-[#5248e5]/10 text-[#5248e5]'
+              : 'bg-primary/10 text-primary'
             }
           `}>
             {mathQuestions}

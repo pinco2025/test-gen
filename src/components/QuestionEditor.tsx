@@ -99,14 +99,14 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, sec
                         <div className="bg-gray-50 dark:bg-white/5 border-b border-border-light dark:border-border-dark px-2 py-1.5 flex flex-wrap gap-1">
                              <input
                                 type="text"
-                                className="w-full p-2 bg-transparent border-none focus:ring-0 text-text-main dark:text-gray-200 text-sm"
+                                className="w-full p-2 bg-transparent border-none focus:ring-0 outline-none text-text-main dark:text-gray-200 text-sm"
                                 value={editedQuestion.question_image_url || ''}
                                 onChange={(e) => handleQuestionChange('question_image_url', e.target.value)}
                                 placeholder="Question Image URL (optional)"
                             />
                         </div>
                         <textarea
-                            className="w-full p-4 min-h-[120px] bg-transparent border-none focus:ring-0 text-text-main dark:text-gray-200 text-sm leading-relaxed resize-y"
+                            className="w-full p-4 min-h-[120px] bg-transparent border-none focus:ring-0 outline-none text-text-main dark:text-gray-200 text-sm leading-relaxed resize-y"
                             placeholder="Type your question here... Use LaTeX for math like $x^2$."
                             value={editedQuestion.question}
                             onChange={(e) => handleQuestionChange('question', e.target.value)}

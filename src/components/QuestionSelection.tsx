@@ -249,6 +249,47 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
   const scrollToTop = () => listRef.current?.scrollToItem(0);
   const scrollToBottom = () => listRef.current?.scrollToItem(filteredQuestions.length - 1);
 
+  // Implementation using a ref to track the last navigated index
+  const lastNavigatedIndex = useRef<number>(-1);
+
+  const handleScrollToNextSelected = () => {
+    const selectedIndices = filteredQuestions
+      .map((q, idx) => selectedUuids.has(q.uuid) ? idx : -1)
+      .filter(idx => idx !== -1);
+
+    if (selectedIndices.length === 0) return;
+
+    // Find the first index greater than lastNavigatedIndex
+    let nextIndex = selectedIndices.find(idx => idx > lastNavigatedIndex.current);
+
+    // If not found (wrap around), go to first
+    if (nextIndex === undefined) {
+      nextIndex = selectedIndices[0];
+    }
+
+    lastNavigatedIndex.current = nextIndex;
+    listRef.current?.scrollToItem(nextIndex, 'center');
+  };
+
+  const handleScrollToPrevSelected = () => {
+    const selectedIndices = filteredQuestions
+      .map((q, idx) => selectedUuids.has(q.uuid) ? idx : -1)
+      .filter(idx => idx !== -1);
+
+    if (selectedIndices.length === 0) return;
+
+    // Find the last index less than lastNavigatedIndex
+    // Reverse logic
+    let prevIndex = [...selectedIndices].reverse().find(idx => idx < lastNavigatedIndex.current);
+
+    if (prevIndex === undefined) {
+      prevIndex = selectedIndices[selectedIndices.length - 1];
+    }
+
+    lastNavigatedIndex.current = prevIndex;
+    listRef.current?.scrollToItem(prevIndex, 'center');
+  };
+
   return (
     <div className="w-full h-full flex flex-col overflow-hidden">
       {/* Header */}
@@ -310,7 +351,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
             <div className="flex-shrink-0 flex gap-4 mb-4">
               <div className="relative flex-grow">
                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">search</span>
-                <input type="text" placeholder="Search questions..." value={searchText} onChange={(e) => setSearchText(e.target.value)} className="w-full pl-10 pr-4 py-2 border border-gray-200 dark:border-[#2d2d3b] rounded-full bg-gray-50 dark:bg-[#252535] text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-[#5248e5] focus:border-transparent transition-all" />
+                <input type="text" placeholder="Search questions..." value={searchText} onChange={(e) => setSearchText(e.target.value)} className="w-full pl-10 pr-4 py-2 border border-gray-200 dark:border-[#2d2d3b] rounded-full bg-gray-50 dark:bg-[#252535] text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-[primary] focus:border-transparent transition-all" />
               </div>
               <FilterMenu chapters={chapters} availableTypes={availableTypes} availableYears={availableYears} currentFilters={filters} onFilterChange={handleFilterChange} />
             </div>
@@ -330,6 +371,13 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
                   </button>
                   <button onClick={scrollToBottom} className="bg-white dark:bg-[#1e1e2d] border border-gray-200 dark:border-[#2d2d3b] rounded-full size-8 flex items-center justify-center shadow-md hover:bg-gray-100 dark:hover:bg-[#252535] text-gray-900 dark:text-white transition-all">
                       <span className="material-symbols-outlined">vertical_align_bottom</span>
+                  </button>
+                   <div className="h-px bg-gray-200 dark:bg-[#2d2d3b] my-1"></div>
+                  <button onClick={handleScrollToPrevSelected} title="Previous Selected" className="bg-white dark:bg-[#1e1e2d] border border-gray-200 dark:border-[#2d2d3b] rounded-full size-8 flex items-center justify-center shadow-md hover:bg-gray-100 dark:hover:bg-[#252535] text-gray-900 dark:text-white transition-all">
+                      <span className="material-symbols-outlined">keyboard_arrow_up</span>
+                  </button>
+                  <button onClick={handleScrollToNextSelected} title="Next Selected" className="bg-white dark:bg-[#1e1e2d] border border-gray-200 dark:border-[#2d2d3b] rounded-full size-8 flex items-center justify-center shadow-md hover:bg-gray-100 dark:hover:bg-[#252535] text-gray-900 dark:text-white transition-all">
+                      <span className="material-symbols-outlined">keyboard_arrow_down</span>
                   </button>
               </div>
 
@@ -352,7 +400,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
       {/* Footer */}
       <div className="flex-shrink-0 p-4 pt-4 border-t border-gray-200 dark:border-[#2d2d3b] flex justify-between bg-gray-50 dark:bg-[#121121]">
         <button onClick={onBack} className="px-6 py-2.5 rounded-lg border border-gray-200 dark:border-[#2d2d3b] text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#252535] font-semibold transition-all">Back</button>
-        <button onClick={() => onComplete(selectedQuestions)} disabled={!isSelectionValid} className="px-6 py-2.5 rounded-lg bg-[#5248e5] text-white disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:cursor-not-allowed font-semibold hover:bg-[#4339d9] transition-all shadow-md disabled:shadow-none">
+        <button onClick={() => onComplete(selectedQuestions)} disabled={!isSelectionValid} className="px-6 py-2.5 rounded-lg bg-primary text-white disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:cursor-not-allowed font-semibold hover:bg-primary/90 transition-all shadow-md disabled:shadow-none">
           {isSelectionValid ? 'Continue' : `Need ${20 - summary.division1} for Div1, ${5 - summary.division2} for Div2`}
         </button>
       </div>
