@@ -63,7 +63,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, sec
   };
 
   return (
-    <main className="flex-1 w-full max-w-[1600px] mx-auto p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 h-full overflow-hidden">
+    <main className="flex-1 min-h-0 w-full max-w-[1600px] mx-auto p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 overflow-hidden">
         {/* Left Pane: Preview */}
         <aside className="lg:col-span-5 flex flex-col gap-4 h-full overflow-hidden">
             <div className="flex items-center justify-between">
