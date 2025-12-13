@@ -330,7 +330,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
                 <tbody>
                   {Object.entries(summary.byChapter).map(([code, counts]) => (
                     <tr key={code} className="border-t border-gray-200 dark:border-[#2d2d3b] hover:bg-gray-50 dark:hover:bg-[#252535] transition-colors">
-                      <td className="py-2 pr-2 font-medium truncate max-w-[80px]" title={counts.chapterName}>{counts.chapterName}</td>
+                      <td className="py-2 pr-2 font-medium truncate max-w-[80px]" title={counts.chapterName}>{code}</td>
                       <td className={`text-center py-2 px-1 font-semibold ${counts.a === counts.required_a ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{counts.a}/{counts.required_a}</td>
                       <td className={`text-center py-2 px-1 font-semibold ${counts.b === counts.required_b ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{counts.b}/{counts.required_b}</td>
                       <td className={`text-center py-2 px-1 font-bold bg-blue-50/30 dark:bg-blue-900/10 ${counts.e === counts.required_e ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{counts.e}/{counts.required_e}</td>
