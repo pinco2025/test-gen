@@ -740,78 +740,79 @@ function App() {
 
       case 'complete':
         const totalQuestions = sections.reduce((sum, section) => sum + section.selectedQuestions.length, 0);
-        const totalMarks = totalQuestions * 4; // Assuming 4 marks per question
+        const totalMarks = totalQuestions * 4;
         return (
-          <div className="flex flex-col items-center justify-center h-full text-center max-w-2xl mx-auto py-12">
-            <div className="bg-green-100 dark:bg-green-900/30 rounded-full p-6 mb-6">
-              <span className="material-symbols-outlined text-6xl text-green-600 dark:text-green-400">check_circle</span>
+          <div className="flex flex-col items-center justify-center h-full text-center max-w-2xl mx-auto py-12 px-4">
+            {/* Success Icon */}
+            <div className="bg-green-100 dark:bg-green-900/30 rounded-full p-8 mb-6">
+              <span className="material-symbols-outlined text-7xl text-green-600 dark:text-green-400">check_circle</span>
             </div>
-            <h2 className="text-3xl font-bold mb-3 text-text-main dark:text-white">Test Generated Successfully!</h2>
-            <p className="text-text-secondary mb-8 text-lg">Your new practice test is ready. You can download it, copy it, or create another one.</p>
 
-            {/* Test Summary */}
-            <div className="w-full bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm p-6 mb-8 text-left">
-              <h3 className="text-lg font-semibold text-text-main dark:text-white mb-4 pb-3 border-b border-border-light dark:border-border-dark">
+            {/* Heading */}
+            <h2 className="text-4xl font-bold mb-3 text-gray-900 dark:text-white">
+              Test Generated Successfully!
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-10 text-lg">
+              Your new practice test is ready. You can download it, copy it, or create another one.
+            </p>
+
+            {/* Test Summary Card */}
+            <div className="w-full bg-white dark:bg-[#1e1e2d] rounded-2xl border border-gray-200 dark:border-[#2d2d3b] shadow-sm p-8 mb-8 text-left">
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-6 pb-4 border-b border-gray-200 dark:border-[#2d2d3b]">
                 Test Summary
               </h3>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-6">
                 <div>
-                  <div className="text-sm text-text-secondary mb-1">Test ID</div>
-                  <div className="font-semibold text-text-main dark:text-white">{testMetadata?.code || 'N/A'}</div>
+                  <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Test ID</div>
+                  <div className="text-lg font-semibold text-gray-900 dark:text-white">{testMetadata?.code || 'N/A'}</div>
                 </div>
                 <div>
-                  <div className="text-sm text-text-secondary mb-1">Title</div>
-                  <div className="font-semibold text-text-main dark:text-white">{testMetadata?.description || 'N/A'}</div>
+                  <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Title</div>
+                  <div className="text-lg font-semibold text-gray-900 dark:text-white">{testMetadata?.description || 'N/A'}</div>
                 </div>
                 <div>
-                  <div className="text-sm text-text-secondary mb-1">Total Questions</div>
-                  <div className="font-semibold text-text-main dark:text-white">{totalQuestions}</div>
+                  <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Total Questions</div>
+                  <div className="text-lg font-semibold text-gray-900 dark:text-white">{totalQuestions}</div>
                 </div>
                 <div>
-                  <div className="text-sm text-text-secondary mb-1">Total Marks</div>
-                  <div className="font-semibold text-text-main dark:text-white">{totalMarks}</div>
+                  <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">Total Marks</div>
+                  <div className="text-lg font-semibold text-gray-900 dark:text-white">{totalMarks}</div>
                 </div>
               </div>
             </div>
 
-            {/* Actions */}
-            <div className="flex flex-col sm:flex-row gap-3 w-full mb-6">
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-4 w-full mb-8">
               <button
-                className="flex-1 bg-primary text-white px-6 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 hover:bg-primary/90 transition-colors shadow-sm"
-                onClick={() => {
-                  // Download JSON functionality would go here
-                  addNotification('info', 'Test has already been exported to a JSON file');
-                }}
+                onClick={() => addNotification('info', 'Test has already been exported to a JSON file')}
+                className="flex-1 bg-[#5248e5] text-white px-8 py-4 rounded-lg font-semibold hover:bg-[#4339d9] transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
               >
-                <span className="material-symbols-outlined">download</span>
+                <span className="material-symbols-outlined text-xl">download</span>
                 Download JSON
               </button>
               <button
-                className="flex-1 bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-main dark:text-white px-6 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 hover:bg-background-light dark:hover:bg-background-dark transition-colors"
-                onClick={() => {
-                  // Copy to clipboard functionality would go here
-                  addNotification('info', 'Copy functionality coming soon');
-                }}
+                onClick={() => addNotification('info', 'Copy functionality coming soon')}
+                className="flex-1 bg-white dark:bg-[#1e1e2d] border-2 border-gray-200 dark:border-[#2d2d3b] text-gray-900 dark:text-white px-8 py-4 rounded-lg font-semibold hover:bg-gray-50 dark:hover:bg-[#252535] transition-all flex items-center justify-center gap-2"
               >
-                <span className="material-symbols-outlined">content_copy</span>
+                <span className="material-symbols-outlined text-xl">content_copy</span>
                 Copy to Clipboard
               </button>
             </div>
 
             {/* Secondary Actions */}
-            <div className="flex gap-4 text-sm">
+            <div className="flex items-center gap-6 text-sm">
               <button
-                className="text-text-secondary hover:text-primary transition-colors flex items-center gap-1"
                 onClick={() => updateCurrentProject({ currentStep: 'test-review' })}
+                className="text-gray-600 dark:text-gray-400 hover:text-[#5248e5] transition-colors flex items-center gap-1 font-medium"
               >
-                <span className="material-symbols-outlined text-base">arrow_back</span>
+                <span className="material-symbols-outlined text-lg">arrow_back</span>
                 Back to Review
               </button>
               <button
-                className="text-primary hover:text-primary/80 transition-colors font-medium flex items-center gap-1"
                 onClick={createNewProject}
+                className="text-[#5248e5] hover:text-[#4339d9] transition-colors flex items-center gap-1 font-semibold"
               >
-                <span className="material-symbols-outlined text-base">add_circle</span>
+                <span className="material-symbols-outlined text-lg">add_circle</span>
                 Create Another Test
               </button>
             </div>
