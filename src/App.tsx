@@ -853,9 +853,10 @@ function App() {
         const totalQuestions = sections.reduce((sum, section) => sum + section.selectedQuestions.length, 0);
         const totalMarks = totalQuestions * 4;
         return (
-          <div className="flex flex-col items-center justify-center h-full text-center max-w-2xl mx-auto py-12 px-4">
-            {/* Success Icon */}
-            <div className="bg-green-100 dark:bg-green-900/30 rounded-full p-8 mb-6">
+          <div className="flex-1 overflow-y-auto w-full">
+            <div className="flex flex-col items-center justify-center min-h-full text-center max-w-2xl mx-auto py-12 px-4">
+              {/* Success Icon */}
+              <div className="bg-green-100 dark:bg-green-900/30 rounded-full p-8 mb-6">
               <span className="material-symbols-outlined text-7xl text-green-600 dark:text-green-400">check_circle</span>
             </div>
 
@@ -928,6 +929,7 @@ function App() {
               </button>
             </div>
           </div>
+        </div>
         );
 
       default:
