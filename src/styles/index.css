@@ -1,6 +1,64 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Global Font Setup */
+:root {
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+}
+
+html, body {
+  font-family: var(--font-family);
+}
+
+/* Base layer for consistent dark mode across all elements */
+@layer base {
+  * {
+    @apply transition-colors duration-200;
+  }
+
+  body {
+    @apply bg-background-light dark:bg-background-dark text-text-main dark:text-white;
+    font-family: var(--font-family);
+  }
+
+  /* Modal & Dialog base styles */
+  .modal-overlay {
+    @apply fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm;
+  }
+
+  .modal-content {
+    @apply bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-xl shadow-2xl;
+  }
+
+  .modal-header {
+    @apply flex items-center justify-between p-4 border-b border-border-light dark:border-border-dark;
+  }
+
+  .modal-footer {
+    @apply flex items-center justify-end gap-3 p-4 border-t border-border-light dark:border-border-dark bg-background-light/50 dark:bg-background-dark/50;
+  }
+
+  /* Form inputs with dark mode */
+  input[type="text"],
+  input[type="number"],
+  input[type="email"],
+  input[type="password"],
+  input[type="search"],
+  textarea,
+  select {
+    @apply bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-main dark:text-white placeholder-text-secondary dark:placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent;
+    font-family: var(--font-family);
+  }
+
+  /* Labels with dark mode */
+  label {
+    @apply text-text-main dark:text-white font-medium;
+    font-family: var(--font-family);
+  }
+}
 
 /* Custom Animations */
 @keyframes fadeIn {
@@ -16,6 +74,21 @@
 
 .animate-fade-in {
   animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.2s ease-out;
 }
 
 /* Custom scrollbar for cleaner look */
@@ -64,14 +137,13 @@ button, a, input, select, textarea {
 }
 
 /* Focus visible for accessibility */
-/* Override default outline for elements that manage their own ring/border */
 button:focus-visible,
 a:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 2px #3b82f6; /* Fallback using shadow if ring not present */
+  box-shadow: 0 0 0 2px #3b82f6;
 }
 
 /* Prevent layout shift */
@@ -91,17 +163,17 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 38px; /* Slightly taller for better touch targets */
-  background: #f1f5f9; /* Slate-100 */
+  height: 38px;
+  background: #f1f5f9;
   border-bottom: 1px solid #e2e8f0;
   padding: 0 16px;
   user-select: none;
   -webkit-app-region: drag;
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: var(--font-family);
 }
 
 .dark .title-bar {
-  background: #0f172a; /* Slate-900 */
+  background: #0f172a;
   border-bottom: 1px solid #1e293b;
 }
 
@@ -122,7 +194,7 @@ body {
 .title-bar-controls {
   display: flex;
   align-items: center;
-  gap: 8px; /* Spacing between buttons */
+  gap: 8px;
   -webkit-app-region: no-drag;
 }
 
@@ -133,7 +205,7 @@ body {
   width: 32px;
   height: 24px;
   border: none;
-  border-radius: 4px; /* Rounded corners */
+  border-radius: 4px;
   background: transparent;
   color: #64748b;
   cursor: pointer;
@@ -141,7 +213,7 @@ body {
 }
 
 .title-bar-btn:hover {
-  background-color: #e2e8f0; /* Slight gray bg on hover */
+  background-color: #e2e8f0;
   color: #0f172a;
 }
 
@@ -160,7 +232,7 @@ body {
 }
 
 .title-bar-btn .material-symbols-outlined {
-  font-size: 18px; /* Slightly larger icons */
+  font-size: 18px;
 }
 
 /* Smooth selection transitions */
@@ -187,4 +259,37 @@ input[type="radio"]:checked {
   100% {
     transform: scale(1);
   }
+}
+
+/* Custom Button Styles */
+.btn-primary {
+  @apply bg-primary text-white px-4 py-2 rounded-lg font-semibold hover:bg-primary/90 transition-all shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30;
+}
+
+.btn-secondary {
+  @apply bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-main dark:text-white px-4 py-2 rounded-lg font-semibold hover:bg-gray-50 dark:hover:bg-gray-800 transition-all;
+}
+
+.btn-danger {
+  @apply bg-red-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-red-600 transition-all;
+}
+
+/* Card Styles */
+.card {
+  @apply bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-xl p-4;
+}
+
+/* Input Group */
+.input-group {
+  @apply flex flex-col gap-2;
+}
+
+.input-group label {
+  @apply text-sm font-medium text-text-main dark:text-white;
+}
+
+.input-group input,
+.input-group select,
+.input-group textarea {
+  @apply w-full;
 }

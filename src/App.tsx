@@ -24,6 +24,7 @@ import TestReview from './components/TestReview';
 import QuestionEditor from './components/QuestionEditor';
 import TestNavigation from './components/TestNavigation';
 import AddQuestionModal from './components/AddQuestionModal';
+import ExportTestModal, { ExportConfig } from './components/ExportTestModal';
 import Notification, { useNotification } from './components/Notification';
 import TitleBar from './components/TitleBar';
 import Dashboard from './components/Dashboard';
@@ -83,6 +84,9 @@ function App() {
 
   // Add Question Modal state
   const [isAddQuestionModalOpen, setIsAddQuestionModalOpen] = useState(false);
+
+  // Export Test Modal state
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
   // State for the question editor
   const [editingQuestion, setEditingQuestion] = useState<{ question: Question, solution?: Solution } | null>(null);
@@ -543,8 +547,15 @@ function App() {
     updateCurrentProject(updates);
   };
 
-  const handleExportTest = async () => {
+  // Open export modal instead of directly exporting
+  const handleExportTest = () => {
     if (!testMetadata) return;
+    setIsExportModalOpen(true);
+  };
+
+  // Handle the actual export with config from modal
+  const handleExportWithConfig = async (exportConfig: ExportConfig) => {
+    if (!testMetadata || !window.electronAPI) return;
 
     const sortedSections = sections.map(section => ({
       ...section,
@@ -556,14 +567,23 @@ function App() {
       sections: sortedSections
     };
 
-    if (window.electronAPI) {
-      const result = await window.electronAPI.test.export(test);
-      if (result.success) {
-        updateCurrentProject({ currentStep: 'complete' });
-        addNotification('success', 'Test exported successfully!');
-      } else {
-        addNotification('error', 'Failed to export test: ' + result.error);
+    const result = await window.electronAPI.test.exportWithConfig(test, exportConfig);
+
+    if (result.success) {
+      updateCurrentProject({ currentStep: 'complete' });
+
+      // Show detailed success message
+      let message = 'Test exported successfully!';
+      if (result.githubTestUrl) {
+        message += ' Uploaded to GitHub.';
       }
+      if (result.supabaseInserted) {
+        message += ' Saved to database.';
+      }
+      addNotification('success', message);
+      setIsExportModalOpen(false);
+    } else {
+      throw new Error(result.error || 'Export failed');
     }
   };
 
@@ -1053,6 +1073,16 @@ function App() {
         <AddQuestionModal
           onClose={() => setIsAddQuestionModalOpen(false)}
           onSave={handleAddQuestion}
+        />
+      )}
+
+      {/* Export Test Modal */}
+      {isExportModalOpen && testMetadata && (
+        <ExportTestModal
+          test={{ metadata: testMetadata, sections }}
+          sections={sections}
+          onClose={() => setIsExportModalOpen(false)}
+          onExport={handleExportWithConfig}
         />
       )}
     </div>

@@ -43,7 +43,51 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Test operations
   test: {
-    export: (test: Test) => ipcRenderer.invoke('test:export', test)
+    export: (test: Test) => ipcRenderer.invoke('test:export', test),
+    exportWithConfig: (test: Test, exportConfig: {
+      duration: number;
+      exam: string;
+      type: string;
+      tier: string;
+      totalQuestions: number;
+      markingScheme: string;
+      instructions: string[];
+      title: string;
+      description: string;
+    }) => ipcRenderer.invoke('test:exportWithConfig', test, exportConfig)
+  },
+
+  // GitHub operations
+  github: {
+    configure: (config: { token: string; owner: string; repo: string; branch: string }) =>
+      ipcRenderer.invoke('github:configure', config),
+    getConfig: () => ipcRenderer.invoke('github:getConfig'),
+    isConfigured: () => ipcRenderer.invoke('github:isConfigured'),
+    testConnection: () => ipcRenderer.invoke('github:testConnection'),
+    uploadTestFiles: (testId: string, testContent: string, solutionsContent: string) =>
+      ipcRenderer.invoke('github:uploadTestFiles', testId, testContent, solutionsContent)
+  },
+
+  // Supabase operations
+  supabase: {
+    configure: (config: { url: string; anonKey: string }) =>
+      ipcRenderer.invoke('supabase:configure', config),
+    getConfig: () => ipcRenderer.invoke('supabase:getConfig'),
+    isConfigured: () => ipcRenderer.invoke('supabase:isConfigured'),
+    testConnection: () => ipcRenderer.invoke('supabase:testConnection'),
+    insertTest: (record: {
+      testID: string;
+      url: string;
+      exam: string;
+      type: string;
+      tier: string;
+      duration: number;
+      title: string;
+      description: string;
+      totalQuestions: number;
+      markingScheme: string;
+      instructions: object[];
+    }) => ipcRenderer.invoke('supabase:insertTest', record)
   },
 
   // Project operations

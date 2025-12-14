@@ -1,5 +1,53 @@
 import { Question, QuestionFilter, Test, ProjectState, ProjectInfo, AppConfig, Solution } from './types';
 
+export interface ExportConfig {
+  duration: number;
+  exam: string;
+  type: string;
+  tier: string;
+  totalQuestions: number;
+  markingScheme: string;
+  instructions: string[];
+  title: string;
+  description: string;
+}
+
+export interface GitHubConfig {
+  token: string;
+  owner: string;
+  repo: string;
+  branch: string;
+}
+
+export interface SupabaseConfig {
+  url: string;
+  anonKey: string;
+}
+
+export interface TestRecord {
+  testID: string;
+  url: string;
+  exam: string;
+  type: string;
+  tier: string;
+  duration: number;
+  title: string;
+  description: string;
+  totalQuestions: number;
+  markingScheme: string;
+  instructions: object[];
+}
+
+export interface ExportResult {
+  success: boolean;
+  localPath?: string;
+  solutionsPath?: string;
+  githubTestUrl?: string;
+  githubSolutionsUrl?: string;
+  supabaseInserted?: boolean;
+  error?: string;
+}
+
 declare global {
   interface Window {
     electronAPI: {
@@ -34,6 +82,24 @@ declare global {
       };
       test: {
         export: (test: Test) => Promise<{ success: boolean; path?: string; error?: string }>;
+        exportWithConfig: (test: Test, exportConfig: ExportConfig) => Promise<ExportResult>;
+      };
+      github: {
+        configure: (config: GitHubConfig) => Promise<{ success: boolean; error?: string }>;
+        getConfig: () => Promise<GitHubConfig | null>;
+        isConfigured: () => Promise<boolean>;
+        testConnection: () => Promise<{ success: boolean; error?: string }>;
+        uploadTestFiles: (testId: string, testContent: string, solutionsContent: string) => Promise<{
+          test: { success: boolean; url?: string; rawUrl?: string; error?: string };
+          solutions: { success: boolean; url?: string; rawUrl?: string; error?: string };
+        }>;
+      };
+      supabase: {
+        configure: (config: SupabaseConfig) => Promise<{ success: boolean; error?: string }>;
+        getConfig: () => Promise<SupabaseConfig | null>;
+        isConfigured: () => Promise<boolean>;
+        testConnection: () => Promise<{ success: boolean; error?: string }>;
+        insertTest: (record: TestRecord) => Promise<{ success: boolean; data?: any; error?: string }>;
       };
       project: {
         save: (projectState: ProjectState) => Promise<{ success: boolean; error?: string }>;

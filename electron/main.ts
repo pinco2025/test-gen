@@ -5,6 +5,8 @@ import mime from 'mime-types';
 import { dbService } from './database';
 import { projectService } from './projectService';
 import { oauthService } from './oauthService';
+import { githubService } from './githubService';
+import { supabaseService } from './supabaseService';
 import { Question, QuestionFilter, Test, ProjectState, ProjectInfo, AppConfig } from '../src/types';
 import fs from 'fs';
 
@@ -465,4 +467,177 @@ ipcMain.handle('config:update', async (_, updates: Partial<AppConfig>) => {
 ipcMain.handle('config:deleteAllProjects', async () => {
   const count = projectService.deleteAllProjects();
   return { success: true, count };
+});
+
+// GitHub handlers
+ipcMain.handle('github:configure', async (_, config: { token: string; owner: string; repo: string; branch: string }) => {
+  try {
+    githubService.saveConfig(config);
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('github:getConfig', async () => {
+  return githubService.getConfig();
+});
+
+ipcMain.handle('github:isConfigured', async () => {
+  return githubService.isConfigured();
+});
+
+ipcMain.handle('github:testConnection', async () => {
+  return await githubService.testConnection();
+});
+
+ipcMain.handle('github:uploadTestFiles', async (_, testId: string, testContent: string, solutionsContent: string) => {
+  return await githubService.uploadTestFiles(testId, testContent, solutionsContent);
+});
+
+// Supabase handlers
+ipcMain.handle('supabase:configure', async (_, config: { url: string; anonKey: string }) => {
+  try {
+    supabaseService.saveConfig(config);
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('supabase:getConfig', async () => {
+  return supabaseService.getConfig();
+});
+
+ipcMain.handle('supabase:isConfigured', async () => {
+  return supabaseService.isConfigured();
+});
+
+ipcMain.handle('supabase:testConnection', async () => {
+  return await supabaseService.testConnection();
+});
+
+ipcMain.handle('supabase:insertTest', async (_, record: {
+  testID: string;
+  url: string;
+  exam: string;
+  type: string;
+  tier: string;
+  duration: number;
+  title: string;
+  description: string;
+  totalQuestions: number;
+  markingScheme: string;
+  instructions: object[];
+}) => {
+  return await supabaseService.insertTest(record);
+});
+
+// Enhanced test export with config
+ipcMain.handle('test:exportWithConfig', async (_, test: Test, exportConfig: {
+  duration: number;
+  exam: string;
+  type: string;
+  tier: string;
+  totalQuestions: number;
+  markingScheme: string;
+  instructions: string[];
+  title: string;
+  description: string;
+}) => {
+  try {
+    // Transform the test data
+    const exportData = transformTestToExportFormat(test);
+
+    // Override with export config values
+    exportData.duration = exportConfig.duration;
+    exportData.title = exportConfig.title;
+
+    const exportContent = JSON.stringify(exportData, null, 2).replace(/\\\\/g, '\\');
+
+    // Create solutions JSON
+    const questionUUIDs = exportData.questions.map((q: any) => q.uuid);
+    const solutionsMap = dbService.getSolutionsByUUIDs(questionUUIDs);
+
+    const solutionsData = {
+      test_id: exportData.testId,
+      questions: exportData.questions.map((q: any, index: number) => {
+        const solution = solutionsMap.get(q.uuid);
+        return {
+          id: q.id,
+          number: index + 1,
+          solution_text: solution ? solution.solution_text : '',
+          solution_image_url: solution ? solution.solution_image_url : '',
+          tags: q.tags
+        };
+      })
+    };
+
+    const solutionsContent = JSON.stringify(solutionsData, null, 2).replace(/\\\\/g, '\\');
+
+    // Step 1: Download files locally
+    const result = await dialog.showSaveDialog({
+      defaultPath: `test-${test.metadata.code}.json`,
+      filters: [{ name: 'JSON Files', extensions: ['json'] }]
+    });
+
+    if (result.canceled || !result.filePath) {
+      return { success: false, error: 'Export cancelled' };
+    }
+
+    fs.writeFileSync(result.filePath, exportContent, 'utf-8');
+
+    const pathObj = path.parse(result.filePath);
+    const solutionsPath = path.join(pathObj.dir, `${pathObj.name}_solutions${pathObj.ext}`);
+    fs.writeFileSync(solutionsPath, solutionsContent, 'utf-8');
+
+    let githubTestUrl = '';
+    let githubSolutionsUrl = '';
+
+    // Step 2: Upload to GitHub if configured
+    if (githubService.isConfigured()) {
+      const uploadResult = await githubService.uploadTestFiles(
+        test.metadata.code,
+        exportContent,
+        solutionsContent
+      );
+
+      if (uploadResult.test.success && uploadResult.test.rawUrl) {
+        githubTestUrl = uploadResult.test.rawUrl;
+      }
+      if (uploadResult.solutions.success && uploadResult.solutions.rawUrl) {
+        githubSolutionsUrl = uploadResult.solutions.rawUrl;
+      }
+    }
+
+    // Step 3: Insert into Supabase if configured
+    let supabaseResult = { success: false, error: 'Supabase not configured' };
+    if (supabaseService.isConfigured() && githubTestUrl) {
+      supabaseResult = await supabaseService.insertTest({
+        testID: test.metadata.code,
+        url: githubTestUrl,
+        exam: exportConfig.exam,
+        type: exportConfig.type,
+        tier: exportConfig.tier,
+        duration: exportConfig.duration,
+        title: exportConfig.title,
+        description: exportConfig.description,
+        totalQuestions: exportConfig.totalQuestions,
+        markingScheme: exportConfig.markingScheme,
+        instructions: exportConfig.instructions.map(text => ({ text }))
+      });
+    }
+
+    return {
+      success: true,
+      localPath: result.filePath,
+      solutionsPath,
+      githubTestUrl,
+      githubSolutionsUrl,
+      supabaseInserted: supabaseResult.success
+    };
+  } catch (error: any) {
+    console.error('Export with config failed:', error);
+    return { success: false, error: error.message };
+  }
 });
