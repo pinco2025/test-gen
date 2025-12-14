@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 
 interface GitHubConfig {
+  enabled: boolean;
   token: string;
   owner: string;
   repo: string;
@@ -17,23 +18,50 @@ interface UploadResult {
   error?: string;
 }
 
+interface AppConfig {
+  github?: GitHubConfig;
+}
+
 class GitHubService {
   private octokit: Octokit | null = null;
   private config: GitHubConfig | null = null;
-  private configPath: string;
 
   constructor() {
-    this.configPath = path.join(app.getPath('userData'), 'github-config.json');
     this.loadConfig();
   }
 
-  private loadConfig(): void {
+  private getConfigPath(): string {
+    // Try project root first (for development)
+    const devPath = path.join(process.cwd(), 'config.json');
+    if (fs.existsSync(devPath)) {
+      return devPath;
+    }
+
+    // Try app path (for production)
+    const appPath = path.join(app.getAppPath(), 'config.json');
+    if (fs.existsSync(appPath)) {
+      return appPath;
+    }
+
+    // Fallback to userData directory
+    return path.join(app.getPath('userData'), 'config.json');
+  }
+
+  loadConfig(): void {
     try {
-      if (fs.existsSync(this.configPath)) {
-        const data = fs.readFileSync(this.configPath, 'utf-8');
-        this.config = JSON.parse(data);
-        if (this.config?.token) {
-          this.octokit = new Octokit({ auth: this.config.token });
+      const configPath = this.getConfigPath();
+      if (fs.existsSync(configPath)) {
+        const data = fs.readFileSync(configPath, 'utf-8');
+        const appConfig: AppConfig = JSON.parse(data);
+
+        if (appConfig.github) {
+          this.config = appConfig.github;
+
+          // Only initialize Octokit if enabled and has valid token
+          if (this.config.enabled && this.config.token && !this.config.token.includes('YOUR_')) {
+            this.octokit = new Octokit({ auth: this.config.token });
+            console.log('GitHub service initialized from config.json');
+          }
         }
       }
     } catch (error) {
@@ -42,9 +70,28 @@ class GitHubService {
   }
 
   saveConfig(config: GitHubConfig): void {
-    this.config = config;
-    this.octokit = new Octokit({ auth: config.token });
-    fs.writeFileSync(this.configPath, JSON.stringify(config, null, 2));
+    try {
+      const configPath = this.getConfigPath();
+      let appConfig: AppConfig = {};
+
+      // Load existing config
+      if (fs.existsSync(configPath)) {
+        const data = fs.readFileSync(configPath, 'utf-8');
+        appConfig = JSON.parse(data);
+      }
+
+      // Update GitHub config
+      appConfig.github = config;
+      this.config = config;
+
+      if (config.enabled && config.token) {
+        this.octokit = new Octokit({ auth: config.token });
+      }
+
+      fs.writeFileSync(configPath, JSON.stringify(appConfig, null, 2));
+    } catch (error) {
+      console.error('Failed to save GitHub config:', error);
+    }
   }
 
   getConfig(): GitHubConfig | null {
@@ -52,7 +99,15 @@ class GitHubService {
   }
 
   isConfigured(): boolean {
-    return !!(this.config?.token && this.config?.owner && this.config?.repo);
+    return !!(
+      this.config?.enabled &&
+      this.config?.token &&
+      !this.config.token.includes('YOUR_') &&
+      this.config?.owner &&
+      !this.config.owner.includes('YOUR_') &&
+      this.config?.repo &&
+      !this.config.repo.includes('YOUR_')
+    );
   }
 
   async uploadFile(

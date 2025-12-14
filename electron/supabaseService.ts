@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 
 interface SupabaseConfig {
+  enabled: boolean;
   url: string;
   anonKey: string;
 }
@@ -28,23 +29,56 @@ interface InsertResult {
   error?: string;
 }
 
+interface AppConfig {
+  supabase?: SupabaseConfig;
+}
+
 class SupabaseService {
   private client: SupabaseClient | null = null;
   private config: SupabaseConfig | null = null;
-  private configPath: string;
 
   constructor() {
-    this.configPath = path.join(app.getPath('userData'), 'supabase-config.json');
     this.loadConfig();
   }
 
-  private loadConfig(): void {
+  private getConfigPath(): string {
+    // Try project root first (for development)
+    const devPath = path.join(process.cwd(), 'config.json');
+    if (fs.existsSync(devPath)) {
+      return devPath;
+    }
+
+    // Try app path (for production)
+    const appPath = path.join(app.getAppPath(), 'config.json');
+    if (fs.existsSync(appPath)) {
+      return appPath;
+    }
+
+    // Fallback to userData directory
+    return path.join(app.getPath('userData'), 'config.json');
+  }
+
+  loadConfig(): void {
     try {
-      if (fs.existsSync(this.configPath)) {
-        const data = fs.readFileSync(this.configPath, 'utf-8');
-        this.config = JSON.parse(data);
-        if (this.config?.url && this.config?.anonKey) {
-          this.client = createClient(this.config.url, this.config.anonKey);
+      const configPath = this.getConfigPath();
+      if (fs.existsSync(configPath)) {
+        const data = fs.readFileSync(configPath, 'utf-8');
+        const appConfig: AppConfig = JSON.parse(data);
+
+        if (appConfig.supabase) {
+          this.config = appConfig.supabase;
+
+          // Only initialize client if enabled and has valid credentials
+          if (
+            this.config.enabled &&
+            this.config.url &&
+            !this.config.url.includes('YOUR_') &&
+            this.config.anonKey &&
+            !this.config.anonKey.includes('YOUR_')
+          ) {
+            this.client = createClient(this.config.url, this.config.anonKey);
+            console.log('Supabase service initialized from config.json');
+          }
         }
       }
     } catch (error) {
@@ -53,9 +87,28 @@ class SupabaseService {
   }
 
   saveConfig(config: SupabaseConfig): void {
-    this.config = config;
-    this.client = createClient(config.url, config.anonKey);
-    fs.writeFileSync(this.configPath, JSON.stringify(config, null, 2));
+    try {
+      const configPath = this.getConfigPath();
+      let appConfig: AppConfig = {};
+
+      // Load existing config
+      if (fs.existsSync(configPath)) {
+        const data = fs.readFileSync(configPath, 'utf-8');
+        appConfig = JSON.parse(data);
+      }
+
+      // Update Supabase config
+      appConfig.supabase = config;
+      this.config = config;
+
+      if (config.enabled && config.url && config.anonKey) {
+        this.client = createClient(config.url, config.anonKey);
+      }
+
+      fs.writeFileSync(configPath, JSON.stringify(appConfig, null, 2));
+    } catch (error) {
+      console.error('Failed to save Supabase config:', error);
+    }
   }
 
   getConfig(): SupabaseConfig | null {
@@ -63,7 +116,14 @@ class SupabaseService {
   }
 
   isConfigured(): boolean {
-    return !!(this.config?.url && this.config?.anonKey && this.client);
+    return !!(
+      this.config?.enabled &&
+      this.config?.url &&
+      !this.config.url.includes('YOUR_') &&
+      this.config?.anonKey &&
+      !this.config.anonKey.includes('YOUR_') &&
+      this.client
+    );
   }
 
   async insertTest(record: TestRecord): Promise<InsertResult> {
