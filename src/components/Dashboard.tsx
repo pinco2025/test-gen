@@ -14,14 +14,6 @@ interface DashboardStats {
   testsGenerated: number;
 }
 
-interface ActivityItem {
-  id: string;
-  type: 'generated' | 'imported';
-  title: string;
-  timestamp: string;
-  icon: string;
-}
-
 export const Dashboard: React.FC<DashboardProps> = ({
   projects,
   onLoadProject,
@@ -34,13 +26,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
     testsGenerated: projects.length
   });
 
-  const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [isMounted, setIsMounted] = useState(false);
+
+  // Sort projects by last modified (most recent first)
+  const sortedProjects = [...projects].sort((a, b) =>
+    new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime()
+  );
 
   useEffect(() => {
     setIsMounted(true);
     loadDashboardStats();
-    loadRecentActivities();
   }, [projects]);
 
   const loadDashboardStats = async () => {
@@ -50,7 +45,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
       const totalQuestions = await window.electronAPI.questions.getCount();
       setStats({
         totalQuestions: totalQuestions || 0,
-        sourceFilesImported: 128, // This was mock data before, keeping it for now as source is unclear
+        sourceFilesImported: 128,
         testsGenerated: projects.length
       });
     } catch (error) {
@@ -71,21 +66,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
     if (diffHour < 24) return `${diffHour} hour${diffHour > 1 ? 's' : ''} ago`;
     if (diffDay < 7) return `${diffDay} day${diffDay > 1 ? 's' : ''} ago`;
     return then.toLocaleDateString();
-  };
-
-  const loadRecentActivities = () => {
-    const recentActivities: ActivityItem[] = projects
-      .sort((a, b) => new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime())
-      .slice(0, 5)
-      .map(project => ({
-        id: project.id,
-        type: 'generated' as const,
-        title: `Generated '${project.testCode}'`,
-        timestamp: getRelativeTime(project.lastModified),
-        icon: 'edit_document'
-      }));
-
-    setActivities(recentActivities);
   };
 
   const handleDeleteClick = (e: React.MouseEvent, projectId: string, projectTitle: string) => {
@@ -111,7 +91,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   `;
 
   return (
-    <div className="relative flex h-auto min-h-screen w-full flex-col group/design-root overflow-x-hidden font-display bg-background-light dark:bg-background-dark">
+    <div className="relative flex flex-col h-full w-full font-display bg-background-light dark:bg-background-dark overflow-hidden">
       <style>{animationStyles}</style>
       {/* Animated Background */}
       <div className="fixed inset-0 w-full h-full overflow-hidden -z-10 pointer-events-none flex justify-center items-center pt-0">
@@ -139,9 +119,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="flex h-full grow flex-col">
-        <div className="px-4 md:px-10 lg:px-20 xl:px-40 flex flex-1 justify-center py-5">
+      {/* Scrollable Main Content */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="px-4 md:px-10 lg:px-20 xl:px-40 flex justify-center py-5">
           <div className="flex flex-col max-w-[960px] flex-1 z-10">
 
             <header className="flex items-center justify-between whitespace-nowrap px-4 py-3 mb-6" />
@@ -182,30 +162,58 @@ export const Dashboard: React.FC<DashboardProps> = ({
               </div>
             </div>
 
-            <h2 className="text-text-main dark:text-white text-[22px] font-bold leading-tight tracking-[-0.015em] px-4 pb-3 pt-5">Recent Activity</h2>
-            <div className="flex flex-col p-4">
-              <div className="bg-white/80 dark:bg-background-dark/80 border border-border-light dark:border-gray-700 rounded-xl overflow-hidden backdrop-blur-sm">
-                <ul className="divide-y divide-border-light dark:divide-gray-700">
-                  {activities.map(activity => (
-                    <li key={activity.id} onClick={() => onLoadProject(activity.id)} className="flex items-center justify-between p-4 hover:bg-background-light/50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer">
-                      <div className="flex items-center gap-4">
-                        <div className="flex items-center justify-center size-10 rounded-full bg-primary/10 text-primary">
-                          <span className="material-symbols-outlined">{activity.icon}</span>
+            <div className="flex items-center justify-between px-4 pb-3 pt-5">
+              <h2 className="text-text-main dark:text-white text-[22px] font-bold leading-tight tracking-[-0.015em]">Available Projects</h2>
+              <span className="text-text-secondary dark:text-gray-400 text-sm">{sortedProjects.length} project{sortedProjects.length !== 1 ? 's' : ''}</span>
+            </div>
+            <div className="flex flex-col p-4 pb-8">
+              {sortedProjects.length === 0 ? (
+                <div className="bg-white/80 dark:bg-background-dark/80 border border-border-light dark:border-gray-700 rounded-xl p-8 text-center backdrop-blur-sm">
+                  <div className="flex items-center justify-center size-16 rounded-full bg-primary/10 text-primary mx-auto mb-4">
+                    <span className="material-symbols-outlined text-3xl">folder_open</span>
+                  </div>
+                  <p className="text-text-main dark:text-white font-medium mb-2">No projects yet</p>
+                  <p className="text-text-secondary dark:text-gray-400 text-sm mb-4">Create your first test to get started</p>
+                  <button
+                    onClick={onCreateNew}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-semibold hover:bg-primary/90 transition-all"
+                  >
+                    <span className="material-symbols-outlined text-base">add</span>
+                    Create New Test
+                  </button>
+                </div>
+              ) : (
+                <div className="bg-white/80 dark:bg-background-dark/80 border border-border-light dark:border-gray-700 rounded-xl overflow-hidden backdrop-blur-sm">
+                  <ul className="divide-y divide-border-light dark:divide-gray-700">
+                    {sortedProjects.map(project => (
+                      <li key={project.id} onClick={() => onLoadProject(project.id)} className="flex items-center justify-between p-4 hover:bg-background-light/50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer">
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center justify-center size-10 rounded-full bg-primary/10 text-primary">
+                            <span className="material-symbols-outlined">edit_document</span>
+                          </div>
+                          <div>
+                            <p className="font-medium text-text-main dark:text-white">{project.testCode}</p>
+                            <p className="text-sm text-text-secondary dark:text-gray-400">
+                              {project.description || 'No description'} • {getRelativeTime(project.lastModified)}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-medium text-text-main dark:text-white">{activity.title}</p>
-                          <p className="text-sm text-text-secondary dark:text-gray-400">{activity.timestamp}</p>
+                        <div className="flex items-center gap-2">
+                          <div className="hidden sm:flex items-center gap-1 px-2 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
+                            <span className="material-symbols-outlined text-sm">trending_up</span>
+                            {project.progress}%
+                          </div>
+                          <button
+                            onClick={(e) => handleDeleteClick(e, project.id, project.testCode)}
+                            className="p-1 text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400 transition-colors rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20">
+                            <span className="material-symbols-outlined text-xl">delete</span>
+                          </button>
                         </div>
-                      </div>
-                      <button
-                        onClick={(e) => handleDeleteClick(e, activity.id, activity.title)}
-                        className="text-gray-500 hover:text-primary dark:text-gray-400 dark:hover:text-white transition-colors">
-                        <span className="material-symbols-outlined">more_vert</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           </div>
         </div>

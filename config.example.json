@@ -1,0 +1,14 @@
+{
+  "github": {
+    "enabled": true,
+    "token": "YOUR_GITHUB_PERSONAL_ACCESS_TOKEN",
+    "owner": "YOUR_GITHUB_USERNAME",
+    "repo": "YOUR_REPO_NAME",
+    "branch": "main"
+  },
+  "supabase": {
+    "enabled": true,
+    "url": "https://YOUR_PROJECT_ID.supabase.co",
+    "anonKey": "YOUR_SUPABASE_ANON_KEY"
+  }
+}

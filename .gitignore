@@ -45,3 +45,6 @@ yarn-error.log*
 # OAuth Credentials (sensitive)
 oauth-credentials.json
 google-oauth-tokens.json
+
+# App Configuration (sensitive - contains API keys)
+config.json
