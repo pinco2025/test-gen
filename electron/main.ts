@@ -183,6 +183,7 @@ ipcMain.handle('upload-image', async (_, filePath: string) => {
     const response = await drive.files.create({
       requestBody: {
         name: fileName,
+        parents: ['1GEuFuE6fpPPeK9Q-1Nhc1X34farFpvq6']
         // Optionally specify a folder: parents: [FOLDER_ID]
       },
       media: {
