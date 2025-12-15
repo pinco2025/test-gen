@@ -5,7 +5,6 @@ import { highlight, languages } from 'prismjs';
 import 'prismjs/components/prism-json';
 import 'prismjs/themes/prism-dark.css'; // Keep this for the editor's syntax highlighting theme
 import QuestionDisplay from './QuestionDisplay';
-import LatexRenderer from './LatexRenderer';
 
 interface AddQuestionModalProps {
   onClose: () => void;
@@ -161,20 +160,13 @@ const AddQuestionModal: React.FC<AddQuestionModalProps> = ({ onClose, onSave }) 
                 </button>
               </div>
               <div className="flex-1 p-6 overflow-y-auto">
-                <QuestionDisplay question={previewData.question} showAnswer={true} />
-                {previewData.solution && (
-                  <div className="p-4 mt-6 border rounded-lg bg-surface-light dark:bg-surface-dark border-border-light dark:border-border-dark">
-                    <h5 className="mb-2 text-base font-bold">Solution</h5>
-                    {previewData.solution.solution_text && (
-                      <div className="mb-4 prose prose-sm dark:prose-invert">
-                        <LatexRenderer content={previewData.solution.solution_text} />
-                      </div>
-                    )}
-                    {previewData.solution.solution_image_url && (
-                      <img src={previewData.solution.solution_image_url} alt="Solution" className="max-w-full max-h-[300px] rounded" />
-                    )}
-                  </div>
-                )}
+                <QuestionDisplay
+                  question={{
+                    ...previewData.question,
+                    solution: previewData.solution as Solution
+                  }}
+                  showAnswer={true}
+                />
               </div>
             </div>
           ) : (
