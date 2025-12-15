@@ -42,12 +42,15 @@ export const LatexRenderer = memo<LatexRendererProps>(({
     try {
       // First parse LaTeX delimiters, THEN process escapes only in text parts
       const parsed = parseLatexContent(content);
-      // Process escape sequences only in text parts (not in LaTeX)
+      // Process escape sequences
       return parsed.map(part => {
         if (part.type === 'text') {
           return { ...part, content: processEscapes(part.content) };
+        } else {
+          // For LaTeX parts, we only unescape double backslashes to support JSON-compatible input
+          // e.g., \\text -> \text, \\\\ -> \\
+          return { ...part, content: part.content.replace(/\\\\/g, '\\') };
         }
-        return part;
       });
     } catch (error) {
       console.error('Error parsing LaTeX:', error);
