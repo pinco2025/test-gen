@@ -145,12 +145,12 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
                                         />
                                     </div>
                                     <div className="flex-1 flex flex-col gap-2">
-                                        <div className="relative flex-1 group">
-                                            <div className={`absolute left-0 top-0 bottom-0 w-10 flex items-center justify-center border border-r-0 rounded-l-lg font-semibold text-sm ${isChecked ? 'bg-primary text-white border-primary' : 'bg-gray-50 dark:bg-white/5 border-border-light dark:border-border-dark text-text-secondary'}`}>
+                                        <div className="flex flex-1">
+                                            <div className={`w-10 flex items-center justify-center border border-r-0 rounded-l-lg font-semibold text-sm ${isChecked ? 'bg-primary text-white border-primary' : 'bg-gray-50 dark:bg-white/5 border-border-light dark:border-border-dark text-text-secondary'}`}>
                                                 {opt.toUpperCase()}
                                             </div>
                                             <input
-                                                className={`w-full pl-12 pr-4 py-2.5 bg-white dark:bg-[#1e1e2d] border rounded-lg focus:ring-2 focus:ring-primary/20 text-sm text-gray-900 dark:text-gray-100 transition-all ${isChecked ? 'border-primary font-medium' : 'border-border-light dark:border-border-dark focus:border-primary'}`}
+                                                className={`flex-1 px-4 py-2.5 bg-white dark:bg-[#1e1e2d] border border-l-0 rounded-r-lg focus:ring-2 focus:ring-primary/20 text-sm text-gray-900 dark:text-gray-100 transition-all ${isChecked ? 'border-primary font-medium' : 'border-border-light dark:border-border-dark focus:border-primary'}`}
                                                 placeholder={`Option ${opt.toUpperCase()} text`}
                                                 type="text"
                                                 value={editedQuestion[`option_${opt}`] || ''}
