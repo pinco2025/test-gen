@@ -10,6 +10,8 @@ interface TestReviewProps {
   onExport: () => void;
   onRemoveQuestion: (questionUuid: string) => void;
   onUpdateQuestionStatus: (questionUuid: string, status: 'accepted' | 'review' | 'pending') => void;
+  initialQuestionUuid?: string | null;
+  onNavigationComplete?: () => void;
 }
 
 const TestReview: React.FC<TestReviewProps> = ({
@@ -18,7 +20,9 @@ const TestReview: React.FC<TestReviewProps> = ({
   onBack,
   onExport,
   onRemoveQuestion,
-  onUpdateQuestionStatus
+  onUpdateQuestionStatus,
+  initialQuestionUuid,
+  onNavigationComplete
 }) => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [isAcceptModalOpen, setIsAcceptModalOpen] = useState(false);
@@ -69,6 +73,16 @@ const TestReview: React.FC<TestReviewProps> = ({
       setCurrentQuestionIndex(Math.max(0, allQuestions.length - 1));
     }
   }, [allQuestions.length, currentQuestionIndex]);
+
+  useEffect(() => {
+    if (initialQuestionUuid && allQuestions.length > 0) {
+      const index = allQuestions.findIndex(q => q.sq.question.uuid === initialQuestionUuid);
+      if (index !== -1) {
+        setCurrentQuestionIndex(index);
+        onNavigationComplete?.();
+      }
+    }
+  }, [initialQuestionUuid, allQuestions, onNavigationComplete]);
 
   const currentItem = allQuestions[currentQuestionIndex];
   const currentQuestion = currentItem?.sq.question;
