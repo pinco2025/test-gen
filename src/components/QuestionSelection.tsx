@@ -158,6 +158,34 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
     loadQuestions();
   }, [sectionName, chapters]);
 
+  const selectedUuids = useMemo(() => new Set(selectedQuestions.map(sq => sq.question.uuid)), [selectedQuestions]);
+
+  const filteredQuestions = useMemo(() => {
+    return availableQuestions
+      .filter(q => {
+        if (filters.chapter !== 'all' && q.tag_2 !== filters.chapter) return false;
+        if (filters.difficulty !== 'all' && q.tag_3 !== filters.difficulty) return false;
+        if (filters.division !== 'all') {
+            if (filters.division === '1' && isNumericalAnswer(q)) return false;
+            if (filters.division === '2' && !isNumericalAnswer(q)) return false;
+        }
+        if (filters.type !== 'all' && q.type !== filters.type) return false;
+        if (filters.year !== 'all' && q.year !== filters.year) return false;
+        if (searchText && !q.question.toLowerCase().includes(searchText.toLowerCase())) return false;
+        if (filters.selectedOnly && !selectedUuids.has(q.uuid)) return false;
+        return true;
+      })
+      .sort((a, b) => {
+        switch (filters.sort) {
+          case 'year_desc': return (b.year || '').localeCompare(a.year || '');
+          case 'year_asc': return (a.year || '').localeCompare(b.year || '');
+          case 'freq_desc': return (b.frequency || 0) - (a.frequency || 0);
+          case 'freq_asc': return (a.frequency || 0) - (b.frequency || 0);
+          default: return 0;
+        }
+      });
+  }, [availableQuestions, filters, searchText, selectedUuids]);
+
   // Scroll to edited question when returning from edit mode
   useEffect(() => {
     if (scrollToQuestionUuid && !loading && filteredQuestions.length > 0) {
@@ -206,8 +234,6 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
     return { total: selectedQuestions.length, division1: div1Count, division2: div2Count, byChapter, byDifficulty: { easy: 0, medium: 0, hard: 0, required_e: 0, required_m: 0, required_h: 0 } };
   }, [selectedQuestions, alphaConstraint]);
 
-  const selectedUuids = useMemo(() => new Set(selectedQuestions.map(sq => sq.question.uuid)), [selectedQuestions]);
-
   const toggleQuestion = useCallback(async (question: Question) => {
     const isSelected = selectedUuids.has(question.uuid);
     const isDiv2 = isNumericalAnswer(question);
@@ -222,32 +248,6 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
       setSelectedQuestions(prev => [...prev, { question, chapterCode: question.tag_2 || '', chapterName: chapter?.name || '', difficulty: (question.tag_3 as Difficulty) || 'M', division: isDiv2 ? 2 : 1, status: 'pending' }]);
     }
   }, [selectedUuids, summary, chapters]);
-
-  const filteredQuestions = useMemo(() => {
-    return availableQuestions
-      .filter(q => {
-        if (filters.chapter !== 'all' && q.tag_2 !== filters.chapter) return false;
-        if (filters.difficulty !== 'all' && q.tag_3 !== filters.difficulty) return false;
-        if (filters.division !== 'all') {
-            if (filters.division === '1' && isNumericalAnswer(q)) return false;
-            if (filters.division === '2' && !isNumericalAnswer(q)) return false;
-        }
-        if (filters.type !== 'all' && q.type !== filters.type) return false;
-        if (filters.year !== 'all' && q.year !== filters.year) return false;
-        if (searchText && !q.question.toLowerCase().includes(searchText.toLowerCase())) return false;
-        if (filters.selectedOnly && !selectedUuids.has(q.uuid)) return false;
-        return true;
-      })
-      .sort((a, b) => {
-        switch (filters.sort) {
-          case 'year_desc': return (b.year || '').localeCompare(a.year || '');
-          case 'year_asc': return (a.year || '').localeCompare(b.year || '');
-          case 'freq_desc': return (b.frequency || 0) - (a.frequency || 0);
-          case 'freq_asc': return (a.frequency || 0) - (b.frequency || 0);
-          default: return 0;
-        }
-      });
-  }, [availableQuestions, filters, searchText, selectedUuids]);
 
   const isSelectionValid = useMemo(() => summary.division1 === 20 && summary.division2 === 5, [summary]);
 
