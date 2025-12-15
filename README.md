@@ -78,6 +78,12 @@ npm run build
 
 This creates platform-specific installers in the `release/` directory.
 
+**Important**: Before building for distribution to other machines, you must configure OAuth credentials and API keys. See **[BUILD_SETUP.md](./BUILD_SETUP.md)** for detailed instructions on:
+- Setting up Google OAuth credentials
+- Configuring GitHub and Supabase integration
+- Ensuring credentials are bundled with the app
+- Distribution checklist
+
 ### Troubleshooting
 
 **Native Module Errors (libnode.so.XX not found)**

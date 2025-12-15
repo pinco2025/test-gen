@@ -72,7 +72,21 @@
     "productName": "Test Generator",
     "files": [
       "dist/**/*",
-      "dist-electron/**/*"
+      "dist-electron/**/*",
+      "oauth-credentials.json",
+      "config.json"
+    ],
+    "extraResources": [
+      {
+        "from": "oauth-credentials.json",
+        "to": "oauth-credentials.json",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "config.json",
+        "to": "config.json",
+        "filter": ["**/*"]
+      }
     ],
     "directories": {
       "buildResources": "build",

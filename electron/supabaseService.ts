@@ -49,6 +49,14 @@ class SupabaseService {
       return devPath;
     }
 
+    // Try resources path (for packaged app with extraResources)
+    if (process.resourcesPath) {
+      const resourcePath = path.join(process.resourcesPath, 'config.json');
+      if (fs.existsSync(resourcePath)) {
+        return resourcePath;
+      }
+    }
+
     // Try app path (for production)
     const appPath = path.join(app.getAppPath(), 'config.json');
     if (fs.existsSync(appPath)) {

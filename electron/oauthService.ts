@@ -24,9 +24,34 @@ export class OAuthService {
     this.loadCredentials();
   }
 
+  private getCredentialsPath(): string {
+    // Try project root first (for development)
+    const devPath = path.join(process.cwd(), 'oauth-credentials.json');
+    if (fs.existsSync(devPath)) {
+      return devPath;
+    }
+
+    // Try resources path (for packaged app with extraResources)
+    if (process.resourcesPath) {
+      const resourcePath = path.join(process.resourcesPath, 'oauth-credentials.json');
+      if (fs.existsSync(resourcePath)) {
+        return resourcePath;
+      }
+    }
+
+    // Try app path (for packaged app in asar)
+    const appPath = path.join(app.getAppPath(), 'oauth-credentials.json');
+    if (fs.existsSync(appPath)) {
+      return appPath;
+    }
+
+    // Fallback to userData directory
+    return path.join(app.getPath('userData'), 'oauth-credentials.json');
+  }
+
   private loadCredentials() {
     try {
-      const credPath = path.join(app.getAppPath(), 'oauth-credentials.json');
+      const credPath = this.getCredentialsPath();
       if (fs.existsSync(credPath)) {
         const credentialsFile = JSON.parse(fs.readFileSync(credPath, 'utf-8'));
 
@@ -46,6 +71,8 @@ export class OAuthService {
           this.clientSecret,
           this.redirectUri
         );
+
+        console.log('OAuth credentials loaded from:', credPath);
       }
     } catch (error) {
       console.error('Failed to load OAuth credentials:', error);
