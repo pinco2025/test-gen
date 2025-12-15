@@ -26,7 +26,8 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       icon: path.join(__dirname, "assets/icons/logo.png"),
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      webSecurity: false // Allow loading external images from Google Drive/CDN
     }
   });
 
