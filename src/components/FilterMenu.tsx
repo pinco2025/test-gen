@@ -11,6 +11,7 @@ export interface FilterState {
   tag1: string;
   tag4: string;
   sort: string;
+  selectedOnly: boolean;
 }
 
 interface FilterMenuProps {
@@ -37,7 +38,8 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
     (currentFilters.type !== 'all' ? 1 : 0) +
     (currentFilters.year !== 'all' ? 1 : 0) +
     (currentFilters.tag1 !== '' ? 1 : 0) +
-    (currentFilters.tag4 !== '' ? 1 : 0);
+    (currentFilters.tag4 !== '' ? 1 : 0) +
+    (currentFilters.selectedOnly ? 1 : 0);
 
   const resetFilters = () => {
     onFilterChange({
@@ -48,7 +50,8 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
       year: 'all',
       tag1: '',
       tag4: '',
-      sort: 'default'
+      sort: 'default',
+      selectedOnly: false
     });
   };
 
@@ -139,6 +142,28 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
                     </button>
                   ))}
                 </div>
+            </div>
+
+            {/* Show Selected Only Filter */}
+            <div className="space-y-2">
+                <label className="block text-xs font-semibold uppercase text-text-secondary">
+                  Selection Filter
+                </label>
+                <button
+                  onClick={() => onFilterChange({ selectedOnly: !currentFilters.selectedOnly })}
+                  className={`w-full px-4 py-2.5 text-sm rounded-md border transition-colors flex items-center justify-between ${
+                    currentFilters.selectedOnly
+                      ? 'bg-primary/10 border-primary text-primary font-semibold'
+                      : 'bg-transparent border-border-light dark:border-border-dark hover:border-border-dark dark:hover:border-border-light'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-base">
+                      {currentFilters.selectedOnly ? 'check_box' : 'check_box_outline_blank'}
+                    </span>
+                    Show Only Selected Questions
+                  </span>
+                </button>
             </div>
 
             {/* Type Filter */}

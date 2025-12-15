@@ -150,7 +150,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
                                                 {opt.toUpperCase()}
                                             </div>
                                             <input
-                                                className={`w-full pl-12 pr-4 py-2.5 bg-surface-light dark:bg-surface-dark border rounded-lg focus:ring-2 focus:ring-primary/20 text-sm text-text-main dark:text-white transition-all ${isChecked ? 'border-primary font-medium' : 'border-border-light dark:border-border-dark focus:border-primary'}`}
+                                                className={`w-full pl-12 pr-4 py-2.5 bg-white dark:bg-[#1e1e2d] border rounded-lg focus:ring-2 focus:ring-primary/20 text-sm text-gray-900 dark:text-gray-100 transition-all ${isChecked ? 'border-primary font-medium' : 'border-border-light dark:border-border-dark focus:border-primary'}`}
                                                 placeholder={`Option ${opt.toUpperCase()} text`}
                                                 type="text"
                                                 value={editedQuestion[`option_${opt}`] || ''}
