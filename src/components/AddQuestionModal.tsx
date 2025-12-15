@@ -49,40 +49,47 @@ const AddQuestionModal: React.FC<AddQuestionModalProps> = ({ onClose, onSave }) 
   const parseInput = (): { question: Question; solution?: Partial<Solution> } | null => {
     try {
       const data = JSON.parse(jsonInput);
-      if (!data.question || !data.answer) {
-        setError('Missing required fields: question, answer');
+
+      // Validate required fields
+      if (!data.question || !data.answer || !data.type) {
+        setError('Missing required fields: question, answer, type');
         return null;
       }
+
+      // Create question object using exact database schema
       const newQuestion: Question = {
-        uuid: crypto.randomUUID(),
+        uuid: data.uuid || crypto.randomUUID(),
         question: data.question,
         question_image_url: data.question_image_url || null,
-        option_a: data.options?.A?.text || data.options?.A || null,
-        option_a_image_url: data.options?.A?.image || null,
-        option_b: data.options?.B?.text || data.options?.B || null,
-        option_b_image_url: data.options?.B?.image || null,
-        option_c: data.options?.C?.text || data.options?.C || null,
-        option_c_image_url: data.options?.C?.image || null,
-        option_d: data.options?.D?.text || data.options?.D || null,
-        option_d_image_url: data.options?.D?.image || null,
+        option_a: data.option_a || null,
+        option_a_image_url: data.option_a_image_url || null,
+        option_b: data.option_b || null,
+        option_b_image_url: data.option_b_image_url || null,
+        option_c: data.option_c || null,
+        option_c_image_url: data.option_c_image_url || null,
+        option_d: data.option_d || null,
+        option_d_image_url: data.option_d_image_url || null,
         answer: data.answer,
-        type: data.type || (data.options ? 'MCQ' : 'Integer'),
-        year: data.year || new Date().getFullYear().toString(),
-        tag_1: data.tags?.chapter || data.tags?.tag_1 || null,
-        tag_2: data.tags?.topic || data.tags?.tag_2 || null,
-        tag_3: data.tags?.difficulty || data.tags?.tag_3 || null,
-        tag_4: data.tags?.other || data.tags?.tag_4 || null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        frequency: 0
+        type: data.type,
+        year: data.year || null,
+        tag_1: data.tag_1 || null,
+        tag_2: data.tag_2 || null,
+        tag_3: data.tag_3 || null,
+        tag_4: data.tag_4 || null,
+        created_at: data.created_at || new Date().toISOString(),
+        updated_at: data.updated_at || new Date().toISOString(),
+        frequency: data.frequency || 0
       };
+
+      // Parse solution if provided
       let solution: Partial<Solution> | undefined;
       if (data.solution) {
         solution = {
-          solution_text: data.solution.text || data.solution.solution_text || '',
-          solution_image_url: data.solution.image || data.solution.solution_image_url || ''
+          solution_text: data.solution.solution_text || '',
+          solution_image_url: data.solution.solution_image_url || ''
         };
       }
+
       return { question: newQuestion, solution };
     } catch (e: any) {
       setError('Invalid JSON: ' + e.message);
@@ -107,11 +114,27 @@ const AddQuestionModal: React.FC<AddQuestionModalProps> = ({ onClose, onSave }) 
   };
 
   const sampleJsonMCQ = `{
-  "question": "...",
-  "options": { "A": "...", "B": "..." },
-  "answer": "A",
-  "tags": { "chapter": "...", "difficulty": "..." },
-  "solution": { "text": "...", "image": "..." }
+  "question": "What is the derivative of x²?",
+  "question_image_url": null,
+  "option_a": "2x",
+  "option_a_image_url": null,
+  "option_b": "x",
+  "option_b_image_url": null,
+  "option_c": "2",
+  "option_c_image_url": null,
+  "option_d": "x²",
+  "option_d_image_url": null,
+  "answer": "a",
+  "type": "MCQ",
+  "year": "2024",
+  "tag_1": "Mathematics",
+  "tag_2": "MAT01",
+  "tag_3": "E",
+  "tag_4": null,
+  "solution": {
+    "solution_text": "Using power rule...",
+    "solution_image_url": null
+  }
 }`;
 
   return (
@@ -187,17 +210,27 @@ const AddQuestionModal: React.FC<AddQuestionModalProps> = ({ onClose, onSave }) 
 
               <div className="flex flex-col col-span-4 gap-4 overflow-hidden">
                 <div className="flex-1 p-4 overflow-y-auto border rounded-lg bg-background-light dark:bg-background-dark border-border-light dark:border-border-dark">
-                  <h4 className="text-sm font-semibold text-text-secondary">Sample JSON</h4>
+                  <h4 className="text-sm font-semibold text-text-secondary">Sample JSON (Database Schema)</h4>
                   <pre className="p-2 mt-2 overflow-x-auto text-xs rounded bg-surface-light dark:bg-surface-dark">
                     <code>{sampleJsonMCQ}</code>
                   </pre>
                   <div className="mt-4 text-xs text-text-secondary">
-                    <p className="font-semibold">Structure:</p>
-                    <ul className="pl-4 mt-1 list-disc">
-                      <li><code>options</code>: Object with keys A-D (for MCQ). Omit for Integer type.</li>
-                      <li><code>solution</code>: Optional object with <code>text</code> and <code>image</code>.</li>
-                      <li><code>tags</code>: Map to chapter, difficulty, etc.</li>
+                    <p className="font-semibold">Required Fields:</p>
+                    <ul className="pl-4 mt-1 list-disc space-y-1">
+                      <li><code>question</code>: Question text</li>
+                      <li><code>answer</code>: Answer (a/b/c/d for MCQ, number for Integer)</li>
+                      <li><code>type</code>: Question type (MCQ, Integer, etc.)</li>
                     </ul>
+                    <p className="mt-3 font-semibold">Optional Fields:</p>
+                    <ul className="pl-4 mt-1 list-disc space-y-1">
+                      <li><code>option_a/b/c/d</code>: Option texts (for MCQ)</li>
+                      <li><code>option_a/b/c/d_image_url</code>: Option images</li>
+                      <li><code>question_image_url</code>: Question image</li>
+                      <li><code>year</code>: Year</li>
+                      <li><code>tag_1/2/3/4</code>: Tags</li>
+                      <li><code>solution</code>: Object with <code>solution_text</code> and <code>solution_image_url</code></li>
+                    </ul>
+                    <p className="mt-3 text-xs italic">All other fields are auto-generated (uuid, timestamps, frequency)</p>
                   </div>
                 </div>
               </div>
