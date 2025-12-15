@@ -84,6 +84,7 @@ function App() {
 
   // Add Question Modal state
   const [isAddQuestionModalOpen, setIsAddQuestionModalOpen] = useState(false);
+  const [questionsRefreshTrigger, setQuestionsRefreshTrigger] = useState(0);
 
   // Export Test Modal state
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
@@ -244,12 +245,14 @@ function App() {
             if (!solutionSuccess) {
                  addNotification('warning', 'Question added, but failed to save solution.');
                  setIsAddQuestionModalOpen(false);
+                 setQuestionsRefreshTrigger(prev => prev + 1);
                  return;
             }
         }
 
         addNotification('success', 'Question added successfully!');
         setIsAddQuestionModalOpen(false);
+        setQuestionsRefreshTrigger(prev => prev + 1);
       } else {
         addNotification('error', 'Failed to add question.');
       }
@@ -821,6 +824,7 @@ function App() {
             onChange={handleSelectionChange}
             scrollToQuestionUuid={lastEditedQuestionUuid}
             onScrollComplete={() => setLastEditedQuestionUuid(null)}
+            refreshTrigger={questionsRefreshTrigger}
           />
         );
 

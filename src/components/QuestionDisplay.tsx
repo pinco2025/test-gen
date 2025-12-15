@@ -118,6 +118,14 @@ export const QuestionDisplay = memo<QuestionDisplayProps>(({
         </div>
        )}
 
+       {/* Integer Type Answer Display */}
+       {(showAnswer || highlightCorrectAnswer) && !['A', 'B', 'C', 'D'].includes(question.answer.toUpperCase()) && (
+          <div className="mt-4 p-4 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800">
+            <span className="font-bold text-green-700 dark:text-green-300 mr-2">Answer:</span>
+            <span className="font-mono text-lg text-text-main dark:text-gray-200">{question.answer}</span>
+          </div>
+       )}
+
       {/* Solution Section (only in editor preview) */}
       {question.solution && (question.solution.solution_text || question.solution.solution_image_url) && (
         <div className="border-t border-border-light dark:border-border-dark pt-4">
