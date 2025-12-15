@@ -837,6 +837,8 @@ function App() {
             onExport={handleExportTest}
             onRemoveQuestion={handleRemoveQuestion}
             onUpdateQuestionStatus={handleQuestionStatusUpdate}
+            initialQuestionUuid={lastEditedQuestionUuid}
+            onNavigationComplete={() => setLastEditedQuestionUuid(null)}
           />
         );
 
