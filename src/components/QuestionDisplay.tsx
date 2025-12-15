@@ -58,7 +58,9 @@ export const QuestionDisplay = memo<QuestionDisplayProps>(({
             Q. {questionNumber}
           </span>
          )}
+         {question.type && <span className="text-xs font-medium px-2 py-1 rounded-full bg-purple-50 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400">{question.type}</span>}
          {question.tag_1 && <span className="text-xs font-medium px-2 py-1 rounded-full bg-blue-50 dark:bg-primary/20 text-primary">{question.tag_1}</span>}
+         {question.tag_2 && <span className="text-xs font-medium px-2 py-1 rounded-full bg-cyan-50 dark:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400">{question.tag_2}</span>}
          {question.tag_3 && <span className={`text-xs font-medium px-2 py-1 rounded-full ${getDifficultyClass(question.tag_3 as 'E' | 'M' | 'H')}`}>{question.tag_3 === 'E' ? 'Easy' : question.tag_3 === 'M' ? 'Medium' : 'Hard'}</span>}
          {question.year && <span className="text-xs font-medium px-2 py-1 rounded-full bg-yellow-50 text-yellow-600">{question.year}</span>}
          <span onClick={handleCopyUuid} title="Click to copy UUID" className="text-xs font-mono px-2 py-1 rounded bg-gray-100 dark:bg-white/10 text-text-secondary cursor-pointer hover:bg-gray-200 dark:hover:bg-white/20 transition-colors">
