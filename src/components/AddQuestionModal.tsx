@@ -105,9 +105,10 @@ const AddQuestionModal: React.FC<AddQuestionModalProps> = ({ onClose, onSave }) 
   };
 
   const handleSave = async () => {
-    const parsed = parseInput();
-    if (parsed) {
-      await onSave(parsed.question, parsed.solution);
+    // If we already have preview data, use that to maintain the same UUID shown in preview
+    const dataToSave = previewData || parseInput();
+    if (dataToSave) {
+      await onSave(dataToSave.question, dataToSave.solution);
       onClose();
     }
   };
