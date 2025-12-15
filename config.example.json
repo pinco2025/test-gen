@@ -9,6 +9,7 @@
   "supabase": {
     "enabled": true,
     "url": "https://YOUR_PROJECT_ID.supabase.co",
-    "anonKey": "YOUR_SUPABASE_ANON_KEY"
+    "anonKey": "YOUR_ANON_KEY",
+    "accessToken": "OPTIONAL_JWT_OR_SERVICE_ROLE_KEY"
   }
 }

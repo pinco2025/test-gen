@@ -497,9 +497,12 @@ ipcMain.handle('github:uploadTestFiles', async (_, testId: string, testContent: 
 });
 
 // Supabase handlers
-ipcMain.handle('supabase:configure', async (_, config: { url: string; anonKey: string }) => {
+ipcMain.handle('supabase:configure', async (_, config: { url: string; anonKey: string; accessToken?: string }) => {
   try {
-    supabaseService.saveConfig(config);
+    supabaseService.saveConfig({
+      ...config,
+      enabled: true // Assume enabled if configuring
+    });
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };

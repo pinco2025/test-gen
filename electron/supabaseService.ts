@@ -7,6 +7,7 @@ interface SupabaseConfig {
   enabled: boolean;
   url: string;
   anonKey: string;
+  accessToken?: string;
 }
 
 interface TestRecord {
@@ -76,7 +77,10 @@ class SupabaseService {
             this.config.anonKey &&
             !this.config.anonKey.includes('YOUR_')
           ) {
-            this.client = createClient(this.config.url, this.config.anonKey);
+            const options = this.config.accessToken
+              ? { global: { headers: { Authorization: `Bearer ${this.config.accessToken}` } } }
+              : undefined;
+            this.client = createClient(this.config.url, this.config.anonKey, options);
             console.log('Supabase service initialized from config.json');
           }
         }
@@ -102,7 +106,10 @@ class SupabaseService {
       this.config = config;
 
       if (config.enabled && config.url && config.anonKey) {
-        this.client = createClient(config.url, config.anonKey);
+        const options = config.accessToken
+          ? { global: { headers: { Authorization: `Bearer ${config.accessToken}` } } }
+          : undefined;
+        this.client = createClient(config.url, config.anonKey, options);
       }
 
       fs.writeFileSync(configPath, JSON.stringify(appConfig, null, 2));
