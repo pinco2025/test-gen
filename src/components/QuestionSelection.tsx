@@ -27,6 +27,7 @@ interface QuestionSelectionProps {
   onChange?: (selectedQuestions: SelectedQuestion[]) => void;
   scrollToQuestionUuid?: string | null;
   onScrollComplete?: () => void;
+  refreshTrigger?: number;
 }
 
 interface ItemData {
@@ -84,7 +85,8 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
   initialSelectedQuestions = [],
   onChange,
   scrollToQuestionUuid,
-  onScrollComplete
+  onScrollComplete,
+  refreshTrigger = 0
 }) => {
   const [selectedQuestions, setSelectedQuestions] = useState<SelectedQuestion[]>(initialSelectedQuestions);
   const [zoomLevel, setZoomLevel] = useState(1);
@@ -156,7 +158,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
       }
     };
     loadQuestions();
-  }, [sectionName, chapters]);
+  }, [sectionName, chapters, refreshTrigger]);
 
   const selectedUuids = useMemo(() => new Set(selectedQuestions.map(sq => sq.question.uuid)), [selectedQuestions]);
 

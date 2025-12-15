@@ -124,49 +124,70 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
                     />
                 </div>
 
-                {/* Section: Options */}
+                {/* Section: Answer/Options */}
                 <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                        <label className="block text-sm font-semibold text-text-main dark:text-gray-200">Options</label>
-                        <span className="text-xs text-text-secondary">Select the radio button for the correct answer</span>
+                        <label className="block text-sm font-semibold text-text-main dark:text-gray-200">
+                          {['MCQ', 'Assertion-Reason', 'Matrix Match'].includes(editedQuestion.type || '') || editedQuestion.type?.includes('MCQ') || !editedQuestion.type
+                            ? 'Options'
+                            : 'Answer'}
+                        </label>
+                         {(['MCQ', 'Assertion-Reason', 'Matrix Match'].includes(editedQuestion.type || '') || editedQuestion.type?.includes('MCQ') || !editedQuestion.type) && (
+                            <span className="text-xs text-text-secondary">Select the radio button for the correct answer</span>
+                        )}
                     </div>
-                    <div className="space-y-3">
-                        {(['a', 'b', 'c', 'd'] as const).map(opt => {
-                            const isChecked = editedQuestion.answer === opt.toUpperCase();
-                            return (
-                                <div key={opt} className="flex items-start gap-3">
-                                    <div className="pt-2.5">
-                                        <input
-                                            className="size-5 border-gray-300 text-primary focus:ring-primary dark:bg-white/5 dark:border-gray-600 cursor-pointer"
-                                            name="correct_answer"
-                                            type="radio"
-                                            checked={isChecked}
-                                            onChange={() => handleQuestionChange('answer', opt.toUpperCase())}
-                                        />
-                                    </div>
-                                    <div className="flex-1 flex flex-col gap-2">
-                                        <div className="flex w-full">
-                                            <div className={`w-10 flex-shrink-0 flex items-center justify-center border border-r-0 rounded-l-lg font-semibold text-sm ${isChecked ? 'bg-primary text-white border-primary' : 'bg-gray-50 dark:bg-white/5 border-border-light dark:border-border-dark text-text-secondary'}`}>
-                                                {opt.toUpperCase()}
-                                            </div>
+
+                    {['MCQ', 'Assertion-Reason', 'Matrix Match'].includes(editedQuestion.type || '') || editedQuestion.type?.includes('MCQ') || !editedQuestion.type ? (
+                        <div className="space-y-3">
+                            {(['a', 'b', 'c', 'd'] as const).map(opt => {
+                                const isChecked = editedQuestion.answer === opt.toUpperCase();
+                                return (
+                                    <div key={opt} className="flex items-start gap-3">
+                                        <div className="pt-2.5">
                                             <input
-                                                className={`flex-1 min-w-0 px-4 py-2.5 bg-white dark:bg-[#1e1e2d] border border-l-0 rounded-r-lg focus:ring-2 focus:ring-primary/20 text-sm text-gray-900 dark:text-gray-100 transition-all ${isChecked ? 'border-primary font-medium' : 'border-border-light dark:border-border-dark focus:border-primary'}`}
-                                                placeholder={`Option ${opt.toUpperCase()} text`}
-                                                type="text"
-                                                value={editedQuestion[`option_${opt}`] || ''}
-                                                onChange={(e) => handleQuestionChange(`option_${opt}`, e.target.value)}
+                                                className="size-5 border-gray-300 text-primary focus:ring-primary dark:bg-white/5 dark:border-gray-600 cursor-pointer"
+                                                name="correct_answer"
+                                                type="radio"
+                                                checked={isChecked}
+                                                onChange={() => handleQuestionChange('answer', opt.toUpperCase())}
                                             />
                                         </div>
-                                        <ImageUpload
-                                            label=""
-                                            imageUrl={editedQuestion[`option_${opt}_image_url`]}
-                                            onImageUrlChange={(url) => handleQuestionChange(`option_${opt}_image_url`, url)}
-                                        />
+                                        <div className="flex-1 flex flex-col gap-2">
+                                            <div className="flex w-full">
+                                                <div className={`w-10 flex-shrink-0 flex items-center justify-center border border-r-0 rounded-l-lg font-semibold text-sm ${isChecked ? 'bg-primary text-white border-primary' : 'bg-gray-50 dark:bg-white/5 border-border-light dark:border-border-dark text-text-secondary'}`}>
+                                                    {opt.toUpperCase()}
+                                                </div>
+                                                <input
+                                                    className={`flex-1 min-w-0 px-4 py-2.5 bg-white dark:bg-[#1e1e2d] border border-l-0 rounded-r-lg focus:ring-2 focus:ring-primary/20 text-sm text-gray-900 dark:text-gray-100 transition-all ${isChecked ? 'border-primary font-medium' : 'border-border-light dark:border-border-dark focus:border-primary'}`}
+                                                    placeholder={`Option ${opt.toUpperCase()} text`}
+                                                    type="text"
+                                                    value={editedQuestion[`option_${opt}`] || ''}
+                                                    onChange={(e) => handleQuestionChange(`option_${opt}`, e.target.value)}
+                                                />
+                                            </div>
+                                            <ImageUpload
+                                                label=""
+                                                imageUrl={editedQuestion[`option_${opt}_image_url`]}
+                                                onImageUrlChange={(url) => handleQuestionChange(`option_${opt}_image_url`, url)}
+                                            />
+                                        </div>
                                     </div>
-                                </div>
-                            );
-                        })}
-                    </div>
+                                );
+                            })}
+                        </div>
+                    ) : (
+                        <div className="space-y-3">
+                           <div className="border border-border-light dark:border-border-dark rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-all">
+                                <input
+                                    type="text"
+                                    className="w-full p-4 bg-transparent border-none focus:ring-0 outline-none text-text-main dark:text-gray-200 text-sm leading-relaxed"
+                                    placeholder="Enter the correct answer (e.g., 5, 3.14)"
+                                    value={editedQuestion.answer}
+                                    onChange={(e) => handleQuestionChange('answer', e.target.value)}
+                                />
+                            </div>
+                        </div>
+                    )}
                 </div>
                 <div className="space-y-3">
                     <label className="block text-sm font-semibold text-text-main dark:text-gray-200">Detailed Solution</label>
