@@ -91,6 +91,7 @@ function App() {
   // State for the question editor
   const [editingQuestion, setEditingQuestion] = useState<{ question: Question, solution?: Solution } | null>(null);
   const [previousStep, setPreviousStep] = useState<WorkflowStep | null>(null);
+  const [lastEditedQuestionUuid, setLastEditedQuestionUuid] = useState<string | null>(null);
 
   // Save status
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved');
@@ -713,6 +714,7 @@ function App() {
         updateCurrentProject({ currentStep: previousStep });
       }
       setEditingQuestion(null);
+      setLastEditedQuestionUuid(null);
       return;
     }
 
@@ -732,6 +734,9 @@ function App() {
         addNotification('warning', 'Question saved, but failed to save solution.');
       }
     }
+
+    // Set the last edited question UUID so we can scroll to it
+    setLastEditedQuestionUuid(updatedQuestion.uuid);
 
     // Return to previous step
     if (previousStep) {
@@ -814,6 +819,8 @@ function App() {
             onClone={handleCloneQuestion}
             initialSelectedQuestions={currentSection.selectedQuestions}
             onChange={handleSelectionChange}
+            scrollToQuestionUuid={lastEditedQuestionUuid}
+            onScrollComplete={() => setLastEditedQuestionUuid(null)}
           />
         );
 

@@ -25,6 +25,8 @@ interface QuestionSelectionProps {
   onClone: (question: Question) => void;
   initialSelectedQuestions?: SelectedQuestion[];
   onChange?: (selectedQuestions: SelectedQuestion[]) => void;
+  scrollToQuestionUuid?: string | null;
+  onScrollComplete?: () => void;
 }
 
 interface ItemData {
@@ -80,14 +82,16 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
   onStartEditing,
   onClone,
   initialSelectedQuestions = [],
-  onChange
+  onChange,
+  scrollToQuestionUuid,
+  onScrollComplete
 }) => {
   const [selectedQuestions, setSelectedQuestions] = useState<SelectedQuestion[]>(initialSelectedQuestions);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [availableQuestions, setAvailableQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState('');
-  const [filters, setFilters] = useState<FilterState>({ chapter: 'all', difficulty: 'all', division: 'all', type: 'all', year: 'all', tag1: '', tag4: '', sort: 'default' });
+  const [filters, setFilters] = useState<FilterState>({ chapter: 'all', difficulty: 'all', division: 'all', type: 'all', year: 'all', tag1: '', tag4: '', sort: 'default', selectedOnly: false });
 
   const handleFilterChange = (newFilters: Partial<FilterState>) => {
     setFilters(prev => ({ ...prev, ...newFilters }));
@@ -154,6 +158,23 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
     loadQuestions();
   }, [sectionName, chapters]);
 
+  // Scroll to edited question when returning from edit mode
+  useEffect(() => {
+    if (scrollToQuestionUuid && !loading && filteredQuestions.length > 0) {
+      const questionIndex = filteredQuestions.findIndex(q => q.uuid === scrollToQuestionUuid);
+      if (questionIndex !== -1) {
+        // Small delay to ensure the list is fully rendered
+        setTimeout(() => {
+          listRef.current?.scrollToItem(questionIndex, 'center');
+          onScrollComplete?.();
+        }, 100);
+      } else {
+        // Question not found in filtered list (might be filtered out)
+        onScrollComplete?.();
+      }
+    }
+  }, [scrollToQuestionUuid, loading, filteredQuestions, onScrollComplete]);
+
   const summary = useMemo((): SelectionSummary => {
     let div1Count = 0, div2Count = 0;
     const byChapter: SelectionSummary['byChapter'] = {};
@@ -214,6 +235,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
         if (filters.type !== 'all' && q.type !== filters.type) return false;
         if (filters.year !== 'all' && q.year !== filters.year) return false;
         if (searchText && !q.question.toLowerCase().includes(searchText.toLowerCase())) return false;
+        if (filters.selectedOnly && !selectedUuids.has(q.uuid)) return false;
         return true;
       })
       .sort((a, b) => {
@@ -225,7 +247,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
           default: return 0;
         }
       });
-  }, [availableQuestions, filters, searchText]);
+  }, [availableQuestions, filters, searchText, selectedUuids]);
 
   const isSelectionValid = useMemo(() => summary.division1 === 20 && summary.division2 === 5, [summary]);
 
@@ -350,8 +372,8 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
             {/* Search and Filters */}
             <div className="flex-shrink-0 flex gap-4 mb-4">
               <div className="relative flex-grow">
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400">search</span>
-                <input type="text" placeholder="Search questions..." value={searchText} onChange={(e) => setSearchText(e.target.value)} className="w-full pl-10 pr-4 py-2 border border-gray-200 dark:border-[#2d2d3b] rounded-full bg-gray-50 dark:bg-[#252535] text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-transparent transition-all" />
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 pointer-events-none">search</span>
+                <input type="text" placeholder="Search questions..." value={searchText} onChange={(e) => setSearchText(e.target.value)} className="w-full pl-11 pr-4 py-2 border border-gray-200 dark:border-[#2d2d3b] rounded-full bg-gray-50 dark:bg-[#252535] text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-transparent transition-all" />
               </div>
               <FilterMenu chapters={chapters} availableTypes={availableTypes} availableYears={availableYears} currentFilters={filters} onFilterChange={handleFilterChange} />
             </div>
