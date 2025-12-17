@@ -317,16 +317,17 @@ ipcMain.handle('test:export', async (_, test: Test) => {
 // Helper function to transform Test object to sample-test-001.json format
 function transformTestToExportFormat(test: Test) {
   const marksPerQuestion = 4;
+  const negativeMarksPerQuestion = -1;
 
   // Build section definitions
   // For each subject (Physics, Chemistry, Mathematics) we have Section A (Division 1) and Section B (Division 2)
   const sectionDefinitions = [
-    { name: 'Physics A', marksPerQuestion },
-    { name: 'Physics B', marksPerQuestion },
-    { name: 'Chemistry A', marksPerQuestion },
-    { name: 'Chemistry B', marksPerQuestion },
-    { name: 'Mathematics A', marksPerQuestion },
-    { name: 'Mathematics B', marksPerQuestion }
+    { name: 'Physics A', marksPerQuestion, negativeMarksPerQuestion },
+    { name: 'Physics B', marksPerQuestion, negativeMarksPerQuestion },
+    { name: 'Chemistry A', marksPerQuestion, negativeMarksPerQuestion },
+    { name: 'Chemistry B', marksPerQuestion, negativeMarksPerQuestion },
+    { name: 'Mathematics A', marksPerQuestion, negativeMarksPerQuestion },
+    { name: 'Mathematics B', marksPerQuestion, negativeMarksPerQuestion }
   ];
 
   // Build questions array
