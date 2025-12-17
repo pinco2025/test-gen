@@ -9,6 +9,25 @@ interface LatexRendererProps {
 }
 
 /**
+ * Helper to unescape JSON-like strings.
+ * Handles standard JSON escapes (\n, \t, \", \\) while preserving
+ * other backslash sequences (like \alpha) for LaTeX processing.
+ */
+const processEscapes = (str: string): string => {
+  if (!str) return str;
+  return str.replace(/\\(.)/g, (match, char) => {
+    switch (char) {
+      case 'n': return '\n';
+      case 't': return '\t';
+      case 'r': return '\r';
+      case '"': return '"';
+      case '\\': return '\\';
+      default: return match;
+    }
+  });
+};
+
+/**
  * Component to render LaTeX content using KaTeX
  * Supports both inline and block math modes
  * Memoized to prevent unnecessary re-renders
@@ -26,7 +45,7 @@ export const LatexRenderer = memo<LatexRendererProps>(({
       // Process escape sequences
       return parsed.map(part => {
         if (part.type === 'text') {
-          return part;
+          return { ...part, content: processEscapes(part.content) };
         } else {
           // For LaTeX parts, we only unescape double backslashes to support JSON-compatible input
           // e.g., \\text -> \text, \\\\ -> \\
