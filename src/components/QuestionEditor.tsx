@@ -76,6 +76,17 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
       solution: editedSolution
   };
 
+  const isNumericalAnswer = (ans: string) => /^-?\d+(\.\d+)?$/.test(ans);
+  const hasAnswer = editedQuestion.answer !== undefined && editedQuestion.answer !== null && editedQuestion.answer.trim() !== '';
+  const isMCQType = ['MCQ', 'Assertion-Reason', 'Matrix Match'].includes(editedQuestion.type || '') || editedQuestion.type?.includes('MCQ') || !editedQuestion.type;
+
+  let showOptions = true;
+  if (hasAnswer) {
+      showOptions = !isNumericalAnswer(editedQuestion.answer);
+  } else {
+      showOptions = isMCQType;
+  }
+
   return (
     <main className="flex-1 min-h-0 w-full max-w-[1600px] mx-auto p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 overflow-hidden">
         {/* Left Pane: Preview */}
@@ -128,16 +139,16 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
                 <div className="space-y-4">
                     <div className="flex items-center justify-between">
                         <label className="block text-sm font-semibold text-text-main dark:text-gray-200">
-                          {['MCQ', 'Assertion-Reason', 'Matrix Match'].includes(editedQuestion.type || '') || editedQuestion.type?.includes('MCQ') || !editedQuestion.type
+                          {showOptions
                             ? 'Options'
                             : 'Answer'}
                         </label>
-                         {(['MCQ', 'Assertion-Reason', 'Matrix Match'].includes(editedQuestion.type || '') || editedQuestion.type?.includes('MCQ') || !editedQuestion.type) && (
+                         {showOptions && (
                             <span className="text-xs text-text-secondary">Select the radio button for the correct answer</span>
                         )}
                     </div>
 
-                    {['MCQ', 'Assertion-Reason', 'Matrix Match'].includes(editedQuestion.type || '') || editedQuestion.type?.includes('MCQ') || !editedQuestion.type ? (
+                    {showOptions ? (
                         <div className="space-y-3">
                             {(['a', 'b', 'c', 'd'] as const).map(opt => {
                                 const isChecked = editedQuestion.answer === opt.toUpperCase();
