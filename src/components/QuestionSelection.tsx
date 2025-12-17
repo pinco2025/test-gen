@@ -93,6 +93,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
   const [availableQuestions, setAvailableQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState('');
+  const [searchUuid, setSearchUuid] = useState('');
   const [filters, setFilters] = useState<FilterState>({ chapter: 'all', difficulty: 'all', division: 'all', type: 'all', year: 'all', tag1: '', tag4: '', sort: 'default', selectedOnly: false });
 
   const handleFilterChange = (newFilters: Partial<FilterState>) => {
@@ -136,7 +137,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
   useEffect(() => {
     sizeMap.current = {};
     listRef.current?.scrollTo(0);
-  }, [filters, searchText]);
+  }, [filters, searchText, searchUuid]);
 
   useEffect(() => {
     sizeMap.current = {};
@@ -174,6 +175,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
         if (filters.type !== 'all' && q.type !== filters.type) return false;
         if (filters.year !== 'all' && q.year !== filters.year) return false;
         if (searchText && !q.question.toLowerCase().includes(searchText.toLowerCase())) return false;
+        if (searchUuid && !q.uuid.toLowerCase().includes(searchUuid.toLowerCase())) return false;
         if (filters.selectedOnly && !selectedUuids.has(q.uuid)) return false;
         return true;
       })
@@ -186,7 +188,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
           default: return 0;
         }
       });
-  }, [availableQuestions, filters, searchText, selectedUuids]);
+  }, [availableQuestions, filters, searchText, searchUuid, selectedUuids]);
 
   // Scroll to edited question when returning from edit mode
   useEffect(() => {
@@ -376,6 +378,10 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
               <div className="relative flex-grow">
                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 pointer-events-none">search</span>
                 <input type="text" placeholder="Search questions..." value={searchText} onChange={(e) => setSearchText(e.target.value)} className="w-full pl-11 pr-4 py-2 border border-gray-200 dark:border-[#2d2d3b] rounded-full bg-gray-50 dark:bg-[#252535] text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-transparent transition-all" />
+              </div>
+              <div className="relative w-48">
+                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 pointer-events-none">fingerprint</span>
+                <input type="text" placeholder="UUID" value={searchUuid} onChange={(e) => setSearchUuid(e.target.value)} className="w-full pl-12 pr-4 py-2 border border-gray-200 dark:border-[#2d2d3b] rounded-full bg-gray-50 dark:bg-[#252535] text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-transparent transition-all" />
               </div>
               <FilterMenu chapters={chapters} availableTypes={availableTypes} availableYears={availableYears} currentFilters={filters} onFilterChange={handleFilterChange} />
             </div>
