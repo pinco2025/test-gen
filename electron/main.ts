@@ -278,10 +278,7 @@ ipcMain.handle('test:export', async (_, test: Test) => {
     try {
       // Transform the test data to match sample-test-001.json format
       const exportData = transformTestToExportFormat(test);
-      // Replace double backslashes with single backslashes to remove "additional" backslashes
-      // Note: This might produce invalid JSON if backslashes were escaping control characters,
-      // but it aligns with the requirement to "export everything as it is".
-      const exportContent = JSON.stringify(exportData, null, 2).replace(/\\\\/g, '\\');
+      const exportContent = JSON.stringify(exportData, null, 2);
       fs.writeFileSync(result.filePath, exportContent, 'utf-8');
 
       // Batch load all solutions at once to avoid blocking the main thread
@@ -305,7 +302,7 @@ ipcMain.handle('test:export', async (_, test: Test) => {
 
       const pathObj = path.parse(result.filePath);
       const solutionsPath = path.join(pathObj.dir, `${pathObj.name}_solutions${pathObj.ext}`);
-      const solutionsContent = JSON.stringify(solutionsData, null, 2).replace(/\\\\/g, '\\');
+      const solutionsContent = JSON.stringify(solutionsData, null, 2);
       fs.writeFileSync(solutionsPath, solutionsContent, 'utf-8');
 
       return { success: true, path: result.filePath };
@@ -558,7 +555,7 @@ ipcMain.handle('test:exportWithConfig', async (_, test: Test, exportConfig: {
     exportData.duration = exportConfig.duration;
     exportData.title = exportConfig.title;
 
-    const exportContent = JSON.stringify(exportData, null, 2).replace(/\\\\/g, '\\');
+    const exportContent = JSON.stringify(exportData, null, 2);
 
     // Create solutions JSON
     const questionUUIDs = exportData.questions.map((q: any) => q.uuid);
@@ -578,7 +575,7 @@ ipcMain.handle('test:exportWithConfig', async (_, test: Test, exportConfig: {
       })
     };
 
-    const solutionsContent = JSON.stringify(solutionsData, null, 2).replace(/\\\\/g, '\\');
+    const solutionsContent = JSON.stringify(solutionsData, null, 2);
 
     // Step 1: Download files locally
     const result = await dialog.showSaveDialog({
