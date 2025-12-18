@@ -71,6 +71,8 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
     onSave(editedQuestion, editedSolution);
   };
 
+  const [showLegacyMetadata, setShowLegacyMetadata] = useState(false);
+
   const previewQuestion = {
       ...editedQuestion,
       solution: editedSolution
@@ -220,114 +222,226 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
                 {/* Section: Properties (Metadata) */}
                 <div className="pt-6 border-t border-border-light dark:border-border-dark">
                     <h4 className="text-base font-bold text-text-main dark:text-white mb-4">Properties</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
-                            <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Topic</label>
+
+                    {/* New Metadata Fields */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                        {/* Topic Tags */}
+                        <div className="space-y-1.5 md:col-span-2">
+                            <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Topic Tags (JSON Array)</label>
                             <input
                                 className="w-full bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-main dark:text-white text-sm rounded-lg focus:ring-primary focus:border-primary p-2.5"
-                                placeholder="e.g. Gravitation, Electromagnetism"
+                                placeholder='e.g. ["Calculus", "Differentiation"]'
                                 type="text"
-                                value={editedQuestion.tag_1 || ''}
-                                onChange={(e) => handleQuestionChange('tag_1', e.target.value)}
+                                value={editedQuestion.topic_tags || ''}
+                                onChange={(e) => handleQuestionChange('topic_tags', e.target.value)}
                             />
                         </div>
+
+                        {/* Importance Level */}
                         <div className="space-y-1.5">
-                            <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Chapter Code</label>
+                            <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Importance Level</label>
                             <select
                                 className="w-full bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-main dark:text-white text-sm rounded-lg focus:ring-primary focus:border-primary p-2.5"
-                                value={editedQuestion.tag_2 || ''}
-                                onChange={(e) => handleQuestionChange('tag_2', e.target.value)}
+                                value={editedQuestion.importance_level || ''}
+                                onChange={(e) => handleQuestionChange('importance_level', e.target.value)}
                             >
-                                <option value="">Select Chapter</option>
-                                {Object.entries(availableChapters).flatMap(([type, chapters]) =>
-                                    chapters.map(chapter => (
-                                        <option key={`${type}-${chapter}`} value={chapter}>
-                                            {chapter}
-                                        </option>
-                                    ))
-                                )}
+                                <option value="">Select Level</option>
+                                <option value="core">Core</option>
+                                <option value="basic">Basic</option>
+                                <option value="advanced">Advanced</option>
+                                <option value="niche">Niche</option>
                             </select>
                         </div>
+
+                        {/* JEE Mains Relevance */}
                         <div className="space-y-1.5">
-                            <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Question Type</label>
+                            <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">JEE Mains Relevance (1-5)</label>
                             <input
                                 className="w-full bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-main dark:text-white text-sm rounded-lg focus:ring-primary focus:border-primary p-2.5"
-                                placeholder="Type or select"
-                                type="text"
-                                list="type-options"
-                                value={editedQuestion.type || ''}
-                                onChange={(e) => handleQuestionChange('type', e.target.value)}
+                                type="number"
+                                min="1"
+                                max="5"
+                                value={editedQuestion.jee_mains_relevance || ''}
+                                onChange={(e) => handleQuestionChange('jee_mains_relevance', parseInt(e.target.value) || null)}
                             />
-                            <datalist id="type-options">
-                                {availableTypes.map(type => (
-                                    <option key={type} value={type} />
-                                ))}
-                            </datalist>
                         </div>
+
+                        {/* Verification Level 1 */}
                         <div className="space-y-1.5">
-                            <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Exam Year</label>
-                            <input
+                            <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Verification Level 1</label>
+                            <select
                                 className="w-full bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-main dark:text-white text-sm rounded-lg focus:ring-primary focus:border-primary p-2.5"
-                                placeholder="Type or select"
-                                type="text"
-                                list="year-options"
-                                value={editedQuestion.year || ''}
-                                onChange={(e) => handleQuestionChange('year', e.target.value)}
-                            />
-                            <datalist id="year-options">
-                                {availableYears.map(year => (
-                                    <option key={year} value={year} />
-                                ))}
-                            </datalist>
+                                value={editedQuestion.verification_level_1 || 'pending'}
+                                onChange={(e) => handleQuestionChange('verification_level_1', e.target.value)}
+                            >
+                                <option value="pending">Pending</option>
+                                <option value="approved">Approved</option>
+                                <option value="rejected">Rejected</option>
+                            </select>
                         </div>
+
+                        {/* Verification Level 2 */}
                         <div className="space-y-1.5">
-                            <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Difficulty</label>
-                            <div className="flex gap-2" onClick={(e) => e.preventDefault()}>
-                                {([{ label: 'Easy', value: 'E' }, { label: 'Medium', value: 'M' }, { label: 'Hard', value: 'H' }] as const).map(d => {
-                                    const getDifficultyClasses = () => {
-                                        switch (d.value) {
-                                            case 'E': return 'peer-checked:bg-green-50 peer-checked:text-green-600 peer-checked:border-green-200 dark:peer-checked:bg-green-900/20 dark:peer-checked:border-green-800';
-                                            case 'M': return 'peer-checked:bg-yellow-50 peer-checked:text-yellow-600 peer-checked:border-yellow-200 dark:peer-checked:bg-yellow-900/20 dark:peer-checked:border-yellow-800';
-                                            case 'H': return 'peer-checked:bg-red-50 peer-checked:text-red-600 peer-checked:border-red-200 dark:peer-checked:bg-red-900/20 dark:peer-checked:border-red-800';
-                                            default: return '';
-                                        }
-                                    };
-                                    return (
-                                        <label
-                                            key={d.value}
-                                            className="cursor-pointer flex-1"
-                                            onClick={(e) => {
-                                                e.preventDefault();
-                                                handleQuestionChange('tag_3', d.value);
-                                            }}
-                                        >
-                                            <input
-                                                className="peer sr-only"
-                                                name="difficulty"
-                                                type="radio"
-                                                value={d.value}
-                                                checked={editedQuestion.tag_3 === d.value}
-                                                readOnly
-                                            />
-                                            <div className={`px-3 py-2 rounded-lg border border-border-light dark:border-border-dark text-xs font-medium text-text-secondary text-center ${getDifficultyClasses()}`}>
-                                                {d.label}
-                                            </div>
-                                        </label>
-                                    );
-                                })}
+                            <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Verification Level 2</label>
+                            <select
+                                className="w-full bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-main dark:text-white text-sm rounded-lg focus:ring-primary focus:border-primary p-2.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                                value={editedQuestion.verification_level_2 || 'pending'}
+                                onChange={(e) => handleQuestionChange('verification_level_2', e.target.value)}
+                                disabled={!editedQuestion.verification_level_1 || editedQuestion.verification_level_1 === 'pending'}
+                            >
+                                <option value="pending">Pending</option>
+                                <option value="approved">Approved</option>
+                                <option value="rejected">Rejected</option>
+                            </select>
+                        </div>
+
+                        {/* Multi-Concept */}
+                        <div className="space-y-1.5">
+                            <div className="flex items-center gap-2 mt-6">
+                                <input
+                                    type="checkbox"
+                                    id="is_multi_concept"
+                                    className="w-4 h-4 text-primary bg-gray-100 border-gray-300 rounded focus:ring-primary dark:focus:ring-primary dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                                    checked={editedQuestion.is_multi_concept || false}
+                                    onChange={(e) => handleQuestionChange('is_multi_concept', e.target.checked)}
+                                />
+                                <label htmlFor="is_multi_concept" className="text-sm font-medium text-text-main dark:text-white">Is Multi-Concept?</label>
                             </div>
                         </div>
-                        <div className="space-y-1.5">
-                            <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Additional Tags</label>
+
+                        {/* Related Concepts */}
+                        <div className="space-y-1.5 md:col-span-2">
+                            <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Related Concepts (JSON Array)</label>
                             <input
                                 className="w-full bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-main dark:text-white text-sm rounded-lg focus:ring-primary focus:border-primary p-2.5"
-                                placeholder="e.g. Important, Frequently Asked"
+                                placeholder='e.g. ["Gravity", "Motion"]'
                                 type="text"
-                                value={editedQuestion.tag_4 || ''}
-                                onChange={(e) => handleQuestionChange('tag_4', e.target.value)}
+                                value={editedQuestion.related_concepts || ''}
+                                onChange={(e) => handleQuestionChange('related_concepts', e.target.value)}
                             />
                         </div>
                     </div>
+
+                    <div className="flex items-center justify-between mb-4">
+                        <h4 className="text-base font-bold text-text-main dark:text-white">Legacy Metadata</h4>
+                        <button
+                            onClick={() => setShowLegacyMetadata(!showLegacyMetadata)}
+                            className="text-sm text-primary hover:underline focus:outline-none"
+                        >
+                            {showLegacyMetadata ? 'Hide' : 'Show'}
+                        </button>
+                    </div>
+
+                    {showLegacyMetadata && (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Topic (Tag 1)</label>
+                                <input
+                                    className="w-full bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-main dark:text-white text-sm rounded-lg focus:ring-primary focus:border-primary p-2.5"
+                                    placeholder="e.g. Gravitation, Electromagnetism"
+                                    type="text"
+                                    value={editedQuestion.tag_1 || ''}
+                                    onChange={(e) => handleQuestionChange('tag_1', e.target.value)}
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Chapter Code (Tag 2)</label>
+                                <select
+                                    className="w-full bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-main dark:text-white text-sm rounded-lg focus:ring-primary focus:border-primary p-2.5"
+                                    value={editedQuestion.tag_2 || ''}
+                                    onChange={(e) => handleQuestionChange('tag_2', e.target.value)}
+                                >
+                                    <option value="">Select Chapter</option>
+                                    {Object.entries(availableChapters).flatMap(([type, chapters]) =>
+                                        chapters.map(chapter => (
+                                            <option key={`${type}-${chapter}`} value={chapter}>
+                                                {chapter}
+                                            </option>
+                                        ))
+                                    )}
+                                </select>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Question Type</label>
+                                <input
+                                    className="w-full bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-main dark:text-white text-sm rounded-lg focus:ring-primary focus:border-primary p-2.5"
+                                    placeholder="Type or select"
+                                    type="text"
+                                    list="type-options"
+                                    value={editedQuestion.type || ''}
+                                    onChange={(e) => handleQuestionChange('type', e.target.value)}
+                                />
+                                <datalist id="type-options">
+                                    {availableTypes.map(type => (
+                                        <option key={type} value={type} />
+                                    ))}
+                                </datalist>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Exam Year</label>
+                                <input
+                                    className="w-full bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-main dark:text-white text-sm rounded-lg focus:ring-primary focus:border-primary p-2.5"
+                                    placeholder="Type or select"
+                                    type="text"
+                                    list="year-options"
+                                    value={editedQuestion.year || ''}
+                                    onChange={(e) => handleQuestionChange('year', e.target.value)}
+                                />
+                                <datalist id="year-options">
+                                    {availableYears.map(year => (
+                                        <option key={year} value={year} />
+                                    ))}
+                                </datalist>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Difficulty (Tag 3)</label>
+                                <div className="flex gap-2" onClick={(e) => e.preventDefault()}>
+                                    {([{ label: 'Easy', value: 'E' }, { label: 'Medium', value: 'M' }, { label: 'Hard', value: 'H' }] as const).map(d => {
+                                        const getDifficultyClasses = () => {
+                                            switch (d.value) {
+                                                case 'E': return 'peer-checked:bg-green-50 peer-checked:text-green-600 peer-checked:border-green-200 dark:peer-checked:bg-green-900/20 dark:peer-checked:border-green-800';
+                                                case 'M': return 'peer-checked:bg-yellow-50 peer-checked:text-yellow-600 peer-checked:border-yellow-200 dark:peer-checked:bg-yellow-900/20 dark:peer-checked:border-yellow-800';
+                                                case 'H': return 'peer-checked:bg-red-50 peer-checked:text-red-600 peer-checked:border-red-200 dark:peer-checked:bg-red-900/20 dark:peer-checked:border-red-800';
+                                                default: return '';
+                                            }
+                                        };
+                                        return (
+                                            <label
+                                                key={d.value}
+                                                className="cursor-pointer flex-1"
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    handleQuestionChange('tag_3', d.value);
+                                                }}
+                                            >
+                                                <input
+                                                    className="peer sr-only"
+                                                    name="difficulty"
+                                                    type="radio"
+                                                    value={d.value}
+                                                    checked={editedQuestion.tag_3 === d.value}
+                                                    readOnly
+                                                />
+                                                <div className={`px-3 py-2 rounded-lg border border-border-light dark:border-border-dark text-xs font-medium text-text-secondary text-center ${getDifficultyClasses()}`}>
+                                                    {d.label}
+                                                </div>
+                                            </label>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Additional Tags (Tag 4)</label>
+                                <input
+                                    className="w-full bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-main dark:text-white text-sm rounded-lg focus:ring-primary focus:border-primary p-2.5"
+                                    placeholder="e.g. Important, Frequently Asked"
+                                    type="text"
+                                    value={editedQuestion.tag_4 || ''}
+                                    onChange={(e) => handleQuestionChange('tag_4', e.target.value)}
+                                />
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 

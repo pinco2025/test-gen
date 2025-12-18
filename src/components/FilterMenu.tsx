@@ -12,6 +12,8 @@ export interface FilterState {
   tag4: string;
   sort: string;
   selectedOnly: boolean;
+  verificationLevel1: string;
+  verificationLevel2: string;
 }
 
 interface FilterMenuProps {
@@ -39,7 +41,9 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
     (currentFilters.year !== 'all' ? 1 : 0) +
     (currentFilters.tag1 !== '' ? 1 : 0) +
     (currentFilters.tag4 !== '' ? 1 : 0) +
-    (currentFilters.selectedOnly ? 1 : 0);
+    (currentFilters.selectedOnly ? 1 : 0) +
+    (currentFilters.verificationLevel1 !== 'all' ? 1 : 0) +
+    (currentFilters.verificationLevel2 !== 'all' ? 1 : 0);
 
   const resetFilters = () => {
     onFilterChange({
@@ -51,7 +55,9 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
       tag1: '',
       tag4: '',
       sort: 'default',
-      selectedOnly: false
+      selectedOnly: false,
+      verificationLevel1: 'all',
+      verificationLevel2: 'all'
     });
   };
 
@@ -139,6 +145,50 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
                       }`}
                     >
                       {opt.label}
+                    </button>
+                  ))}
+                </div>
+            </div>
+
+            {/* Verification Level 1 Filter */}
+            <div className="space-y-2">
+                <label className="block text-xs font-semibold uppercase text-text-secondary">
+                  Verification Level 1
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {['all', 'pending', 'approved', 'rejected'].map(status => (
+                    <button
+                      key={status}
+                      onClick={() => onFilterChange({ verificationLevel1: status })}
+                      className={`px-3 py-1.5 text-sm rounded-md border transition-colors ${
+                        (currentFilters.verificationLevel1 || 'all') === status
+                          ? 'bg-primary/10 border-primary text-primary font-semibold'
+                          : 'bg-transparent border-border-light dark:border-border-dark hover:border-border-dark dark:hover:border-border-light'
+                      }`}
+                    >
+                      {status.charAt(0).toUpperCase() + status.slice(1)}
+                    </button>
+                  ))}
+                </div>
+            </div>
+
+            {/* Verification Level 2 Filter */}
+            <div className="space-y-2">
+                <label className="block text-xs font-semibold uppercase text-text-secondary">
+                  Verification Level 2
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {['all', 'pending', 'approved', 'rejected'].map(status => (
+                    <button
+                      key={status}
+                      onClick={() => onFilterChange({ verificationLevel2: status })}
+                      className={`px-3 py-1.5 text-sm rounded-md border transition-colors ${
+                        (currentFilters.verificationLevel2 || 'all') === status
+                          ? 'bg-primary/10 border-primary text-primary font-semibold'
+                          : 'bg-transparent border-border-light dark:border-border-dark hover:border-border-dark dark:hover:border-border-light'
+                      }`}
+                    >
+                      {status.charAt(0).toUpperCase() + status.slice(1)}
                     </button>
                   ))}
                 </div>
@@ -261,29 +311,6 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
             </button>
         </div>
       </div>
-    </div>
-  );
-
-  return (
-    <div>
-      <button
-        className={`flex items-center gap-2 px-4 py-2 text-sm font-semibold transition-colors border rounded-lg ${
-          activeFilterCount > 0
-            ? 'bg-primary/10 border-primary/50 text-primary'
-            : 'bg-surface-light dark:bg-surface-dark border-border-light dark:border-border-dark hover:border-border-dark dark:hover:border-border-light'
-        }`}
-        onClick={() => setIsOpen(true)}
-      >
-        <span className="material-symbols-outlined text-base">filter_list</span>
-        Filter / Sort
-        {activeFilterCount > 0 && (
-          <span className="flex items-center justify-center text-xs font-bold text-white rounded-full size-5 bg-primary">
-            {activeFilterCount}
-          </span>
-        )}
-      </button>
-
-      {isOpen && createPortal(menuContent, document.body)}
     </div>
   );
 };

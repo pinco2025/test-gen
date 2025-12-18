@@ -94,7 +94,10 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState('');
   const [searchUuid, setSearchUuid] = useState('');
-  const [filters, setFilters] = useState<FilterState>({ chapter: 'all', difficulty: 'all', division: 'all', type: 'all', year: 'all', tag1: '', tag4: '', sort: 'default', selectedOnly: false });
+  const [filters, setFilters] = useState<FilterState>({
+      chapter: 'all', difficulty: 'all', division: 'all', type: 'all', year: 'all', tag1: '', tag4: '', sort: 'default', selectedOnly: false,
+      verificationLevel1: 'all', verificationLevel2: 'all'
+  });
 
   const handleFilterChange = (newFilters: Partial<FilterState>) => {
     setFilters(prev => ({ ...prev, ...newFilters }));
@@ -177,6 +180,8 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
         if (searchText && !q.question.toLowerCase().includes(searchText.toLowerCase())) return false;
         if (searchUuid && !q.uuid.toLowerCase().includes(searchUuid.toLowerCase())) return false;
         if (filters.selectedOnly && !selectedUuids.has(q.uuid)) return false;
+        if (filters.verificationLevel1 !== 'all' && (q.verification_level_1 || 'pending') !== filters.verificationLevel1) return false;
+        if (filters.verificationLevel2 !== 'all' && (q.verification_level_2 || 'pending') !== filters.verificationLevel2) return false;
         return true;
       })
       .sort((a, b) => {
