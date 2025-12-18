@@ -9,6 +9,7 @@ import {
 } from '../types';
 import FilterMenu, { FilterState } from './FilterMenu';
 import QuestionRow from './QuestionRow';
+import chaptersData from '../data/chapters.json';
 
 interface DatabaseCleaningProps {
   onStartEditing: (question: Question) => void;
@@ -128,20 +129,20 @@ export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
         const typeMap = { 'Physics': 'physics', 'Chemistry': 'chemistry', 'Mathematics': 'mathematics' };
         const normalizedType = typeMap[activeSection];
 
-        // 1. Get all chapters by type
-        const chaptersByType = await window.electronAPI.db.getChaptersByType();
-        const chapterCodes = chaptersByType[normalizedType] || [];
+        // 1. Get all chapters from chapters.json
+        // @ts-ignore
+        const sectionChapters = chaptersData[activeSection] || [];
 
-        // Create chapter objects for the filter
-        const loadedChapters: Chapter[] = chapterCodes.map(code => ({
-            code,
-            name: code, // We don't have mapping to nice names here, use code as name
-            level: 1
+        const loadedChapters: Chapter[] = sectionChapters.map((ch: any) => ({
+            code: ch.code,
+            name: ch.name,
+            level: ch.level
         }));
         setChapters(loadedChapters);
 
+        const chapterCodes = loadedChapters.map(ch => ch.code);
+
         // 2. Get all questions for these chapters
-        // If there are too many chapters, this might be heavy, but it's what we have
         if (chapterCodes.length > 0) {
             const questions = await window.electronAPI.questions.getByChapterCodes(normalizedType, chapterCodes);
             setAvailableQuestions(questions);
