@@ -150,6 +150,31 @@ export class DatabaseService {
   }
 
   /**
+   * Get ALL questions for a specific subject (by chapter codes) without limits or type filtering
+   * Designed specifically for the Database Cleaning interface
+   */
+  getAllQuestionsForSubject(chapterCodes: string[]): Question[] {
+    if (!this.db) throw new Error('Database not connected');
+
+    if (chapterCodes.length === 0) {
+      return [];
+    }
+
+    const placeholders = chapterCodes.map(() => '?').join(',');
+    // Query specifically for all questions matching the provided chapter codes
+    // No LIMIT, No type check - absolute retrieval based on chapter association
+    const query = `SELECT * FROM questions WHERE tag_2 IN (${placeholders})`;
+
+    console.log('[DB] getAllQuestionsForSubject Query:', query);
+
+    const stmt = this.db.prepare(query);
+    const results = stmt.all(...chapterCodes) as Question[];
+
+    console.log(`[DB] Retrieved ${results.length} questions for subject cleaning`);
+    return results;
+  }
+
+  /**
    * Get all unique values for a column
    */
   getUniqueValues(column: string): string[] {
