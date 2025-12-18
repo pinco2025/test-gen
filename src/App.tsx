@@ -28,6 +28,8 @@ import ExportTestModal, { ExportConfig } from './components/ExportTestModal';
 import Notification, { useNotification } from './components/Notification';
 import TitleBar from './components/TitleBar';
 import Dashboard from './components/Dashboard';
+import LandingPage from './components/LandingPage';
+import DatabaseCleaning from './components/DatabaseCleaning';
 
 // In-memory project data
 interface ProjectData {
@@ -78,6 +80,9 @@ function App() {
   const [dbConnected, setDbConnected] = useState(false);
   const [dbPath, setDbPath] = useState<string | null>(null);
   const [showDbDropdown, setShowDbDropdown] = useState(false);
+
+  // App mode state
+  const [appMode, setAppMode] = useState<'landing' | 'test-generation' | 'database-cleaning'>('landing');
 
   // Track when creating a new project
   const [isCreatingNew, setIsCreatingNew] = useState(false);
@@ -170,6 +175,10 @@ function App() {
         setProjects(loadedProjects);
       }
     }
+  };
+
+  const handleModeSelect = (mode: 'test-generation' | 'database-cleaning') => {
+    setAppMode(mode);
   };
 
   // Auto-save with debouncing
@@ -339,8 +348,13 @@ function App() {
 
   // Go to dashboard (view all projects)
   const goToDashboard = () => {
-    setCurrentProjectId(null);
-    setIsCreatingNew(false);
+    if (appMode === 'database-cleaning') {
+      // If we're in database cleaning mode, "Go to Dashboard" logic acts as "Go Home"
+      setAppMode('landing');
+    } else {
+      setCurrentProjectId(null);
+      setIsCreatingNew(false);
+    }
   };
 
   // Delete project permanently
@@ -749,6 +763,70 @@ function App() {
   };
 
   const renderStep = () => {
+    // If in Landing Mode
+    if (appMode === 'landing') {
+      return <LandingPage onSelectMode={handleModeSelect} />;
+    }
+
+    // If in Database Cleaning Mode
+    if (appMode === 'database-cleaning') {
+        if (!dbConnected) {
+             return (
+              <div className="flex flex-col items-center justify-center h-full text-center p-8">
+                <div className="bg-primary/10 dark:bg-primary/20 rounded-full p-8 mb-6 animate-fade-in">
+                  <span className="material-symbols-outlined text-7xl text-primary">database</span>
+                </div>
+                <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-3">Database Cleaning</h1>
+                <p className="text-gray-600 dark:text-gray-400 mb-8 text-lg max-w-md">
+                  Please connect to a question database to begin.
+                </p>
+                <button
+                  onClick={handleDatabaseSelect}
+                  className="bg-primary text-white px-8 py-4 rounded-lg font-semibold flex items-center gap-2 hover:bg-primary/90 transition-all shadow-lg hover:shadow-xl"
+                >
+                  <span className="material-symbols-outlined text-xl">folder_open</span>
+                  Select Database File
+                </button>
+              </div>
+            );
+        }
+
+        // Handle editing within database cleaning
+        if (editingQuestion) {
+             return (
+                <QuestionEditor
+                    question={editingQuestion.question}
+                    solution={editingQuestion.solution}
+                    onSave={handleFinishEditing}
+                    onCancel={() => handleFinishEditing(null)}
+                />
+            );
+        }
+
+        return (
+          <DatabaseCleaning
+            onStartEditing={(question) => {
+              setEditingQuestion({ question });
+              // We are piggybacking on existing state logic but we are in a different mode
+              // Actually, editingQuestion state is global, so it should work if we render conditionally
+            }}
+            onClone={(question) => {
+                const clonedQuestion = {
+                  ...question,
+                  uuid: crypto.randomUUID(),
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString(),
+                  frequency: 0,
+                };
+                setEditingQuestion({ question: clonedQuestion });
+            }}
+            scrollToQuestionUuid={lastEditedQuestionUuid}
+            onScrollComplete={() => setLastEditedQuestionUuid(null)}
+            refreshTrigger={questionsRefreshTrigger}
+          />
+        );
+    }
+
     const showNavigation = [
       'question-select-physics',
       'question-select-chemistry',
@@ -989,6 +1067,11 @@ function App() {
       {/* Header */}
       <header className="flex-shrink-0 flex items-center justify-between px-6 py-3 border-b border-gray-200 dark:border-[#2d2d3b] bg-white dark:bg-[#1e1e2d] transition-colors duration-200">
         <div className="flex items-center gap-4">
+          {appMode !== 'landing' && (
+             <button onClick={() => setAppMode('landing')} className="mr-2 p-1 rounded-full hover:bg-gray-100 dark:hover:bg-[#252535]" title="Back to Home">
+                 <span className="material-symbols-outlined">home</span>
+             </button>
+          )}
           <img
             src="https://drive.google.com/thumbnail?id=1yLtX3YxubbDBsKYDj82qiaGbSkSX7aLv&sz=w1000"
             alt="Logo"
@@ -996,7 +1079,7 @@ function App() {
             onClick={goToDashboard}
           />
           <h1 className="text-lg font-bold cursor-pointer hover:text-primary transition-colors" onClick={goToDashboard}>
-            Test Generation System
+            {appMode === 'database-cleaning' ? 'Database Tagging & Cleaning' : 'Test Generation System'}
           </h1>
         </div>
 
@@ -1066,8 +1149,8 @@ function App() {
         </div>
       </header>
 
-      {/* Project Tabs */}
-      {dbConnected && (
+      {/* Project Tabs - Only in Test Generation Mode */}
+      {dbConnected && appMode === 'test-generation' && (
         <ProjectTabs
           projects={openProjects}
           currentProjectId={currentProjectId}
