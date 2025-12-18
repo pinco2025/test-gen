@@ -142,9 +142,9 @@ export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
 
         const chapterCodes = loadedChapters.map(ch => ch.code);
 
-        // 2. Get all questions for these chapters
+        // 2. Get all questions for these chapters using the dedicated cleaner loader
         if (chapterCodes.length > 0) {
-            const questions = await window.electronAPI.questions.getByChapterCodes(normalizedType, chapterCodes);
+            const questions = await window.electronAPI.questions.getAllForSubject(chapterCodes);
             setAvailableQuestions(questions);
         } else {
             setAvailableQuestions([]);
