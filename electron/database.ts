@@ -11,7 +11,37 @@ export class DatabaseService {
     const finalPath = dbPath || this.dbPath || path.join(process.cwd(), 'questions.db');
     this.db = new Database(finalPath);
     console.log(`Connected to database at: ${finalPath}`);
+    this.ensureSchema();
     this.createSolutionTable();
+  }
+
+  ensureSchema(): void {
+    if (!this.db) return;
+    try {
+      // Check if new columns exist, if not add them
+      const columns = this.db.pragma('table_info(questions)') as { name: string }[];
+      const columnNames = new Set(columns.map(c => c.name));
+
+      const newColumns: { [key: string]: string } = {
+        'topic_tags': "TEXT",
+        'importance_level': "TEXT",
+        'verification_level_1': "TEXT DEFAULT 'pending'",
+        'verification_level_2': "TEXT DEFAULT 'pending'",
+        'jee_mains_relevance': "INTEGER",
+        'is_multi_concept': "BOOLEAN DEFAULT 0",
+        'related_concepts': "TEXT"
+      };
+
+      for (const [colName, colDef] of Object.entries(newColumns)) {
+        if (!columnNames.has(colName)) {
+          console.log(`[DB] Adding missing column: ${colName}`);
+          this.db.exec(`ALTER TABLE questions ADD COLUMN ${colName} ${colDef}`);
+        }
+      }
+      console.log('[DB] Schema check complete');
+    } catch (error) {
+      console.error('[DB] Error checking/updating schema:', error);
+    }
   }
 
   createSolutionTable(): void {
@@ -384,7 +414,10 @@ export class DatabaseService {
         'option_d', 'option_d_image_url',
         'answer',
         'type', 'year',
-        'tag_1', 'tag_2', 'tag_3', 'tag_4'
+        'tag_1', 'tag_2', 'tag_3', 'tag_4',
+        'topic_tags', 'importance_level',
+        'verification_level_1', 'verification_level_2',
+        'jee_mains_relevance', 'is_multi_concept', 'related_concepts'
       ];
 
       const setClauses: string[] = [];
@@ -438,6 +471,9 @@ export class DatabaseService {
         'answer',
         'type', 'year',
         'tag_1', 'tag_2', 'tag_3', 'tag_4',
+        'topic_tags', 'importance_level',
+        'verification_level_1', 'verification_level_2',
+        'jee_mains_relevance', 'is_multi_concept', 'related_concepts',
         'created_at', 'updated_at', 'frequency'
       ];
 

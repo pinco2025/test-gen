@@ -36,6 +36,15 @@ export interface Question {
   tag_3: string | null;
   tag_4: string | null;
 
+  // New Metadata Fields
+  topic_tags: string | null;         // JSON array of topic-wise tags
+  importance_level: string | null;   // core, basic, advanced, niche
+  verification_level_1: string | null; // First level: pending, approved, rejected
+  verification_level_2: string | null; // Second level: pending, approved, rejected
+  jee_mains_relevance: number | null; // 1-5 scale
+  is_multi_concept: boolean | null;  // True/False
+  related_concepts: string | null;   // JSON array of related concepts
+
   // Timestamps
   created_at: string;
   updated_at: string;
@@ -50,6 +59,8 @@ export interface QuestionFilter {
   tags?: string[];
   chapter?: string;
   difficulty?: 'E' | 'M' | 'H';
+  verification_level_1?: string;
+  verification_level_2?: string;
 }
 
 export interface Solution {
