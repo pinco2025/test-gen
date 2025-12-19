@@ -313,6 +313,28 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
       </div>
     </div>
   );
+
+  return (
+    <>
+      <button
+        onClick={() => setIsOpen(true)}
+        className={`flex items-center gap-2 px-4 py-2 border rounded-full transition-all whitespace-nowrap ${
+          activeFilterCount > 0
+            ? 'bg-primary/10 border-primary text-primary font-semibold'
+            : 'bg-white dark:bg-[#252535] border-gray-200 dark:border-[#2d2d3b] text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#2a2a3c]'
+        }`}
+      >
+        <span className="material-symbols-outlined text-[20px]">filter_list</span>
+        <span>Filters</span>
+        {activeFilterCount > 0 && (
+          <span className="flex items-center justify-center w-5 h-5 ml-1 text-xs text-white rounded-full bg-primary">
+            {activeFilterCount}
+          </span>
+        )}
+      </button>
+      {isOpen && createPortal(menuContent, document.body)}
+    </>
+  );
 };
 
 export default FilterMenu;
