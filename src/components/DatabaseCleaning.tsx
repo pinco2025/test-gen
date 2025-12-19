@@ -5,11 +5,14 @@ import {
   Question,
   Chapter,
   SectionName,
-  Difficulty
+  Difficulty,
+  Solution
 } from '../types';
 import FilterMenu, { FilterState } from './FilterMenu';
 import QuestionRow from './QuestionRow';
+import QuestionEditor from './QuestionEditor';
 import chaptersData from '../data/chapters.json';
+import { useNotification } from './Notification';
 
 interface DatabaseCleaningProps {
   onStartEditing: (question: Question) => void;
@@ -68,11 +71,13 @@ export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
   onScrollComplete,
   refreshTrigger = 0
 }) => {
+  const { addNotification } = useNotification();
   const [activeSection, setActiveSection] = useState<SectionName>('Physics');
+  const [activeChapterCode, setActiveChapterCode] = useState<string | null>(null);
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [availableQuestions, setAvailableQuestions] = useState<Question[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [searchUuid, setSearchUuid] = useState('');
   const [filters, setFilters] = useState<FilterState>({
@@ -80,18 +85,28 @@ export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
       verificationLevel1: 'all', verificationLevel2: 'all'
   });
 
+  // Local editing state
+  const [editingQuestion, setEditingQuestion] = useState<{ question: Question, solution?: Solution } | null>(null);
+
   const handleFilterChange = (newFilters: Partial<FilterState>) => {
     setFilters(prev => ({ ...prev, ...newFilters }));
   };
 
   const handleEdit = (e: React.MouseEvent, question: Question) => {
     e.stopPropagation();
-    onStartEditing(question);
+    setEditingQuestion({ question });
   };
 
   const handleClone = (e: React.MouseEvent, question: Question) => {
     e.stopPropagation();
-    onClone(question);
+    const clonedQuestion = {
+      ...question,
+      uuid: crypto.randomUUID(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      frequency: 0,
+    };
+    setEditingQuestion({ question: clonedQuestion });
   };
 
   const listRef = useRef<List>(null);
@@ -124,35 +139,32 @@ export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
     listRef.current?.resetAfterIndex(0);
   }, [zoomLevel]);
 
-  // Load chapters and questions for the active section
+  // Load chapters when activeSection changes
   useEffect(() => {
-    const loadData = async () => {
+    // @ts-ignore
+    const sectionChapters = chaptersData[activeSection] || [];
+    const loadedChapters: Chapter[] = sectionChapters.map((ch: any) => ({
+        code: ch.code,
+        name: ch.name,
+        level: ch.level
+    }));
+    setChapters(loadedChapters);
+    setActiveChapterCode(null); // Reset chapter selection on subject change
+  }, [activeSection]);
+
+
+  // Load questions when activeChapterCode changes
+  useEffect(() => {
+    const loadQuestions = async () => {
+      if (!activeChapterCode) {
+        setAvailableQuestions([]);
+        return;
+      }
+
       setLoading(true);
       try {
-        const typeMap = { 'Physics': 'physics', 'Chemistry': 'chemistry', 'Mathematics': 'mathematics' };
-        const normalizedType = typeMap[activeSection];
-
-        // 1. Get all chapters from chapters.json
-        // @ts-ignore
-        const sectionChapters = chaptersData[activeSection] || [];
-
-        const loadedChapters: Chapter[] = sectionChapters.map((ch: any) => ({
-            code: ch.code,
-            name: ch.name,
-            level: ch.level
-        }));
-        setChapters(loadedChapters);
-
-        const chapterCodes = loadedChapters.map(ch => ch.code);
-
-        // 2. Get all questions for these chapters using the dedicated cleaner loader
-        if (chapterCodes.length > 0) {
-            const questions = await window.electronAPI.questions.getAllForSubject(chapterCodes);
-            setAvailableQuestions(questions);
-        } else {
-            setAvailableQuestions([]);
-        }
-
+        const questions = await window.electronAPI.questions.getAllForSubject([activeChapterCode]);
+        setAvailableQuestions(questions);
       } catch (error) {
         console.error('Failed to load questions:', error);
         setAvailableQuestions([]);
@@ -160,13 +172,12 @@ export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
         setLoading(false);
       }
     };
-    loadData();
-  }, [activeSection, refreshTrigger]);
+    loadQuestions();
+  }, [activeChapterCode, refreshTrigger]);
 
   const filteredQuestions = useMemo(() => {
     return availableQuestions
       .filter(q => {
-        if (filters.chapter !== 'all' && q.tag_2 !== filters.chapter) return false;
         if (filters.difficulty !== 'all' && q.tag_3 !== filters.difficulty) return false;
         if (filters.division !== 'all') {
             if (filters.division === '1' && isNumericalAnswer(q)) return false;
@@ -226,6 +237,127 @@ export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
   const scrollToTop = () => listRef.current?.scrollToItem(0);
   const scrollToBottom = () => listRef.current?.scrollToItem(filteredQuestions.length - 1);
 
+  // Save functionality
+  const handleSaveQuestion = async (updatedQuestion: Question, updatedSolution?: Solution) => {
+    if (!window.electronAPI) return;
+
+    try {
+      // Check if it's a new question (clone) or update
+      const existing = availableQuestions.find(q => q.uuid === updatedQuestion.uuid);
+      let success = false;
+
+      if (!existing && editingQuestion?.question.uuid === updatedQuestion.uuid) {
+          // It's a new question (from clone)
+          success = await window.electronAPI.questions.createQuestion(updatedQuestion);
+      } else {
+          success = await window.electronAPI.questions.updateQuestion(
+            updatedQuestion.uuid,
+            {
+              question: updatedQuestion.question,
+              question_image_url: updatedQuestion.question_image_url,
+              option_a: updatedQuestion.option_a,
+              option_a_image_url: updatedQuestion.option_a_image_url,
+              option_b: updatedQuestion.option_b,
+              option_b_image_url: updatedQuestion.option_b_image_url,
+              option_c: updatedQuestion.option_c,
+              option_c_image_url: updatedQuestion.option_c_image_url,
+              option_d: updatedQuestion.option_d,
+              option_d_image_url: updatedQuestion.option_d_image_url,
+              answer: updatedQuestion.answer,
+              type: updatedQuestion.type,
+              year: updatedQuestion.year,
+              tag_1: updatedQuestion.tag_1,
+              tag_2: updatedQuestion.tag_2,
+              tag_3: updatedQuestion.tag_3,
+              tag_4: updatedQuestion.tag_4,
+              topic_tags: updatedQuestion.topic_tags,
+              importance_level: updatedQuestion.importance_level,
+              verification_level_1: updatedQuestion.verification_level_1,
+              verification_level_2: updatedQuestion.verification_level_2,
+              jee_mains_relevance: updatedQuestion.jee_mains_relevance,
+              is_multi_concept: updatedQuestion.is_multi_concept,
+              related_concepts: updatedQuestion.related_concepts,
+              updated_at: new Date().toISOString()
+            }
+          );
+      }
+
+      if (success) {
+        // Save solution
+        if (updatedSolution) {
+           await window.electronAPI.questions.saveSolution(
+             updatedQuestion.uuid,
+             updatedSolution.solution_text || '',
+             updatedSolution.solution_image_url || ''
+           );
+        }
+
+        // Update local state
+        setAvailableQuestions(prev => {
+             const index = prev.findIndex(q => q.uuid === updatedQuestion.uuid);
+             if (index !== -1) {
+                 const newQuestions = [...prev];
+                 newQuestions[index] = updatedQuestion;
+                 return newQuestions;
+             } else {
+                 return [...prev, updatedQuestion];
+             }
+        });
+
+        addNotification('success', 'Question saved successfully!');
+      } else {
+        addNotification('error', 'Failed to save question.');
+      }
+    } catch (error) {
+      console.error(error);
+      addNotification('error', 'An error occurred while saving.');
+    }
+  };
+
+  const handleFinishEditing = (updatedQuestion: Question | null, updatedSolution?: Solution) => {
+      if (updatedQuestion) {
+          handleSaveQuestion(updatedQuestion, updatedSolution);
+      }
+      setEditingQuestion(null);
+  };
+
+  // Navigation logic
+  const navigateQuestion = (direction: 'next' | 'prev') => {
+      if (!editingQuestion) return;
+
+      const currentUuid = editingQuestion.question.uuid;
+      const currentIndex = filteredQuestions.findIndex(q => q.uuid === currentUuid);
+
+      let nextIndex = -1;
+      if (direction === 'next') {
+          nextIndex = currentIndex + 1;
+      } else {
+          nextIndex = currentIndex - 1;
+      }
+
+      // Check bounds
+      if (nextIndex >= 0 && nextIndex < filteredQuestions.length) {
+          const nextQuestion = filteredQuestions[nextIndex];
+          setEditingQuestion({ question: nextQuestion }); // Solution will be fetched by QuestionEditor
+      } else {
+          addNotification('info', direction === 'next' ? 'End of list reached.' : 'Start of list reached.');
+      }
+  };
+
+  // Render Editor if active
+  if (editingQuestion) {
+      return (
+          <QuestionEditor
+              question={editingQuestion.question}
+              solution={editingQuestion.solution}
+              onSave={(q, s) => handleSaveQuestion(q, s)} // Just save, don't close
+              onCancel={() => setEditingQuestion(null)}
+              onNext={() => navigateQuestion('next')}
+              onPrevious={() => navigateQuestion('prev')}
+          />
+      );
+  }
+
   return (
     <div className="w-full h-full flex flex-col overflow-y-auto overflow-x-hidden bg-gray-50 dark:bg-[#121121]">
       {/* Subject Tabs */}
@@ -249,7 +381,48 @@ export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
 
       {/* Main Content Area */}
       <div className="flex-1 px-6 py-6" style={{ minHeight: '0' }}>
+        {!activeChapterCode ? (
+             /* Chapter Selection Grid */
+             <div className="bg-white dark:bg-[#1e1e2d] p-6 rounded-xl border border-border-light dark:border-border-dark shadow-sm">
+                 <h2 className="text-xl font-bold text-text-main dark:text-white mb-6">Select a Chapter</h2>
+                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                     {chapters.map((chapter) => (
+                         <button
+                             key={chapter.code}
+                             onClick={() => setActiveChapterCode(chapter.code)}
+                             className="p-4 rounded-lg border border-border-light dark:border-border-dark hover:border-primary dark:hover:border-primary hover:bg-blue-50 dark:hover:bg-primary/10 transition-all text-left group flex flex-col gap-2"
+                         >
+                             <div className="flex items-center justify-between w-full">
+                                 <span className="font-semibold text-text-main dark:text-white group-hover:text-primary transition-colors line-clamp-2">{chapter.name}</span>
+                                 <span className="text-xs font-mono text-text-secondary bg-gray-100 dark:bg-white/5 px-2 py-1 rounded">{chapter.code}</span>
+                             </div>
+                             <div className="text-xs text-text-secondary">
+                                 Level: {chapter.level}
+                             </div>
+                         </button>
+                     ))}
+                 </div>
+                 {chapters.length === 0 && (
+                     <div className="text-center py-12 text-text-secondary">No chapters found for this subject.</div>
+                 )}
+             </div>
+        ) : (
+          /* Question List View */
           <div className="bg-white dark:bg-[#1e1e2d] p-4 rounded-xl border border-gray-200 dark:border-[#2d2d3b] shadow-sm flex flex-col h-full overflow-hidden">
+            <div className="flex-shrink-0 mb-4 flex items-center gap-4">
+                <button
+                    onClick={() => setActiveChapterCode(null)}
+                    className="flex items-center gap-2 text-text-secondary hover:text-text-main dark:hover:text-white transition-colors"
+                >
+                    <span className="material-symbols-outlined">arrow_back</span>
+                    <span className="font-medium">Back to Chapters</span>
+                </button>
+                <div className="h-6 w-px bg-gray-200 dark:bg-[#2d2d3b]"></div>
+                <h2 className="text-lg font-bold text-text-main dark:text-white">
+                    {chapters.find(c => c.code === activeChapterCode)?.name || activeChapterCode}
+                </h2>
+            </div>
+
             {/* Search and Filters */}
             <div className="flex-shrink-0 flex gap-4 mb-4">
               <div className="relative flex-grow">
@@ -260,7 +433,7 @@ export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 pointer-events-none">fingerprint</span>
                 <input type="text" placeholder="UUID" value={searchUuid} onChange={(e) => setSearchUuid(e.target.value)} className="w-full pl-12 pr-4 py-2 border border-gray-200 dark:border-[#2d2d3b] rounded-full bg-gray-50 dark:bg-[#252535] text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-transparent transition-all" />
               </div>
-              <FilterMenu chapters={chapters} availableTypes={availableTypes} availableYears={availableYears} currentFilters={filters} onFilterChange={handleFilterChange} />
+              <FilterMenu chapters={[]} availableTypes={availableTypes} availableYears={availableYears} currentFilters={filters} onFilterChange={handleFilterChange} />
             </div>
 
             {/* Questions List */}
@@ -281,8 +454,8 @@ export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
                   </button>
               </div>
 
-              {loading ? <div className="text-center p-8">Loading...</div> :
-                !loading && filteredQuestions.length === 0 ? <div className="text-center p-8">No questions found.</div> :
+              {loading ? <div className="text-center p-8">Loading questions for {activeChapterCode}...</div> :
+                !loading && filteredQuestions.length === 0 ? <div className="text-center p-8">No questions found for this chapter.</div> :
                 <AutoSizer>
                   {({ height, width }) => (
                     <List ref={listRef} height={height} width={width} itemCount={filteredQuestions.length} itemSize={getSize} itemData={itemData}>
@@ -293,6 +466,7 @@ export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
               }
             </div>
           </div>
+        )}
       </div>
     </div>
   );
