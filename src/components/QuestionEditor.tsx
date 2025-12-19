@@ -9,9 +9,11 @@ interface QuestionEditorProps {
   solution?: Solution;
   onSave: (updatedQuestion: Question, updatedSolution?: Solution) => void;
   onCancel: () => void;
+  onNext?: () => void;
+  onPrevious?: () => void;
 }
 
-const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onSave, onCancel }) => {
+const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onSave, onCancel, onNext, onPrevious }) => {
   const [editedQuestion, setEditedQuestion] = useState<Question>(question);
   const [editedSolution, setEditedSolution] = useState<Solution | undefined>(solution);
   const [availableTypes, setAvailableTypes] = useState<string[]>([]);
@@ -70,6 +72,16 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
 
   const handleSave = () => {
     onSave(editedQuestion, editedSolution);
+  };
+
+  const handleNext = () => {
+      onSave(editedQuestion, editedSolution);
+      onNext?.();
+  };
+
+  const handlePrevious = () => {
+      onSave(editedQuestion, editedSolution);
+      onPrevious?.();
   };
 
   const [showLegacyMetadata, setShowLegacyMetadata] = useState(false);
@@ -497,6 +509,28 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
                     Cancel
                 </button>
                 <div className="flex gap-3">
+                     {(onPrevious || onNext) && (
+                        <div className="flex mr-2">
+                             {onPrevious && (
+                                <button
+                                    onClick={handlePrevious}
+                                    className="p-2.5 rounded-l-lg border border-border-light dark:border-border-dark bg-white dark:bg-surface-light text-text-secondary hover:text-text-main dark:hover:text-white hover:bg-gray-50 dark:hover:bg-white/5 transition-all"
+                                    title="Previous Question (Auto-saves)"
+                                >
+                                    <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+                                </button>
+                             )}
+                             {onNext && (
+                                <button
+                                    onClick={handleNext}
+                                    className="p-2.5 rounded-r-lg border border-l-0 border-border-light dark:border-border-dark bg-white dark:bg-surface-light text-text-secondary hover:text-text-main dark:hover:text-white hover:bg-gray-50 dark:hover:bg-white/5 transition-all"
+                                    title="Next Question (Auto-saves)"
+                                >
+                                    <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
+                                </button>
+                             )}
+                        </div>
+                     )}
                     <button
                         onClick={handleSave}
                         className="px-6 py-2.5 rounded-lg bg-primary text-white shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 hover:bg-primary/90 text-sm font-bold transition-all flex items-center gap-2">

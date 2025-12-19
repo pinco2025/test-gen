@@ -5,11 +5,14 @@ import {
   Question,
   Chapter,
   SectionName,
-  Difficulty
+  Difficulty,
+  Solution
 } from '../types';
 import FilterMenu, { FilterState } from './FilterMenu';
 import QuestionRow from './QuestionRow';
+import QuestionEditor from './QuestionEditor';
 import chaptersData from '../data/chapters.json';
+import { useNotification } from './Notification';
 
 interface DatabaseCleaningProps {
   onStartEditing: (question: Question) => void;
@@ -68,6 +71,7 @@ export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
   onScrollComplete,
   refreshTrigger = 0
 }) => {
+  const { addNotification } = useNotification();
   const [activeSection, setActiveSection] = useState<SectionName>('Physics');
   const [activeChapterCode, setActiveChapterCode] = useState<string | null>(null);
   const [chapters, setChapters] = useState<Chapter[]>([]);
@@ -81,18 +85,28 @@ export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
       verificationLevel1: 'all', verificationLevel2: 'all'
   });
 
+  // Local editing state
+  const [editingQuestion, setEditingQuestion] = useState<{ question: Question, solution?: Solution } | null>(null);
+
   const handleFilterChange = (newFilters: Partial<FilterState>) => {
     setFilters(prev => ({ ...prev, ...newFilters }));
   };
 
   const handleEdit = (e: React.MouseEvent, question: Question) => {
     e.stopPropagation();
-    onStartEditing(question);
+    setEditingQuestion({ question });
   };
 
   const handleClone = (e: React.MouseEvent, question: Question) => {
     e.stopPropagation();
-    onClone(question);
+    const clonedQuestion = {
+      ...question,
+      uuid: crypto.randomUUID(),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      frequency: 0,
+    };
+    setEditingQuestion({ question: clonedQuestion });
   };
 
   const listRef = useRef<List>(null);
@@ -164,7 +178,6 @@ export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
   const filteredQuestions = useMemo(() => {
     return availableQuestions
       .filter(q => {
-        // Since we load only one chapter, we don't need to filter by chapter code again unless the filter is explicitly set to something else (which shouldn't happen)
         if (filters.difficulty !== 'all' && q.tag_3 !== filters.difficulty) return false;
         if (filters.division !== 'all') {
             if (filters.division === '1' && isNumericalAnswer(q)) return false;
@@ -223,6 +236,127 @@ export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
 
   const scrollToTop = () => listRef.current?.scrollToItem(0);
   const scrollToBottom = () => listRef.current?.scrollToItem(filteredQuestions.length - 1);
+
+  // Save functionality
+  const handleSaveQuestion = async (updatedQuestion: Question, updatedSolution?: Solution) => {
+    if (!window.electronAPI) return;
+
+    try {
+      // Check if it's a new question (clone) or update
+      const existing = availableQuestions.find(q => q.uuid === updatedQuestion.uuid);
+      let success = false;
+
+      if (!existing && editingQuestion?.question.uuid === updatedQuestion.uuid) {
+          // It's a new question (from clone)
+          success = await window.electronAPI.questions.createQuestion(updatedQuestion);
+      } else {
+          success = await window.electronAPI.questions.updateQuestion(
+            updatedQuestion.uuid,
+            {
+              question: updatedQuestion.question,
+              question_image_url: updatedQuestion.question_image_url,
+              option_a: updatedQuestion.option_a,
+              option_a_image_url: updatedQuestion.option_a_image_url,
+              option_b: updatedQuestion.option_b,
+              option_b_image_url: updatedQuestion.option_b_image_url,
+              option_c: updatedQuestion.option_c,
+              option_c_image_url: updatedQuestion.option_c_image_url,
+              option_d: updatedQuestion.option_d,
+              option_d_image_url: updatedQuestion.option_d_image_url,
+              answer: updatedQuestion.answer,
+              type: updatedQuestion.type,
+              year: updatedQuestion.year,
+              tag_1: updatedQuestion.tag_1,
+              tag_2: updatedQuestion.tag_2,
+              tag_3: updatedQuestion.tag_3,
+              tag_4: updatedQuestion.tag_4,
+              topic_tags: updatedQuestion.topic_tags,
+              importance_level: updatedQuestion.importance_level,
+              verification_level_1: updatedQuestion.verification_level_1,
+              verification_level_2: updatedQuestion.verification_level_2,
+              jee_mains_relevance: updatedQuestion.jee_mains_relevance,
+              is_multi_concept: updatedQuestion.is_multi_concept,
+              related_concepts: updatedQuestion.related_concepts,
+              updated_at: new Date().toISOString()
+            }
+          );
+      }
+
+      if (success) {
+        // Save solution
+        if (updatedSolution) {
+           await window.electronAPI.questions.saveSolution(
+             updatedQuestion.uuid,
+             updatedSolution.solution_text || '',
+             updatedSolution.solution_image_url || ''
+           );
+        }
+
+        // Update local state
+        setAvailableQuestions(prev => {
+             const index = prev.findIndex(q => q.uuid === updatedQuestion.uuid);
+             if (index !== -1) {
+                 const newQuestions = [...prev];
+                 newQuestions[index] = updatedQuestion;
+                 return newQuestions;
+             } else {
+                 return [...prev, updatedQuestion];
+             }
+        });
+
+        addNotification('success', 'Question saved successfully!');
+      } else {
+        addNotification('error', 'Failed to save question.');
+      }
+    } catch (error) {
+      console.error(error);
+      addNotification('error', 'An error occurred while saving.');
+    }
+  };
+
+  const handleFinishEditing = (updatedQuestion: Question | null, updatedSolution?: Solution) => {
+      if (updatedQuestion) {
+          handleSaveQuestion(updatedQuestion, updatedSolution);
+      }
+      setEditingQuestion(null);
+  };
+
+  // Navigation logic
+  const navigateQuestion = (direction: 'next' | 'prev') => {
+      if (!editingQuestion) return;
+
+      const currentUuid = editingQuestion.question.uuid;
+      const currentIndex = filteredQuestions.findIndex(q => q.uuid === currentUuid);
+
+      let nextIndex = -1;
+      if (direction === 'next') {
+          nextIndex = currentIndex + 1;
+      } else {
+          nextIndex = currentIndex - 1;
+      }
+
+      // Check bounds
+      if (nextIndex >= 0 && nextIndex < filteredQuestions.length) {
+          const nextQuestion = filteredQuestions[nextIndex];
+          setEditingQuestion({ question: nextQuestion }); // Solution will be fetched by QuestionEditor
+      } else {
+          addNotification('info', direction === 'next' ? 'End of list reached.' : 'Start of list reached.');
+      }
+  };
+
+  // Render Editor if active
+  if (editingQuestion) {
+      return (
+          <QuestionEditor
+              question={editingQuestion.question}
+              solution={editingQuestion.solution}
+              onSave={(q, s) => handleSaveQuestion(q, s)} // Just save, don't close
+              onCancel={() => setEditingQuestion(null)}
+              onNext={() => navigateQuestion('next')}
+              onPrevious={() => navigateQuestion('prev')}
+          />
+      );
+  }
 
   return (
     <div className="w-full h-full flex flex-col overflow-y-auto overflow-x-hidden bg-gray-50 dark:bg-[#121121]">
