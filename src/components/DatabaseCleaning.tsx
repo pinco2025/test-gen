@@ -69,10 +69,11 @@ export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
   refreshTrigger = 0
 }) => {
   const [activeSection, setActiveSection] = useState<SectionName>('Physics');
+  const [activeChapterCode, setActiveChapterCode] = useState<string | null>(null);
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [availableQuestions, setAvailableQuestions] = useState<Question[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [searchUuid, setSearchUuid] = useState('');
   const [filters, setFilters] = useState<FilterState>({
@@ -124,35 +125,32 @@ export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
     listRef.current?.resetAfterIndex(0);
   }, [zoomLevel]);
 
-  // Load chapters and questions for the active section
+  // Load chapters when activeSection changes
   useEffect(() => {
-    const loadData = async () => {
+    // @ts-ignore
+    const sectionChapters = chaptersData[activeSection] || [];
+    const loadedChapters: Chapter[] = sectionChapters.map((ch: any) => ({
+        code: ch.code,
+        name: ch.name,
+        level: ch.level
+    }));
+    setChapters(loadedChapters);
+    setActiveChapterCode(null); // Reset chapter selection on subject change
+  }, [activeSection]);
+
+
+  // Load questions when activeChapterCode changes
+  useEffect(() => {
+    const loadQuestions = async () => {
+      if (!activeChapterCode) {
+        setAvailableQuestions([]);
+        return;
+      }
+
       setLoading(true);
       try {
-        const typeMap = { 'Physics': 'physics', 'Chemistry': 'chemistry', 'Mathematics': 'mathematics' };
-        const normalizedType = typeMap[activeSection];
-
-        // 1. Get all chapters from chapters.json
-        // @ts-ignore
-        const sectionChapters = chaptersData[activeSection] || [];
-
-        const loadedChapters: Chapter[] = sectionChapters.map((ch: any) => ({
-            code: ch.code,
-            name: ch.name,
-            level: ch.level
-        }));
-        setChapters(loadedChapters);
-
-        const chapterCodes = loadedChapters.map(ch => ch.code);
-
-        // 2. Get all questions for these chapters using the dedicated cleaner loader
-        if (chapterCodes.length > 0) {
-            const questions = await window.electronAPI.questions.getAllForSubject(chapterCodes);
-            setAvailableQuestions(questions);
-        } else {
-            setAvailableQuestions([]);
-        }
-
+        const questions = await window.electronAPI.questions.getAllForSubject([activeChapterCode]);
+        setAvailableQuestions(questions);
       } catch (error) {
         console.error('Failed to load questions:', error);
         setAvailableQuestions([]);
@@ -160,13 +158,13 @@ export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
         setLoading(false);
       }
     };
-    loadData();
-  }, [activeSection, refreshTrigger]);
+    loadQuestions();
+  }, [activeChapterCode, refreshTrigger]);
 
   const filteredQuestions = useMemo(() => {
     return availableQuestions
       .filter(q => {
-        if (filters.chapter !== 'all' && q.tag_2 !== filters.chapter) return false;
+        // Since we load only one chapter, we don't need to filter by chapter code again unless the filter is explicitly set to something else (which shouldn't happen)
         if (filters.difficulty !== 'all' && q.tag_3 !== filters.difficulty) return false;
         if (filters.division !== 'all') {
             if (filters.division === '1' && isNumericalAnswer(q)) return false;
@@ -249,7 +247,48 @@ export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
 
       {/* Main Content Area */}
       <div className="flex-1 px-6 py-6" style={{ minHeight: '0' }}>
+        {!activeChapterCode ? (
+             /* Chapter Selection Grid */
+             <div className="bg-white dark:bg-[#1e1e2d] p-6 rounded-xl border border-border-light dark:border-border-dark shadow-sm">
+                 <h2 className="text-xl font-bold text-text-main dark:text-white mb-6">Select a Chapter</h2>
+                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                     {chapters.map((chapter) => (
+                         <button
+                             key={chapter.code}
+                             onClick={() => setActiveChapterCode(chapter.code)}
+                             className="p-4 rounded-lg border border-border-light dark:border-border-dark hover:border-primary dark:hover:border-primary hover:bg-blue-50 dark:hover:bg-primary/10 transition-all text-left group flex flex-col gap-2"
+                         >
+                             <div className="flex items-center justify-between w-full">
+                                 <span className="font-semibold text-text-main dark:text-white group-hover:text-primary transition-colors line-clamp-2">{chapter.name}</span>
+                                 <span className="text-xs font-mono text-text-secondary bg-gray-100 dark:bg-white/5 px-2 py-1 rounded">{chapter.code}</span>
+                             </div>
+                             <div className="text-xs text-text-secondary">
+                                 Level: {chapter.level}
+                             </div>
+                         </button>
+                     ))}
+                 </div>
+                 {chapters.length === 0 && (
+                     <div className="text-center py-12 text-text-secondary">No chapters found for this subject.</div>
+                 )}
+             </div>
+        ) : (
+          /* Question List View */
           <div className="bg-white dark:bg-[#1e1e2d] p-4 rounded-xl border border-gray-200 dark:border-[#2d2d3b] shadow-sm flex flex-col h-full overflow-hidden">
+            <div className="flex-shrink-0 mb-4 flex items-center gap-4">
+                <button
+                    onClick={() => setActiveChapterCode(null)}
+                    className="flex items-center gap-2 text-text-secondary hover:text-text-main dark:hover:text-white transition-colors"
+                >
+                    <span className="material-symbols-outlined">arrow_back</span>
+                    <span className="font-medium">Back to Chapters</span>
+                </button>
+                <div className="h-6 w-px bg-gray-200 dark:bg-[#2d2d3b]"></div>
+                <h2 className="text-lg font-bold text-text-main dark:text-white">
+                    {chapters.find(c => c.code === activeChapterCode)?.name || activeChapterCode}
+                </h2>
+            </div>
+
             {/* Search and Filters */}
             <div className="flex-shrink-0 flex gap-4 mb-4">
               <div className="relative flex-grow">
@@ -260,7 +299,7 @@ export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 pointer-events-none">fingerprint</span>
                 <input type="text" placeholder="UUID" value={searchUuid} onChange={(e) => setSearchUuid(e.target.value)} className="w-full pl-12 pr-4 py-2 border border-gray-200 dark:border-[#2d2d3b] rounded-full bg-gray-50 dark:bg-[#252535] text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-transparent transition-all" />
               </div>
-              <FilterMenu chapters={chapters} availableTypes={availableTypes} availableYears={availableYears} currentFilters={filters} onFilterChange={handleFilterChange} />
+              <FilterMenu chapters={[]} availableTypes={availableTypes} availableYears={availableYears} currentFilters={filters} onFilterChange={handleFilterChange} />
             </div>
 
             {/* Questions List */}
@@ -281,8 +320,8 @@ export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
                   </button>
               </div>
 
-              {loading ? <div className="text-center p-8">Loading...</div> :
-                !loading && filteredQuestions.length === 0 ? <div className="text-center p-8">No questions found.</div> :
+              {loading ? <div className="text-center p-8">Loading questions for {activeChapterCode}...</div> :
+                !loading && filteredQuestions.length === 0 ? <div className="text-center p-8">No questions found for this chapter.</div> :
                 <AutoSizer>
                   {({ height, width }) => (
                     <List ref={listRef} height={height} width={width} itemCount={filteredQuestions.length} itemSize={getSize} itemData={itemData}>
@@ -293,6 +332,7 @@ export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
               }
             </div>
           </div>
+        )}
       </div>
     </div>
   );

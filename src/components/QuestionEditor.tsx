@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Question, Solution } from '../types';
 import QuestionDisplay from './QuestionDisplay';
 import ImageUpload from './ImageUpload'; // Import the new component
+import chaptersData from '../data/chapters.json';
 
 interface QuestionEditorProps {
   question: Question;
@@ -88,6 +89,39 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
   } else {
       showOptions = isMCQType;
   }
+
+  // Helper to find topics for the current chapter
+  const availableTopics = useMemo(() => {
+      const chapterCode = editedQuestion.tag_2;
+      if (!chapterCode) return null;
+
+      // Search for the chapter in all subjects
+      for (const subject of Object.values(chaptersData)) {
+          const chapter = (subject as any[]).find((c: any) => c.code === chapterCode);
+          if (chapter && chapter.topics) {
+              return chapter.topics as Record<string, string>; // { "1": "Topic Name", "2": "..." }
+          }
+      }
+      return null;
+  }, [editedQuestion.tag_2]);
+
+  // Helper to parse topic_tags (assuming it's a JSON array string e.g., '["1"]')
+  const currentTopicId = useMemo(() => {
+      try {
+          if (!editedQuestion.topic_tags) return '';
+          const parsed = JSON.parse(editedQuestion.topic_tags);
+          return Array.isArray(parsed) && parsed.length > 0 ? parsed[0] : '';
+      } catch (e) {
+          // Fallback if not JSON or just a raw string
+          return editedQuestion.topic_tags || '';
+      }
+  }, [editedQuestion.topic_tags]);
+
+  const handleTopicChange = (topicId: string) => {
+      // Store as JSON array string containing the single ID
+      const newValue = topicId ? JSON.stringify([topicId]) : null;
+      handleQuestionChange('topic_tags', newValue);
+  };
 
   return (
     <main className="flex-1 min-h-0 w-full max-w-[1600px] mx-auto p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 overflow-hidden">
@@ -225,16 +259,27 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
 
                     {/* New Metadata Fields */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                        {/* Topic Tags */}
+                        {/* Topic Selection */}
                         <div className="space-y-1.5 md:col-span-2">
-                            <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Topic Tags (JSON Array)</label>
-                            <input
-                                className="w-full bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-main dark:text-white text-sm rounded-lg focus:ring-primary focus:border-primary p-2.5"
-                                placeholder='e.g. ["Calculus", "Differentiation"]'
-                                type="text"
-                                value={editedQuestion.topic_tags || ''}
-                                onChange={(e) => handleQuestionChange('topic_tags', e.target.value)}
-                            />
+                            <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Topic Selection</label>
+                            {availableTopics ? (
+                                <select
+                                    className="w-full bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-main dark:text-white text-sm rounded-lg focus:ring-primary focus:border-primary p-2.5"
+                                    value={currentTopicId}
+                                    onChange={(e) => handleTopicChange(e.target.value)}
+                                >
+                                    <option value="">Select Topic</option>
+                                    {Object.entries(availableTopics).map(([id, name]) => (
+                                        <option key={id} value={id}>
+                                            {name}
+                                        </option>
+                                    ))}
+                                </select>
+                            ) : (
+                                <div className="text-sm text-text-secondary italic p-2 border border-border-light dark:border-border-dark rounded-lg bg-gray-50 dark:bg-white/5">
+                                    {editedQuestion.tag_2 ? 'No specific topics available for this chapter.' : 'Please select a Chapter Code (Tag 2) below to see available topics.'}
+                                </div>
+                            )}
                         </div>
 
                         {/* Importance Level */}
