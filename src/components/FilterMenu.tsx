@@ -67,32 +67,32 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
       onClick={() => setIsOpen(false)}
     >
       <div
-        className="flex flex-col w-full max-w-md max-h-[85vh] overflow-hidden bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-xl shadow-lg"
+        className="flex flex-col w-full max-w-md max-h-[85vh] overflow-hidden bg-white dark:bg-[#1e1e2d] border border-gray-200 dark:border-[#2d2d3b] rounded-xl shadow-lg"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark">
-          <h3 className="text-lg font-bold">Filters & Sorting</h3>
+        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-[#2d2d3b] bg-gray-50 dark:bg-[#252535]">
+          <h3 className="text-lg font-bold text-gray-900 dark:text-white">Filters & Sorting</h3>
           <button
             onClick={() => setIsOpen(false)}
-            className="p-1 rounded-full text-text-secondary hover:bg-black/5 dark:hover:bg-white/10"
+            className="p-1 rounded-full text-gray-500 hover:bg-black/5 dark:hover:bg-white/10"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>
 
         {/* Scrollable Content */}
-        <div className="flex-1 p-5 overflow-y-auto space-y-6">
+        <div className="flex-1 p-5 overflow-y-auto space-y-6 text-gray-900 dark:text-gray-100">
 
             {/* Sort Section */}
             <div className="space-y-2">
-                <label className="block text-xs font-semibold uppercase text-text-secondary">
+                <label className="block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
                   Sort By
                 </label>
                 <select
                   value={currentFilters.sort}
                   onChange={(e) => onFilterChange({ sort: e.target.value })}
-                  className="w-full p-2 text-sm border rounded-md bg-surface-light dark:bg-surface-dark border-border-light dark:border-border-dark focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  className="w-full p-2 text-sm border rounded-md bg-white dark:bg-[#252535] border-gray-200 dark:border-[#2d2d3b] focus:ring-2 focus:ring-primary/20 focus:border-primary text-gray-900 dark:text-white"
                 >
                   <option value="default">Default</option>
                   <option value="year_desc">Year (Newest First)</option>
@@ -104,7 +104,7 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
 
             {/* Difficulty Filter */}
             <div className="space-y-2">
-                <label className="block text-xs font-semibold uppercase text-text-secondary">
+                <label className="block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
                   Difficulty
                 </label>
                 <div className="grid grid-cols-4 gap-2">
@@ -115,7 +115,7 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
                       className={`px-3 py-1.5 text-sm rounded-md border transition-colors ${
                         currentFilters.difficulty === opt
                           ? 'bg-primary/10 border-primary text-primary font-semibold'
-                          : 'bg-transparent border-border-light dark:border-border-dark hover:border-border-dark dark:hover:border-border-light'
+                          : 'bg-transparent border-gray-200 dark:border-[#2d2d3b] hover:border-gray-400 dark:hover:border-gray-500 text-gray-700 dark:text-gray-300'
                       }`}
                     >
                       {opt === 'all' ? 'All' : opt === 'E' ? 'Easy' : opt === 'M' ? 'Medium' : 'Hard'}
@@ -126,7 +126,7 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
 
             {/* Division Filter */}
             <div className="space-y-2">
-                <label className="block text-xs font-semibold uppercase text-text-secondary">
+                <label className="block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
                   Division
                 </label>
                 <div className="grid grid-cols-3 gap-2">
@@ -141,7 +141,7 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
                       className={`px-3 py-1.5 text-sm rounded-md border transition-colors ${
                         currentFilters.division === opt.val
                           ? 'bg-primary/10 border-primary text-primary font-semibold'
-                          : 'bg-transparent border-border-light dark:border-border-dark hover:border-border-dark dark:hover:border-border-light'
+                          : 'bg-transparent border-gray-200 dark:border-[#2d2d3b] hover:border-gray-400 dark:hover:border-gray-500 text-gray-700 dark:text-gray-300'
                       }`}
                     >
                       {opt.label}
@@ -152,7 +152,7 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
 
             {/* Verification Level 1 Filter */}
             <div className="space-y-2">
-                <label className="block text-xs font-semibold uppercase text-text-secondary">
+                <label className="block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
                   Verification Level 1
                 </label>
                 <div className="grid grid-cols-2 gap-2">
@@ -163,7 +163,7 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
                       className={`px-3 py-1.5 text-sm rounded-md border transition-colors ${
                         (currentFilters.verificationLevel1 || 'all') === status
                           ? 'bg-primary/10 border-primary text-primary font-semibold'
-                          : 'bg-transparent border-border-light dark:border-border-dark hover:border-border-dark dark:hover:border-border-light'
+                          : 'bg-transparent border-gray-200 dark:border-[#2d2d3b] hover:border-gray-400 dark:hover:border-gray-500 text-gray-700 dark:text-gray-300'
                       }`}
                     >
                       {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -174,7 +174,7 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
 
             {/* Verification Level 2 Filter */}
             <div className="space-y-2">
-                <label className="block text-xs font-semibold uppercase text-text-secondary">
+                <label className="block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
                   Verification Level 2
                 </label>
                 <div className="grid grid-cols-2 gap-2">
@@ -185,7 +185,7 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
                       className={`px-3 py-1.5 text-sm rounded-md border transition-colors ${
                         (currentFilters.verificationLevel2 || 'all') === status
                           ? 'bg-primary/10 border-primary text-primary font-semibold'
-                          : 'bg-transparent border-border-light dark:border-border-dark hover:border-border-dark dark:hover:border-border-light'
+                          : 'bg-transparent border-gray-200 dark:border-[#2d2d3b] hover:border-gray-400 dark:hover:border-gray-500 text-gray-700 dark:text-gray-300'
                       }`}
                     >
                       {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -196,7 +196,7 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
 
             {/* Show Selected Only Filter */}
             <div className="space-y-2">
-                <label className="block text-xs font-semibold uppercase text-text-secondary">
+                <label className="block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
                   Selection Filter
                 </label>
                 <button
@@ -204,7 +204,7 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
                   className={`w-full px-4 py-2.5 text-sm rounded-md border transition-colors flex items-center justify-between ${
                     currentFilters.selectedOnly
                       ? 'bg-primary/10 border-primary text-primary font-semibold'
-                      : 'bg-transparent border-border-light dark:border-border-dark hover:border-border-dark dark:hover:border-border-light'
+                      : 'bg-transparent border-gray-200 dark:border-[#2d2d3b] hover:border-gray-400 dark:hover:border-gray-500 text-gray-700 dark:text-gray-300'
                   }`}
                 >
                   <span className="flex items-center gap-2">
@@ -218,13 +218,13 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
 
             {/* Type Filter */}
             <div className="space-y-2">
-                <label className="block text-xs font-semibold uppercase text-text-secondary">
+                <label className="block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
                   Type
                 </label>
                 <select
                   value={currentFilters.type}
                   onChange={(e) => onFilterChange({ type: e.target.value })}
-                  className="w-full p-2 text-sm border rounded-md bg-surface-light dark:bg-surface-dark border-border-light dark:border-border-dark focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  className="w-full p-2 text-sm border rounded-md bg-white dark:bg-[#252535] border-gray-200 dark:border-[#2d2d3b] focus:ring-2 focus:ring-primary/20 focus:border-primary text-gray-900 dark:text-white"
                 >
                   <option value="all">All Types</option>
                   {availableTypes.map(type => (
@@ -235,13 +235,13 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
 
             {/* Year Filter */}
             <div className="space-y-2">
-                <label className="block text-xs font-semibold uppercase text-text-secondary">
+                <label className="block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
                   Year
                 </label>
                 <select
                   value={currentFilters.year}
                   onChange={(e) => onFilterChange({ year: e.target.value })}
-                  className="w-full p-2 text-sm border rounded-md bg-surface-light dark:bg-surface-dark border-border-light dark:border-border-dark focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  className="w-full p-2 text-sm border rounded-md bg-white dark:bg-[#252535] border-gray-200 dark:border-[#2d2d3b] focus:ring-2 focus:ring-primary/20 focus:border-primary text-gray-900 dark:text-white"
                 >
                   <option value="all">All Years</option>
                   {availableYears.map(year => (
@@ -252,13 +252,13 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
 
             {/* Chapter Filter */}
             <div className="space-y-2">
-                <label className="block text-xs font-semibold uppercase text-text-secondary">
+                <label className="block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
                   Chapter
                 </label>
                 <select
                   value={currentFilters.chapter}
                   onChange={(e) => onFilterChange({ chapter: e.target.value })}
-                  className="w-full p-2 text-sm border rounded-md bg-surface-light dark:bg-surface-dark border-border-light dark:border-border-dark focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  className="w-full p-2 text-sm border rounded-md bg-white dark:bg-[#252535] border-gray-200 dark:border-[#2d2d3b] focus:ring-2 focus:ring-primary/20 focus:border-primary text-gray-900 dark:text-white"
                 >
                   <option value="all">All Chapters</option>
                   {chapters.map(ch => (
@@ -271,7 +271,7 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
 
             {/* Tags Filter */}
             <div className="space-y-2">
-                <label className="block text-xs font-semibold uppercase text-text-secondary">
+                <label className="block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
                   Additional Tags
                 </label>
                 <div className="space-y-3">
@@ -280,25 +280,25 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
                         placeholder="Tag 1 (e.g. Topic)"
                         value={currentFilters.tag1}
                         onChange={(e) => onFilterChange({ tag1: e.target.value })}
-                        className="w-full p-2 text-sm border rounded-md bg-surface-light dark:bg-surface-dark border-border-light dark:border-border-dark focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                        className="w-full p-2 text-sm border rounded-md bg-white dark:bg-[#252535] border-gray-200 dark:border-[#2d2d3b] focus:ring-2 focus:ring-primary/20 focus:border-primary text-gray-900 dark:text-white"
                     />
                     <input
                         type="text"
                         placeholder="Tag 4 (e.g. Sub-topic)"
                         value={currentFilters.tag4}
                         onChange={(e) => onFilterChange({ tag4: e.target.value })}
-                        className="w-full p-2 text-sm border rounded-md bg-surface-light dark:bg-surface-dark border-border-light dark:border-border-dark focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                        className="w-full p-2 text-sm border rounded-md bg-white dark:bg-[#252535] border-gray-200 dark:border-[#2d2d3b] focus:ring-2 focus:ring-primary/20 focus:border-primary text-gray-900 dark:text-white"
                     />
                 </div>
             </div>
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 p-4 border-t border-border-light dark:border-border-dark bg-background-light dark:bg-background-dark">
+        <div className="flex items-center justify-end gap-3 p-4 border-t border-gray-200 dark:border-[#2d2d3b] bg-gray-50 dark:bg-[#252535]">
              {activeFilterCount > 0 && (
                 <button
                     onClick={resetFilters}
-                    className="px-4 py-2 text-sm font-semibold transition-colors border rounded-md text-text-secondary border-border-light dark:border-border-dark hover:bg-black/5 dark:hover:bg-white/5"
+                    className="px-4 py-2 text-sm font-semibold transition-colors border rounded-md text-gray-600 dark:text-gray-400 border-gray-200 dark:border-[#2d2d3b] hover:bg-black/5 dark:hover:bg-white/5"
                 >
                     Clear All
                 </button>
