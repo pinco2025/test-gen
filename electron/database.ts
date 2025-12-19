@@ -29,7 +29,13 @@ export class DatabaseService {
         'verification_level_2': "TEXT DEFAULT 'pending'",
         'jee_mains_relevance': "INTEGER",
         'is_multi_concept': "BOOLEAN DEFAULT 0",
-        'related_concepts': "TEXT"
+        'related_concepts': "TEXT",
+        'legacy_question': "TEXT",
+        'legacy_a': "TEXT",
+        'legacy_b': "TEXT",
+        'legacy_c': "TEXT",
+        'legacy_d': "TEXT",
+        'legacy_solution': "TEXT"
       };
 
       for (const [colName, colDef] of Object.entries(newColumns)) {
@@ -424,7 +430,8 @@ export class DatabaseService {
         'tag_1', 'tag_2', 'tag_3', 'tag_4',
         'topic_tags', 'importance_level',
         'verification_level_1', 'verification_level_2',
-        'jee_mains_relevance', 'is_multi_concept', 'related_concepts'
+        'jee_mains_relevance', 'is_multi_concept', 'related_concepts',
+        'legacy_question', 'legacy_a', 'legacy_b', 'legacy_c', 'legacy_d', 'legacy_solution'
       ];
 
       const setClauses: string[] = [];
@@ -481,6 +488,7 @@ export class DatabaseService {
         'topic_tags', 'importance_level',
         'verification_level_1', 'verification_level_2',
         'jee_mains_relevance', 'is_multi_concept', 'related_concepts',
+        'legacy_question', 'legacy_a', 'legacy_b', 'legacy_c', 'legacy_d', 'legacy_solution',
         'created_at', 'updated_at', 'frequency'
       ];
 
