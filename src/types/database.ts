@@ -51,6 +51,14 @@ export interface Question {
 
   // Frequency - tracks how many times this question has been selected
   frequency: number | null;
+
+  // Legacy Image Fields
+  legacy_question: string | null;
+  legacy_a: string | null;
+  legacy_b: string | null;
+  legacy_c: string | null;
+  legacy_d: string | null;
+  legacy_solution: string | null;
 }
 
 export interface QuestionFilter {

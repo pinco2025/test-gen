@@ -294,12 +294,60 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
                 </div>
 
                 {/* Section: Legacy Images */}
-                <div className="space-y-3">
-                    <label className="block text-sm font-semibold text-text-main dark:text-gray-200">Legacy Images</label>
-                    <div className="p-4 border border-border-light dark:border-border-dark rounded-lg bg-gray-50 dark:bg-white/5 text-center text-text-secondary text-sm">
-                        Legacy image functionality coming soon.
+                {(editedQuestion.legacy_question || editedQuestion.legacy_a || editedQuestion.legacy_b || editedQuestion.legacy_c || editedQuestion.legacy_d || editedQuestion.legacy_solution) && (
+                    <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                            <label className="block text-sm font-semibold text-text-main dark:text-gray-200">Legacy Images</label>
+                            <span className="text-xs text-text-secondary bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700 dark:text-yellow-400 px-2 py-0.5 rounded border border-yellow-200 dark:border-yellow-800">
+                                Read-only Reference
+                            </span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 border border-border-light dark:border-border-dark rounded-lg bg-gray-50 dark:bg-white/5">
+                            {editedQuestion.legacy_question && (
+                                <ImageUpload
+                                    label="Legacy Question"
+                                    imageUrl={editedQuestion.legacy_question}
+                                    onImageUrlChange={(url) => handleQuestionChange('legacy_question', url)}
+                                />
+                            )}
+                            {editedQuestion.legacy_a && (
+                                <ImageUpload
+                                    label="Legacy Option A"
+                                    imageUrl={editedQuestion.legacy_a}
+                                    onImageUrlChange={(url) => handleQuestionChange('legacy_a', url)}
+                                />
+                            )}
+                            {editedQuestion.legacy_b && (
+                                <ImageUpload
+                                    label="Legacy Option B"
+                                    imageUrl={editedQuestion.legacy_b}
+                                    onImageUrlChange={(url) => handleQuestionChange('legacy_b', url)}
+                                />
+                            )}
+                            {editedQuestion.legacy_c && (
+                                <ImageUpload
+                                    label="Legacy Option C"
+                                    imageUrl={editedQuestion.legacy_c}
+                                    onImageUrlChange={(url) => handleQuestionChange('legacy_c', url)}
+                                />
+                            )}
+                            {editedQuestion.legacy_d && (
+                                <ImageUpload
+                                    label="Legacy Option D"
+                                    imageUrl={editedQuestion.legacy_d}
+                                    onImageUrlChange={(url) => handleQuestionChange('legacy_d', url)}
+                                />
+                            )}
+                            {editedQuestion.legacy_solution && (
+                                <ImageUpload
+                                    label="Legacy Solution"
+                                    imageUrl={editedQuestion.legacy_solution}
+                                    onImageUrlChange={(url) => handleQuestionChange('legacy_solution', url)}
+                                />
+                            )}
+                        </div>
                     </div>
-                </div>
+                )}
 
                 {/* Section: Properties (Metadata) */}
                 <div className="pt-6 border-t border-border-light dark:border-border-dark">
