@@ -5,7 +5,6 @@ import {
   Question,
   Chapter,
   SectionName,
-  Difficulty,
   Solution
 } from '../types';
 import FilterMenu, { FilterState } from './FilterMenu';
@@ -65,8 +64,6 @@ const Row = ({ index, style, data }: ListChildComponentProps<ItemData>) => {
 };
 
 export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
-  onStartEditing,
-  onClone,
   scrollToQuestionUuid,
   onScrollComplete,
   refreshTrigger = 0
@@ -314,12 +311,12 @@ export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
     }
   };
 
-  const handleFinishEditing = (updatedQuestion: Question | null, updatedSolution?: Solution) => {
-      if (updatedQuestion) {
-          handleSaveQuestion(updatedQuestion, updatedSolution);
-      }
-      setEditingQuestion(null);
-  };
+  // const handleFinishEditing = (updatedQuestion: Question | null, updatedSolution?: Solution) => {
+  //     if (updatedQuestion) {
+  //         handleSaveQuestion(updatedQuestion, updatedSolution);
+  //     }
+  //     setEditingQuestion(null);
+  // };
 
   // Navigation logic
   const navigateQuestion = (direction: 'next' | 'prev') => {
@@ -354,6 +351,7 @@ export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
               onCancel={() => setEditingQuestion(null)}
               onNext={() => navigateQuestion('next')}
               onPrevious={() => navigateQuestion('prev')}
+              subject={activeSection}
           />
       );
   }

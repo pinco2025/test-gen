@@ -80,12 +80,16 @@
       {
         "from": "oauth-credentials.json",
         "to": "oauth-credentials.json",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       },
       {
         "from": "config.json",
         "to": "config.json",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "directories": {

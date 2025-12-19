@@ -87,6 +87,46 @@ ipcMain.handle('window:close', () => {
   mainWindow?.close();
 });
 
+// Chapter operations
+ipcMain.handle('chapters:addTopic', async (_, subject: string, chapterCode: string, topicName: string) => {
+  try {
+    const chaptersPath = path.join(__dirname, '../src/data/chapters.json');
+    if (!fs.existsSync(chaptersPath)) {
+      throw new Error(`Chapters file not found at ${chaptersPath}`);
+    }
+
+    const fileContent = fs.readFileSync(chaptersPath, 'utf-8');
+    const chaptersData = JSON.parse(fileContent);
+
+    if (!chaptersData[subject]) {
+      throw new Error(`Subject "${subject}" not found`);
+    }
+
+    const chapterIndex = chaptersData[subject].findIndex((c: any) => c.code === chapterCode);
+    if (chapterIndex === -1) {
+      throw new Error(`Chapter "${chapterCode}" not found in ${subject}`);
+    }
+
+    const chapter = chaptersData[subject][chapterIndex];
+    if (!chapter.topics) {
+      chapter.topics = {};
+    }
+
+    const existingIds = Object.keys(chapter.topics).map(Number);
+    const nextId = existingIds.length > 0 ? (Math.max(...existingIds) + 1).toString() : '1';
+
+    chapter.topics[nextId] = topicName;
+    chaptersData[subject][chapterIndex] = chapter;
+
+    fs.writeFileSync(chaptersPath, JSON.stringify(chaptersData, null, 2), 'utf-8');
+
+    return { success: true, topicId: nextId, topicName };
+  } catch (error: any) {
+    console.error('Failed to add topic:', error);
+    return { success: false, error: error.message };
+  }
+});
+
 // Database connection
 ipcMain.handle('db:connect', async (_, dbPath?: string) => {
   try {

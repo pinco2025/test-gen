@@ -25,6 +25,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getChaptersByType: () => ipcRenderer.invoke('db:getChaptersByType')
   },
 
+  // Chapter operations
+  chapters: {
+    addTopic: (subject: string, chapterCode: string, topicName: string) => ipcRenderer.invoke('chapters:addTopic', subject, chapterCode, topicName)
+  },
+
   // Question operations
   questions: {
     getAll: (filter?: QuestionFilter) => ipcRenderer.invoke('questions:getAll', filter),
