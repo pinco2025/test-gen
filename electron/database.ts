@@ -39,6 +39,13 @@ export class DatabaseService {
         }
       }
       console.log('[DB] Schema check complete');
+
+      // Cleanup legacy triggers referencing missing backup table
+      const badTriggers = this.db.prepare("SELECT name FROM sqlite_master WHERE type = 'trigger' AND sql LIKE '%questions_backup%'").all() as { name: string }[];
+      for (const trigger of badTriggers) {
+          console.log(`[DB] Dropping invalid trigger: ${trigger.name}`);
+          this.db.exec(`DROP TRIGGER IF EXISTS ${trigger.name}`);
+      }
     } catch (error) {
       console.error('[DB] Error checking/updating schema:', error);
     }
