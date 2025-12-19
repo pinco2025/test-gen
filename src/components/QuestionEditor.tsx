@@ -137,9 +137,14 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
 
   return (
     <main
-        className="flex-1 h-full min-h-0 w-full max-w-[1600px] mx-auto p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 overflow-hidden bg-gray-50 dark:bg-[#121121] overscroll-none"
-        style={{ overscrollBehavior: 'none' }}
+        className="flex-1 h-full min-h-0 w-full max-w-[1600px] mx-auto p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 overflow-hidden !overflow-y-hidden !overflow-x-hidden bg-gray-50 dark:bg-[#121121] overscroll-none scrollbar-hide"
+        style={{ overscrollBehavior: 'none', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
     >
+        <style>{`
+            main.scrollbar-hide::-webkit-scrollbar {
+                display: none;
+            }
+        `}</style>
         {/* Left Pane: Preview */}
         <aside className="lg:col-span-5 flex flex-col gap-4 h-full overflow-hidden">
             <div className="flex items-center justify-between">
