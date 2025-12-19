@@ -135,14 +135,33 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
       handleQuestionChange('topic_tags', newValue);
   };
 
+  useEffect(() => {
+    // Aggressively disable page-wide scrolling
+    const originalBodyOverflow = document.body.style.overflow;
+    const originalHtmlOverflow = document.documentElement.style.overflow;
+
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = originalBodyOverflow;
+      document.documentElement.style.overflow = originalHtmlOverflow;
+    };
+  }, []);
+
   return (
     <main
         className="flex-1 h-full min-h-0 w-full max-w-[1600px] mx-auto p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 overflow-hidden !overflow-y-hidden !overflow-x-hidden bg-gray-50 dark:bg-[#121121] overscroll-none scrollbar-hide"
         style={{ overscrollBehavior: 'none', scrollbarWidth: 'none', msOverflowStyle: 'none' }}
     >
         <style>{`
-            main.scrollbar-hide::-webkit-scrollbar {
-                display: none;
+            /* Globally hide scrollbars when this component is active */
+            ::-webkit-scrollbar {
+                display: none !important;
+            }
+            * {
+                -ms-overflow-style: none !important;  /* IE and Edge */
+                scrollbar-width: none !important;  /* Firefox */
             }
         `}</style>
         {/* Left Pane: Preview */}
