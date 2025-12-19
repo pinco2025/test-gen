@@ -66,6 +66,9 @@ declare global {
         getTags: () => Promise<string[]>;
         getChaptersByType: () => Promise<{ [type: string]: string[] }>;
       };
+      chapters: {
+        addTopic: (subject: string, chapterCode: string, topicName: string) => Promise<{ success: boolean; topicId?: string; topicName?: string; error?: string }>;
+      };
       questions: {
         getAll: (filter?: QuestionFilter) => Promise<Question[]>;
         getByUUID: (uuid: string) => Promise<Question | null>;

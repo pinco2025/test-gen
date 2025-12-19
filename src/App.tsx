@@ -937,6 +937,7 @@ function App() {
                 solution={editingQuestion.solution}
                 onSave={handleFinishEditing}
                 onCancel={() => handleFinishEditing(null)}
+                subject={sections[currentSectionIndex]?.name}
             />
         );
 

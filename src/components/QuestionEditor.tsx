@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Question, Solution } from '../types';
 import QuestionDisplay from './QuestionDisplay';
 import ImageUpload from './ImageUpload'; // Import the new component
-import chaptersData from '../data/chapters.json';
+import chaptersDataImport from '../data/chapters.json';
 
 interface QuestionEditorProps {
   question: Question;
@@ -11,14 +11,18 @@ interface QuestionEditorProps {
   onCancel: () => void;
   onNext?: () => void;
   onPrevious?: () => void;
+  subject?: string;
 }
 
-const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onSave, onCancel, onNext, onPrevious }) => {
+const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onSave, onCancel, onNext, onPrevious, subject }) => {
   const [editedQuestion, setEditedQuestion] = useState<Question>(question);
   const [editedSolution, setEditedSolution] = useState<Solution | undefined>(solution);
   const [availableTypes, setAvailableTypes] = useState<string[]>([]);
   const [availableYears, setAvailableYears] = useState<string[]>([]);
   const [availableChapters, setAvailableChapters] = useState<{ [type: string]: string[] }>({});
+
+  // Local state for chapters data to handle live updates
+  const [chaptersData, setChaptersData] = useState<any>(chaptersDataImport);
 
   useEffect(() => {
     setEditedQuestion(question);
@@ -108,14 +112,14 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
       if (!chapterCode) return null;
 
       // Search for the chapter in all subjects
-      for (const subject of Object.values(chaptersData)) {
-          const chapter = (subject as any[]).find((c: any) => c.code === chapterCode);
+      for (const subj of Object.values(chaptersData)) {
+          const chapter = (subj as any[]).find((c: any) => c.code === chapterCode);
           if (chapter && chapter.topics) {
               return chapter.topics as Record<string, string>; // { "1": "Topic Name", "2": "..." }
           }
       }
       return null;
-  }, [editedQuestion.tag_2]);
+  }, [editedQuestion.tag_2, chaptersData]);
 
   // Helper to parse topic_tags (assuming it's a JSON array string e.g., '["1"]')
   const currentTopicId = useMemo(() => {
@@ -130,9 +134,69 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
   }, [editedQuestion.topic_tags]);
 
   const handleTopicChange = (topicId: string) => {
+      if (topicId === 'NEW_TOPIC') {
+        handleAddTopic();
+        return;
+      }
       // Store as JSON array string containing the single ID
       const newValue = topicId ? JSON.stringify([topicId]) : null;
       handleQuestionChange('topic_tags', newValue);
+  };
+
+  const handleAddTopic = async () => {
+    if (!window.electronAPI) return;
+
+    // Determine subject and chapter
+    const chapterCode = editedQuestion.tag_2;
+    if (!chapterCode) {
+        alert("Please select a Chapter Code first.");
+        return;
+    }
+
+    // Find the subject for this chapter
+    let targetSubject = subject;
+    if (!targetSubject) {
+        for (const [subj, chapters] of Object.entries(chaptersData)) {
+            if ((chapters as any[]).some((c: any) => c.code === chapterCode)) {
+                targetSubject = subj;
+                break;
+            }
+        }
+    }
+
+    if (!targetSubject) {
+        alert("Could not determine subject for this chapter.");
+        return;
+    }
+
+    const topicName = window.prompt("Enter new topic name:");
+    if (!topicName || topicName.trim() === "") return;
+
+    try {
+        const result = await window.electronAPI.chapters.addTopic(targetSubject, chapterCode, topicName.trim());
+        if (result.success && result.topicId) {
+             // Update local chapters data
+             setChaptersData((prev: any) => {
+                 const newData = { ...prev };
+                 const chapterIndex = newData[targetSubject!].findIndex((c: any) => c.code === chapterCode);
+                 if (chapterIndex !== -1) {
+                     if (!newData[targetSubject!][chapterIndex].topics) {
+                         newData[targetSubject!][chapterIndex].topics = {};
+                     }
+                     newData[targetSubject!][chapterIndex].topics[result.topicId!] = topicName;
+                 }
+                 return newData;
+             });
+
+             // Select the new topic
+             handleQuestionChange('topic_tags', JSON.stringify([result.topicId]));
+        } else {
+            alert("Failed to add topic: " + result.error);
+        }
+    } catch (error) {
+        console.error("Error adding topic:", error);
+        alert("An error occurred while adding the topic.");
+    }
   };
 
   useEffect(() => {
@@ -364,13 +428,20 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
                                 onChange={(e) => handleQuestionChange('tag_2', e.target.value)}
                             >
                                 <option value="">Select Chapter</option>
-                                {Object.entries(availableChapters).flatMap(([type, chapters]) =>
-                                    chapters.map(chapter => (
-                                        <option key={`${type}-${chapter}`} value={chapter}>
-                                            {chapter}
+                                {subject && chaptersData[subject]
+                                    ? (chaptersData[subject] as any[]).map(chapter => (
+                                        <option key={chapter.code} value={chapter.code}>
+                                            {chapter.code} - {chapter.name}
                                         </option>
                                     ))
-                                )}
+                                    : Object.entries(availableChapters).flatMap(([type, chapters]) =>
+                                        chapters.map(chapter => (
+                                            <option key={`${type}-${chapter}`} value={chapter}>
+                                                {chapter}
+                                            </option>
+                                        ))
+                                    )
+                                }
                             </select>
                         </div>
 
@@ -417,18 +488,21 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
                         <div className="space-y-1.5 md:col-span-2">
                             <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Topic Selection</label>
                             {availableTopics ? (
-                                <select
-                                    className="w-full bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-main dark:text-white text-sm rounded-lg focus:ring-primary focus:border-primary p-2.5"
-                                    value={currentTopicId}
-                                    onChange={(e) => handleTopicChange(e.target.value)}
-                                >
-                                    <option value="">Select Topic</option>
-                                    {Object.entries(availableTopics).map(([id, name]) => (
-                                        <option key={id} value={id}>
-                                            {name}
-                                        </option>
-                                    ))}
-                                </select>
+                                <div className="flex gap-2">
+                                    <select
+                                        className="w-full bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-main dark:text-white text-sm rounded-lg focus:ring-primary focus:border-primary p-2.5"
+                                        value={currentTopicId}
+                                        onChange={(e) => handleTopicChange(e.target.value)}
+                                    >
+                                        <option value="">Select Topic</option>
+                                        {Object.entries(availableTopics).map(([id, name]) => (
+                                            <option key={id} value={id}>
+                                                {name}
+                                            </option>
+                                        ))}
+                                        <option value="NEW_TOPIC" className="font-semibold text-primary">+ Add New Topic</option>
+                                    </select>
+                                </div>
                             ) : (
                                 <div className="text-sm text-text-secondary italic p-2 border border-border-light dark:border-border-dark rounded-lg bg-gray-50 dark:bg-white/5">
                                     {editedQuestion.tag_2 ? 'No specific topics available for this chapter.' : 'Please select a Chapter Code (Tag 2) above to see available topics.'}
