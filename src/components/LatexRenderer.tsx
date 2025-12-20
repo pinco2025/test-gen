@@ -9,25 +9,6 @@ interface LatexRendererProps {
 }
 
 /**
- * Helper to unescape JSON-like strings.
- * Handles standard JSON escapes (\n, \t, \", \\) while preserving
- * other backslash sequences (like \alpha) for LaTeX processing.
- */
-const processEscapes = (str: string): string => {
-  if (!str) return str;
-  return str.replace(/\\(.)/g, (match, char) => {
-    switch (char) {
-      case 'n': return '\n';
-      case 't': return '\t';
-      case 'r': return '\r';
-      case '"': return '"';
-      case '\\': return '\\';
-      default: return match;
-    }
-  });
-};
-
-/**
  * Component to render LaTeX content using KaTeX
  * Supports both inline and block math modes
  * Memoized to prevent unnecessary re-renders
@@ -40,16 +21,18 @@ export const LatexRenderer = memo<LatexRendererProps>(({
   const parts = useMemo(() => {
     if (!content) return null;
     try {
-      // First parse LaTeX delimiters, THEN process escapes only in text parts
+      // First parse LaTeX delimiters
       const parsed = parseLatexContent(content);
-      // Process escape sequences
+
       return parsed.map(part => {
         if (part.type === 'text') {
-          return { ...part, content: processEscapes(part.content) };
+          // Only replace literal \n with newline character to ensure visibility
+          // We preserve all other backslash sequences (no JSON unescaping)
+          return { ...part, content: part.content.replace(/\\n/g, '\n') };
         } else {
-          // For LaTeX parts, we only unescape double backslashes to support JSON-compatible input
-          // e.g., \\text -> \text, \\\\ -> \\
-          return { ...part, content: part.content.replace(/\\\\/g, '\\') };
+          // Return content as is for LaTeX parts
+          // No unescaping of double backslashes
+          return part;
         }
       });
     } catch (error) {
@@ -62,7 +45,7 @@ export const LatexRenderer = memo<LatexRendererProps>(({
     return content ? <span className={`${className} latex-error`} style={{ whiteSpace: 'pre-wrap' }}>{content}</span> : null;
   }
 
-  // Use pre-wrap to preserve newlines resulting from unescaping
+  // Use pre-wrap to preserve newlines
   return (
     <span className={className} style={{ whiteSpace: 'pre-wrap' }}>
       {parts.map((part, index) => {
