@@ -104,6 +104,42 @@ export const FloatingTextMenu: React.FC = () => {
        setPosition(null);
   };
 
+  const cleanAndWrap = () => {
+      if (!targetInput) return;
+      const start = targetInput.selectionStart || 0;
+      const end = targetInput.selectionEnd || 0;
+      const text = targetInput.value;
+      const selectedText = text.substring(start, end);
+
+      // Remove all $
+      const cleanedText = selectedText.replace(/\$/g, '');
+      // Wrap in $...$
+      const newText = text.substring(0, start) + '$' + cleanedText + '$' + text.substring(end);
+
+      triggerChange(targetInput, newText);
+      setPosition(null);
+  };
+
+  const wrapBold = (withDelimiters: boolean) => {
+      if (!targetInput) return;
+      const start = targetInput.selectionStart || 0;
+      const end = targetInput.selectionEnd || 0;
+      const text = targetInput.value;
+      const selectedText = text.substring(start, end);
+
+      let replacement = '';
+      if (withDelimiters) {
+          replacement = `$\\textbf{${selectedText}}$`;
+      } else {
+          replacement = `\\textbf{${selectedText}}`;
+      }
+
+      const newText = text.substring(0, start) + replacement + text.substring(end);
+
+      triggerChange(targetInput, newText);
+      setPosition(null);
+  }
+
   if (!position) return null;
 
   return (
@@ -115,6 +151,13 @@ export const FloatingTextMenu: React.FC = () => {
           <button onClick={() => wrapSelection('$', '$')} className="px-2 py-1 hover:bg-gray-700 rounded text-sm font-mono font-bold" title="Wrap in $...$">$</button>
           <div className="w-[1px] h-4 bg-gray-600"></div>
           <button onClick={() => wrapSelection('$$', '$$')} className="px-2 py-1 hover:bg-gray-700 rounded text-sm font-mono font-bold" title="Wrap in $$...$$">$$</button>
+          <div className="w-[1px] h-4 bg-gray-600"></div>
+          <button onClick={cleanAndWrap} className="px-2 py-1 hover:bg-gray-700 rounded text-sm font-mono font-bold flex items-center" title="Clean & Wrap in $...$">
+            <span className="material-symbols-outlined text-[16px]">cleaning_services</span>$
+          </button>
+          <div className="w-[1px] h-4 bg-gray-600"></div>
+          <button onClick={() => wrapBold(false)} className="px-2 py-1 hover:bg-gray-700 rounded text-sm font-mono font-bold" title="Bold \textbf{}">B</button>
+          <button onClick={() => wrapBold(true)} className="px-2 py-1 hover:bg-gray-700 rounded text-sm font-mono font-bold" title="Bold $\textbf{}$">$B$</button>
           <div className="w-[1px] h-4 bg-gray-600"></div>
           <button onClick={fixSlashes} className="px-2 py-1 hover:bg-gray-700 rounded text-sm font-mono font-bold" title="Replace \\ with \">\</button>
       </div>

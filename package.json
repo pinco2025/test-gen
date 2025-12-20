@@ -52,7 +52,7 @@
     "@types/react-virtualized-auto-sizer": "^1.0.4",
     "@types/react-window": "^1.8.8",
     "@vitejs/plugin-react": "^4.7.0",
-    "autoprefixer": "^10.4.22",
+    "autoprefixer": "^10.4.23",
     "concurrently": "^6.5.1",
     "electron": "^28.3.3",
     "electron-builder": "^24.13.3",
