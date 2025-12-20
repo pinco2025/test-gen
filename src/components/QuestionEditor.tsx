@@ -205,7 +205,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
       const updates: Partial<Question> = {};
 
       options.forEach(opt => {
-          const key = `option_${opt}` as keyof Question;
+          const key = `option_${opt}` as 'option_a' | 'option_b' | 'option_c' | 'option_d';
           const originalText = editedQuestion[key] as string;
           if (originalText) {
               // Remove existing $, replace \\ with \, wrap in $...$
