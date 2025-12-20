@@ -67,6 +67,7 @@ declare global {
         getChaptersByType: () => Promise<{ [type: string]: string[] }>;
       };
       chapters: {
+        load: () => Promise<any>;
         addTopic: (subject: string, chapterCode: string, topicName: string) => Promise<{ success: boolean; topicId?: string; topicName?: string; error?: string }>;
       };
       questions: {
