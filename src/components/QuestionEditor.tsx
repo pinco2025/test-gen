@@ -37,16 +37,9 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
 
   useEffect(() => {
     setEditedQuestion(question);
-    // Initialize showAdditionalTopics based on whether there are multiple topics
-    try {
-        if (question.topic_tags) {
-            const parsed = JSON.parse(question.topic_tags);
-            if (Array.isArray(parsed) && parsed.length > 1) {
-                setShowAdditionalTopics(true);
-            }
-        }
-    } catch (e) {
-        // ignore
+    // Initialize showAdditionalTopics based on whether there are related concepts (multi-concept)
+    if (question.is_multi_concept) {
+        setShowAdditionalTopics(true);
     }
 
     const fetchSolution = async () => {
@@ -169,7 +162,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
       return null;
   }, [editedQuestion.tag_2, chaptersData]);
 
-  // Helper to parse topic_tags (assuming it's a JSON array string e.g., '["1", "C2-T2"]')
+  // Helper to parse topic_tags (Primary Topic)
   const currentTopicTags = useMemo(() => {
       try {
           if (!editedQuestion.topic_tags) return [];
@@ -180,36 +173,46 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
       }
   }, [editedQuestion.topic_tags]);
 
+  // Helper to parse related_concepts (Additional Topics)
+  const currentRelatedConcepts = useMemo(() => {
+      try {
+          if (!editedQuestion.related_concepts) return [];
+          const parsed = JSON.parse(editedQuestion.related_concepts);
+          return Array.isArray(parsed) ? parsed : [];
+      } catch (e) {
+          return [];
+      }
+  }, [editedQuestion.related_concepts]);
+
   const handlePrimaryTopicChange = (topicId: string) => {
       if (topicId === 'NEW_TOPIC') {
         openAddTopicModal();
         return;
       }
 
-      // Update the first element of the array, preserve others
-      const newTags = [...currentTopicTags];
-      if (newTags.length === 0) {
-          newTags.push(topicId);
-      } else {
-          newTags[0] = topicId;
-      }
-      handleQuestionChange('topic_tags', JSON.stringify(newTags));
+      // Update topic_tags (Primary Topic only)
+      handleQuestionChange('topic_tags', JSON.stringify([topicId]));
   };
 
   const handleAddAdditionalTopic = () => {
       if (!addTopicChapter || !addTopicId) return;
       const topicString = `${addTopicChapter}-${addTopicId}`;
-      if (!currentTopicTags.includes(topicString)) {
-          const newTags = [...currentTopicTags, topicString];
-          handleQuestionChange('topic_tags', JSON.stringify(newTags));
+
+      if (!currentRelatedConcepts.includes(topicString)) {
+          const newConcepts = [...currentRelatedConcepts, topicString];
+          handleQuestionChange('related_concepts', JSON.stringify(newConcepts));
+          handleQuestionChange('is_multi_concept', true);
       }
       // Reset selection
       setAddTopicId('');
   };
 
-  const handleRemoveTopic = (index: number) => {
-      const newTags = currentTopicTags.filter((_, i) => i !== index);
-      handleQuestionChange('topic_tags', JSON.stringify(newTags));
+  const handleRemoveAdditionalTopic = (index: number) => {
+      const newConcepts = currentRelatedConcepts.filter((_, i) => i !== index);
+      handleQuestionChange('related_concepts', JSON.stringify(newConcepts));
+      if (newConcepts.length === 0) {
+          handleQuestionChange('is_multi_concept', false);
+      }
   };
 
   // Helper for Additional Topic Dropdowns
@@ -759,12 +762,12 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
                                     </div>
 
                                     {/* List of added extra topics */}
-                                    {currentTopicTags.length > 1 && (
+                                    {currentRelatedConcepts.length > 0 && (
                                         <div className="flex flex-wrap gap-2 mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-                                            {currentTopicTags.slice(1).map((tag, index) => (
+                                            {currentRelatedConcepts.map((tag, index) => (
                                                 <span key={index} className="inline-flex items-center gap-1 px-2 py-1 bg-white dark:bg-surface-dark border border-gray-200 dark:border-gray-600 rounded text-xs text-text-secondary">
                                                     {tag}
-                                                    <button onClick={() => handleRemoveTopic(index + 1)} className="hover:text-red-500">
+                                                    <button onClick={() => handleRemoveAdditionalTopic(index)} className="hover:text-red-500">
                                                         <span className="material-symbols-outlined text-[14px]">close</span>
                                                     </button>
                                                 </span>
@@ -847,20 +850,9 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
                             </select>
                         </div>
 
-                        {/* Multi-Concept */}
+                        {/* Multi-Concept (Flags) */}
                         <div className="space-y-1.5">
                             <div className="flex flex-col gap-2 mt-2">
-                                <div className="flex items-center gap-2">
-                                    <input
-                                        type="checkbox"
-                                        id="is_multi_concept"
-                                        className="w-4 h-4 text-primary bg-gray-100 border-gray-300 rounded focus:ring-primary dark:focus:ring-primary dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                                        checked={editedQuestion.is_multi_concept || false}
-                                        onChange={(e) => handleQuestionChange('is_multi_concept', e.target.checked)}
-                                    />
-                                    <label htmlFor="is_multi_concept" className="text-sm font-medium text-text-main dark:text-white">Is Multi-Concept?</label>
-                                </div>
-
                                 <div className="flex items-center gap-2">
                                     <input
                                         type="checkbox"
@@ -885,17 +877,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
                             </div>
                         </div>
 
-                        {/* Related Concepts */}
-                        <div className="space-y-1.5 md:col-span-2">
-                            <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Related Concepts (JSON Array)</label>
-                            <input
-                                className="w-full bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-main dark:text-white text-sm rounded-lg focus:ring-primary focus:border-primary p-2.5"
-                                placeholder='e.g. ["Gravity", "Motion"]'
-                                type="text"
-                                value={editedQuestion.related_concepts || ''}
-                                onChange={(e) => handleQuestionChange('related_concepts', e.target.value)}
-                            />
-                        </div>
                     </div>
 
                     <div className="flex items-center justify-between mb-4">
