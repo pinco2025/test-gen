@@ -45,6 +45,10 @@ export interface Question {
   is_multi_concept: boolean | null;  // True/False
   related_concepts: string | null;   // JSON array of related concepts
 
+  // New boolean properties
+  scary: boolean | null; // Difficult from view
+  calc: boolean | null;  // Calculation Intensive
+
   // Timestamps
   created_at: string;
   updated_at: string;

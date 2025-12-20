@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Question, Solution } from '../types';
 import QuestionDisplay from './QuestionDisplay';
 import ImageUpload from './ImageUpload'; // Import the new component
+import { FloatingTextMenu } from './FloatingTextMenu';
 import chaptersDataImport from '../data/chapters.json';
 
 interface QuestionEditorProps {
@@ -114,8 +115,8 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
       // Search for the chapter in all subjects
       for (const subj of Object.values(chaptersData)) {
           const chapter = (subj as any[]).find((c: any) => c.code === chapterCode);
-          if (chapter && chapter.topics) {
-              return chapter.topics as Record<string, string>; // { "1": "Topic Name", "2": "..." }
+          if (chapter) {
+              return (chapter.topics || {}) as Record<string, string>; // Return topics or empty object
           }
       }
       return null;
@@ -213,6 +214,27 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
     };
   }, []);
 
+  const cleanNewlines = (field: 'question' | 'solution_text' | string) => {
+     let value = '';
+     if (field === 'question') {
+         value = editedQuestion.question || '';
+     } else if (field === 'solution_text') {
+         value = editedSolution?.solution_text || '';
+     } else {
+         // Handle dynamic fields (options, etc) if needed, currently only called for question/solution
+         return;
+     }
+
+     // Replace literal \n and real newlines with space
+     const newValue = value.replace(/(\\n|\n)/g, ' ');
+
+     if (field === 'question') {
+         handleQuestionChange('question', newValue);
+     } else if (field === 'solution_text') {
+         handleSolutionChange('solution_text', newValue);
+     }
+  };
+
   return (
     <main
         className="flex-1 h-full min-h-0 w-full max-w-[1600px] mx-auto p-4 lg:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 overflow-hidden !overflow-y-hidden !overflow-x-hidden bg-gray-50 dark:bg-[#121121] overscroll-none scrollbar-hide"
@@ -251,7 +273,8 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
         </aside>
 
         {/* Right Pane: Editor */}
-        <section className="lg:col-span-7 flex flex-col h-full overflow-hidden bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm">
+        <section className="lg:col-span-7 flex flex-col h-full overflow-hidden bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm relative">
+            <FloatingTextMenu />
             <div className="px-6 py-4 border-b border-border-light dark:border-border-dark flex items-center justify-between">
                 <h2 className="text-lg font-bold text-text-main dark:text-white">Editing Interface</h2>
             </div>
@@ -260,13 +283,20 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
                 {/* Section: Question Text */}
                 <div className="space-y-3">
                     <label className="block text-sm font-semibold text-text-main dark:text-gray-200">Question Statement</label>
-                    <div className="border border-border-light dark:border-border-dark rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-all">
+                    <div className="relative border border-border-light dark:border-border-dark rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-all group">
                         <textarea
                             className="w-full p-4 min-h-[120px] bg-transparent border-none focus:ring-0 outline-none text-text-main dark:text-gray-200 text-sm leading-relaxed resize-y"
                             placeholder="Type your question here... Use LaTeX for math like $x^2$."
                             value={editedQuestion.question}
                             onChange={(e) => handleQuestionChange('question', e.target.value)}
                         />
+                        <button
+                            onClick={() => cleanNewlines('question')}
+                            className="absolute bottom-2 right-2 p-1.5 text-xs bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded text-text-secondary hover:text-primary shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Clear Newlines (\n)"
+                        >
+                            <span className="material-symbols-outlined text-[16px]">format_align_justify</span>
+                        </button>
                     </div>
                     <ImageUpload
                         label="Question Image"
@@ -342,13 +372,20 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
                 </div>
                 <div className="space-y-3">
                     <label className="block text-sm font-semibold text-text-main dark:text-gray-200">Detailed Solution</label>
-                    <div className="border border-border-light dark:border-border-dark rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-all">
+                    <div className="relative border border-border-light dark:border-border-dark rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-all group">
                         <textarea
                             className="w-full p-4 min-h-[100px] bg-transparent border-none focus:ring-0 text-text-main dark:text-gray-200 text-sm leading-relaxed resize-y"
                             placeholder="Explain the logic behind the correct answer..."
                             value={editedSolution?.solution_text || ''}
                             onChange={(e) => handleSolutionChange('solution_text', e.target.value)}
                         />
+                        <button
+                            onClick={() => cleanNewlines('solution_text')}
+                            className="absolute bottom-2 right-2 p-1.5 text-xs bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded text-text-secondary hover:text-primary shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Clear Newlines (\n)"
+                        >
+                            <span className="material-symbols-outlined text-[16px]">format_align_justify</span>
+                        </button>
                     </div>
                     <ImageUpload
                         label="Solution Image"
@@ -505,7 +542,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
                                 </div>
                             ) : (
                                 <div className="text-sm text-text-secondary italic p-2 border border-border-light dark:border-border-dark rounded-lg bg-gray-50 dark:bg-white/5">
-                                    {editedQuestion.tag_2 ? 'No specific topics available for this chapter.' : 'Please select a Chapter Code (Tag 2) above to see available topics.'}
+                                    Please select a Chapter Code (Tag 2) above to unlock topic selection.
                                 </div>
                             )}
                         </div>
@@ -570,15 +607,39 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
 
                         {/* Multi-Concept */}
                         <div className="space-y-1.5">
-                            <div className="flex items-center gap-2 mt-6">
-                                <input
-                                    type="checkbox"
-                                    id="is_multi_concept"
-                                    className="w-4 h-4 text-primary bg-gray-100 border-gray-300 rounded focus:ring-primary dark:focus:ring-primary dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                                    checked={editedQuestion.is_multi_concept || false}
-                                    onChange={(e) => handleQuestionChange('is_multi_concept', e.target.checked)}
-                                />
-                                <label htmlFor="is_multi_concept" className="text-sm font-medium text-text-main dark:text-white">Is Multi-Concept?</label>
+                            <div className="flex flex-col gap-2 mt-2">
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="checkbox"
+                                        id="is_multi_concept"
+                                        className="w-4 h-4 text-primary bg-gray-100 border-gray-300 rounded focus:ring-primary dark:focus:ring-primary dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                                        checked={editedQuestion.is_multi_concept || false}
+                                        onChange={(e) => handleQuestionChange('is_multi_concept', e.target.checked)}
+                                    />
+                                    <label htmlFor="is_multi_concept" className="text-sm font-medium text-text-main dark:text-white">Is Multi-Concept?</label>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="checkbox"
+                                        id="scary"
+                                        className="w-4 h-4 text-primary bg-gray-100 border-gray-300 rounded focus:ring-primary dark:focus:ring-primary dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                                        checked={editedQuestion.scary || false}
+                                        onChange={(e) => handleQuestionChange('scary', e.target.checked)}
+                                    />
+                                    <label htmlFor="scary" className="text-sm font-medium text-text-main dark:text-white">Difficult from view</label>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="checkbox"
+                                        id="calc"
+                                        className="w-4 h-4 text-primary bg-gray-100 border-gray-300 rounded focus:ring-primary dark:focus:ring-primary dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                                        checked={editedQuestion.calc || false}
+                                        onChange={(e) => handleQuestionChange('calc', e.target.checked)}
+                                    />
+                                    <label htmlFor="calc" className="text-sm font-medium text-text-main dark:text-white">Calculation Intensive</label>
+                                </div>
                             </div>
                         </div>
 
