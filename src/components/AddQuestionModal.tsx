@@ -45,30 +45,9 @@ const AddQuestionModal: React.FC<AddQuestionModalProps> = ({ onClose, onSave }) 
     validateJson(code);
   };
 
-  // Recursive function to double-escape backslashes in strings
-  const escapeBackslashes = (obj: any): any => {
-    if (typeof obj === 'string') {
-      return obj.replace(/\\/g, '\\\\');
-    } else if (Array.isArray(obj)) {
-      return obj.map(escapeBackslashes);
-    } else if (typeof obj === 'object' && obj !== null) {
-      const newObj: any = {};
-      for (const key in obj) {
-        newObj[key] = escapeBackslashes(obj[key]);
-      }
-      return newObj;
-    }
-    return obj;
-  };
-
   const parseInput = (): { question: Question; solution?: Partial<Solution> } | null => {
     try {
-      let data = JSON.parse(jsonInput);
-
-      // Escape backslashes in all string fields to ensure they are stored with double backslashes
-      // This is necessary because the JSON parser consumes one level of escaping,
-      // but we want to preserve the double backslashes for LaTeX rendering and storage.
-      data = escapeBackslashes(data);
+      const data = JSON.parse(jsonInput);
 
       // Validate required fields
       if (!data.question || !data.answer || !data.type) {
