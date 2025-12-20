@@ -1,59 +1,87 @@
 from playwright.sync_api import sync_playwright
 
-def verify_multi_concept(page):
+def verify_features(page):
     print("Navigating to app...")
     page.goto("http://localhost:8000")
 
     # Wait for the app to load
     page.wait_for_timeout(2000)
 
-    # We should be in edit-question mode now.
+    # Check for Verification Buttons
+    print("Checking for Verification Level 1 buttons...")
+    # These might be below the fold, need to scroll the right pane
+    # The right pane is section.lg:col-span-7 > div.flex-1.overflow-y-auto
 
-    print("Checking for removal of Multi-Concept checkbox...")
-    if page.locator("#is_multi_concept").count() > 0:
-        print("ERROR: Multi-Concept checkbox is still visible!")
-    else:
-        print("SUCCESS: Multi-Concept checkbox is gone.")
-
-    print("Checking for Additional Topics UI...")
-    # There is a checkbox "Additional Topics"
+    # Scroll down
     try:
-        # Looking for label text "Additional Topics" or checkbox id "show_additional_topics"
-        # The code uses id="show_additional_topics"
-
-        checkbox = page.locator("#show_additional_topics")
-        if checkbox.count() > 0:
-            print("Found 'Additional Topics' checkbox.")
-            if not checkbox.is_checked():
-                print("Checking it...")
-                checkbox.check()
-                page.wait_for_timeout(500)
-
-            # Now dropdowns should appear
-            # We expect selects for Subject, Chapter, Topic
-            selects = page.locator("select")
-            count = selects.count()
-            print(f"Found {count} select elements after enabling additional topics.")
-            # Before: tag_2, tag_3, tag_1(if legacy), importance, verification1, verification2, Primary Topic, Type, Year
-            # After: + AddTopicSubject, AddTopicChapter, AddTopicId
-
-            # Take screenshot
-            page.screenshot(path="verification_multi_concept_editor.png")
-            print("Screenshot saved to verification_multi_concept_editor.png")
-        else:
-            print("ERROR: 'Additional Topics' checkbox not found.")
-            page.screenshot(path="verification_error.png")
-
+        page.locator("section.lg\\:col-span-7 div.flex-1.overflow-y-auto").evaluate("node => node.scrollTop = 1000")
+        page.wait_for_timeout(500)
     except Exception as e:
-        print(f"Error interacting with UI: {e}")
-        page.screenshot(path="verification_error.png")
+        print(f"Scroll failed: {e}")
+
+    if page.locator("button[title='Approve']").count() > 0:
+        print("SUCCESS: Found Approve button")
+    else:
+        print("ERROR: Approve button not found")
+
+    if page.locator("button[title='Pending']").count() > 0:
+        print("SUCCESS: Found Pending button")
+    else:
+        print("ERROR: Pending button not found")
+
+    # Check Undo/Redo
+    print("Checking Undo/Redo on Question Text...")
+    # Scroll back up
+    page.locator("section.lg\\:col-span-7 div.flex-1.overflow-y-auto").evaluate("node => node.scrollTop = 0")
+    page.wait_for_timeout(500)
+
+    question_area = page.locator("textarea").first
+    question_area.click()
+
+    # Clear and type
+    question_area.fill("Step 1")
+    page.wait_for_timeout(200)
+    # Type more (simulate distinct actions if possible, but fill replaces content.
+    # To trigger history with useUndoRedo, we rely on state updates. fill() triggers change events.)
+
+    question_area.fill("Step 2")
+    page.wait_for_timeout(200)
+
+    print(f"Current Value: {question_area.input_value()}")
+
+    # Undo
+    print("Sending Ctrl+Z...")
+    question_area.press("Control+z")
+    page.wait_for_timeout(200)
+    val_undo = question_area.input_value()
+    print(f"Value after Undo: {val_undo}")
+
+    if val_undo == "Step 1":
+        print("SUCCESS: Undo worked (Step 2 -> Step 1)")
+    else:
+        print(f"FAILURE: Undo did not revert to 'Step 1', got '{val_undo}'")
+
+    # Redo
+    print("Sending Ctrl+Y...")
+    question_area.press("Control+y")
+    page.wait_for_timeout(200)
+    val_redo = question_area.input_value()
+    print(f"Value after Redo: {val_redo}")
+
+    if val_redo == "Step 2":
+        print("SUCCESS: Redo worked (Step 1 -> Step 2)")
+    else:
+        print(f"FAILURE: Redo did not restore 'Step 2', got '{val_redo}'")
+
+    page.screenshot(path="verification_features.png")
+    print("Screenshot saved to verification_features.png")
 
 if __name__ == "__main__":
     with sync_playwright() as p:
         browser = p.chromium.launch()
         page = browser.new_page()
         try:
-            verify_multi_concept(page)
+            verify_features(page)
         except Exception as e:
             print(f"Error: {e}")
             page.screenshot(path="error.png")

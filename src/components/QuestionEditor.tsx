@@ -4,6 +4,7 @@ import QuestionDisplay from './QuestionDisplay';
 import ImageUpload from './ImageUpload';
 import { FloatingTextMenu } from './FloatingTextMenu';
 import chaptersDataImport from '../data/chapters.json';
+import { useUndoRedo } from '../hooks/useUndoRedo';
 
 interface QuestionEditorProps {
   question: Question;
@@ -18,6 +19,57 @@ interface QuestionEditorProps {
 const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onSave, onCancel, onNext, onPrevious, subject }) => {
   const [editedQuestion, setEditedQuestion] = useState<Question>(question);
   const [editedSolution, setEditedSolution] = useState<Solution | undefined>(solution);
+
+  // Undo/Redo hooks for specific fields
+  const questionText = useUndoRedo(question.question || '');
+  const solutionText = useUndoRedo(solution?.solution_text || '');
+  const optionA = useUndoRedo(question.option_a || '');
+  const optionB = useUndoRedo(question.option_b || '');
+  const optionC = useUndoRedo(question.option_c || '');
+  const optionD = useUndoRedo(question.option_d || '');
+
+  // Effect to sync undo/redo state back to main state object for saving
+  useEffect(() => {
+      setEditedQuestion(prev => {
+          if (prev.question !== questionText.value ||
+              prev.option_a !== optionA.value ||
+              prev.option_b !== optionB.value ||
+              prev.option_c !== optionC.value ||
+              prev.option_d !== optionD.value) {
+              return {
+                  ...prev,
+                  question: questionText.value,
+                  option_a: optionA.value,
+                  option_b: optionB.value,
+                  option_c: optionC.value,
+                  option_d: optionD.value
+              };
+          }
+          return prev;
+      });
+  }, [questionText.value, optionA.value, optionB.value, optionC.value, optionD.value]);
+
+  useEffect(() => {
+      setEditedSolution(prev => {
+          const defaultSol = { uuid: editedQuestion.uuid, solution_text: '', solution_image_url: '' };
+          const s = prev || defaultSol;
+          if (s.solution_text !== solutionText.value) {
+              return { ...s, solution_text: solutionText.value };
+          }
+          return prev;
+      });
+  }, [solutionText.value, editedQuestion.uuid]);
+
+  // Re-initialize undo stacks when question prop changes (switching questions)
+  useEffect(() => {
+      questionText.reset(question.question || '');
+      solutionText.reset(solution?.solution_text || '');
+      optionA.reset(question.option_a || '');
+      optionB.reset(question.option_b || '');
+      optionC.reset(question.option_c || '');
+      optionD.reset(question.option_d || '');
+  }, [question.uuid]);
+
   const [availableTypes, setAvailableTypes] = useState<string[]>([]);
   const [availableYears, setAvailableYears] = useState<string[]>([]);
   const [availableChapters, setAvailableChapters] = useState<{ [type: string]: string[] }>({});
@@ -95,6 +147,21 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
 
   const handleSolutionChange = (field: keyof Solution, value: any) => {
     setEditedSolution(prev => ({ ...(prev || { uuid: editedQuestion.uuid, solution_text: '', solution_image_url: '' }), [field]: value }));
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent, undoRedo: any) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+          e.preventDefault();
+          if (e.shiftKey) {
+              undoRedo.redo();
+          } else {
+              undoRedo.undo();
+          }
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+          e.preventDefault();
+          undoRedo.redo();
+      }
   };
 
   const handleSave = () => {
@@ -310,9 +377,9 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
   const cleanNewlines = (field: 'question' | 'solution_text' | string) => {
      let value = '';
      if (field === 'question') {
-         value = editedQuestion.question || '';
+         value = questionText.value || '';
      } else if (field === 'solution_text') {
-         value = editedSolution?.solution_text || '';
+         value = solutionText.value || '';
      } else {
          return;
      }
@@ -321,9 +388,9 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
      const newValue = value.replace(/(\\n|\n)/g, ' ');
 
      if (field === 'question') {
-         handleQuestionChange('question', newValue);
+         questionText.setValue(newValue);
      } else if (field === 'solution_text') {
-         handleSolutionChange('solution_text', newValue);
+         solutionText.setValue(newValue);
      }
   };
 
@@ -417,8 +484,9 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
                         <textarea
                             className="w-full p-4 min-h-[120px] bg-transparent border-none focus:ring-0 outline-none text-text-main dark:text-gray-200 text-sm leading-relaxed resize-y"
                             placeholder="Type your question here... Use LaTeX for math like $x^2$."
-                            value={editedQuestion.question}
-                            onChange={(e) => handleQuestionChange('question', e.target.value)}
+                            value={questionText.value}
+                            onChange={(e) => questionText.setValue(e.target.value)}
+                            onKeyDown={(e) => handleKeyDown(e, questionText)}
                         />
                         <button
                             onClick={() => cleanNewlines('question')}
@@ -484,8 +552,25 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
                                                     className={`flex-1 min-w-0 px-4 py-2.5 bg-white dark:bg-[#1e1e2d] border border-l-0 rounded-r-lg focus:ring-2 focus:ring-primary/20 text-sm text-gray-900 dark:text-gray-100 transition-all ${isChecked ? 'border-primary font-medium' : 'border-border-light dark:border-border-dark focus:border-primary'}`}
                                                     placeholder={`Option ${opt.toUpperCase()} text`}
                                                     type="text"
-                                                    value={editedQuestion[`option_${opt}`] || ''}
-                                                    onChange={(e) => handleQuestionChange(`option_${opt}`, e.target.value)}
+                                                    value={
+                                                        opt === 'a' ? optionA.value :
+                                                        opt === 'b' ? optionB.value :
+                                                        opt === 'c' ? optionC.value :
+                                                        optionD.value
+                                                    }
+                                                    onChange={(e) => {
+                                                        const val = e.target.value;
+                                                        if (opt === 'a') optionA.setValue(val);
+                                                        else if (opt === 'b') optionB.setValue(val);
+                                                        else if (opt === 'c') optionC.setValue(val);
+                                                        else optionD.setValue(val);
+                                                    }}
+                                                    onKeyDown={(e) => {
+                                                        if (opt === 'a') handleKeyDown(e, optionA);
+                                                        else if (opt === 'b') handleKeyDown(e, optionB);
+                                                        else if (opt === 'c') handleKeyDown(e, optionC);
+                                                        else handleKeyDown(e, optionD);
+                                                    }}
                                                 />
                                             </div>
                                             <ImageUpload
@@ -518,8 +603,9 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
                         <textarea
                             className="w-full p-4 min-h-[100px] bg-transparent border-none focus:ring-0 text-text-main dark:text-gray-200 text-sm leading-relaxed resize-y"
                             placeholder="Explain the logic behind the correct answer..."
-                            value={editedSolution?.solution_text || ''}
-                            onChange={(e) => handleSolutionChange('solution_text', e.target.value)}
+                            value={solutionText.value}
+                            onChange={(e) => solutionText.setValue(e.target.value)}
+                            onKeyDown={(e) => handleKeyDown(e, solutionText)}
                         />
                         <button
                             onClick={() => cleanNewlines('solution_text')}
@@ -824,15 +910,41 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
                         {/* Verification Level 1 */}
                         <div className="space-y-1.5">
                             <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Verification Level 1</label>
-                            <select
-                                className="w-full bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-main dark:text-white text-sm rounded-lg focus:ring-primary focus:border-primary p-2.5"
-                                value={editedQuestion.verification_level_1 || 'pending'}
-                                onChange={(e) => handleQuestionChange('verification_level_1', e.target.value)}
-                            >
-                                <option value="pending">Pending</option>
-                                <option value="approved">Approved</option>
-                                <option value="rejected">Rejected</option>
-                            </select>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => handleQuestionChange('verification_level_1', 'approved')}
+                                    className={`flex-1 p-2 rounded-lg border flex items-center justify-center gap-2 transition-all ${
+                                        editedQuestion.verification_level_1 === 'approved'
+                                            ? 'bg-green-50 border-green-200 text-green-600 dark:bg-green-900/20 dark:border-green-800 dark:text-green-400'
+                                            : 'bg-surface-light border-border-light text-text-secondary hover:bg-gray-50 dark:bg-surface-dark dark:border-border-dark dark:hover:bg-white/5'
+                                    }`}
+                                    title="Approve"
+                                >
+                                    <span className="material-symbols-outlined text-[20px]">check_circle</span>
+                                </button>
+                                <button
+                                    onClick={() => handleQuestionChange('verification_level_1', 'rejected')}
+                                    className={`flex-1 p-2 rounded-lg border flex items-center justify-center gap-2 transition-all ${
+                                        editedQuestion.verification_level_1 === 'rejected'
+                                            ? 'bg-red-50 border-red-200 text-red-600 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400'
+                                            : 'bg-surface-light border-border-light text-text-secondary hover:bg-gray-50 dark:bg-surface-dark dark:border-border-dark dark:hover:bg-white/5'
+                                    }`}
+                                    title="Reject"
+                                >
+                                    <span className="material-symbols-outlined text-[20px]">cancel</span>
+                                </button>
+                                <button
+                                    onClick={() => handleQuestionChange('verification_level_1', 'pending')}
+                                    className={`flex-1 p-2 rounded-lg border flex items-center justify-center gap-2 transition-all ${
+                                        !editedQuestion.verification_level_1 || editedQuestion.verification_level_1 === 'pending'
+                                            ? 'bg-yellow-50 border-yellow-200 text-yellow-600 dark:bg-yellow-900/20 dark:border-yellow-800 dark:text-yellow-400'
+                                            : 'bg-surface-light border-border-light text-text-secondary hover:bg-gray-50 dark:bg-surface-dark dark:border-border-dark dark:hover:bg-white/5'
+                                    }`}
+                                    title="Pending"
+                                >
+                                    <span className="material-symbols-outlined text-[20px]">horizontal_rule</span>
+                                </button>
+                            </div>
                         </div>
 
                         {/* Verification Level 2 */}

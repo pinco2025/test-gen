@@ -118,7 +118,7 @@ function App() {
   const constraintConfig = currentProject?.constraintConfig || { minIdx: 1, Sm: 0.1, Sh: 0.1 };
 
   // Helper to update current project data
-  const updateCurrentProject = useCallback((updates: Partial<ProjectData>) => {
+  const updateCurrentProject = useCallback((updates: Partial<ProjectData> & { lastActiveQuestionUuid?: string | null }) => {
     if (!currentProjectId) return;
 
     setSaveStatus('unsaved');
@@ -205,7 +205,8 @@ function App() {
         constraintConfig: currentData.constraintConfig,
         currentStep: currentData.currentStep,
         createdAt: currentData.createdAt, // Preserve original creation time
-        lastModified: new Date().toISOString()
+        lastModified: new Date().toISOString(),
+        lastActiveQuestionUuid: (currentData as any).lastActiveQuestionUuid // Save active question state
       };
 
       await window.electronAPI.project.save(projectState);
@@ -292,10 +293,44 @@ function App() {
             currentSectionIndex: projectState.currentSectionIndex,
             constraintConfig: projectState.constraintConfig,
             currentStep: projectState.currentStep as WorkflowStep,
-            createdAt: projectState.createdAt
-          }
+            createdAt: projectState.createdAt,
+            lastActiveQuestionUuid: projectState.lastActiveQuestionUuid
+          } as any
         }));
+
+        // Restore active question context if needed
+        if (projectState.lastActiveQuestionUuid) {
+             setLastEditedQuestionUuid(projectState.lastActiveQuestionUuid);
+
+             // If we were editing, we need to load the question into editingQuestion
+             if (projectState.currentStep === 'edit-question') {
+                 try {
+                     const q = await window.electronAPI.questions.getByUUID(projectState.lastActiveQuestionUuid);
+                     const s = await window.electronAPI.questions.getSolution(projectState.lastActiveQuestionUuid);
+                     if (q) {
+                         setEditingQuestion({
+                             question: q,
+                             solution: s ? s : undefined
+                         });
+                         // previousStep needs to be set properly if not saved. defaulting to selection
+                         if (!previousStep) {
+                             // Attempt to infer from section index
+                             const map: Record<number, WorkflowStep> = {0: 'question-select-physics', 1: 'question-select-chemistry', 2: 'question-select-math'};
+                             setPreviousStep(map[projectState.currentSectionIndex] || 'question-select-physics');
+                         }
+                     }
+                 } catch (e) {
+                     console.error("Failed to restore editing question", e);
+                 }
+             }
+        }
       }
+    } else {
+        // Restore from memory if switching tabs
+        const existingData = projectsData[projectId] as any;
+        if (existingData?.lastActiveQuestionUuid) {
+             setLastEditedQuestionUuid(existingData.lastActiveQuestionUuid);
+        }
     }
 
     // Add to open tabs if not already open
@@ -711,7 +746,8 @@ function App() {
     if (!currentProject) return;
     setEditingQuestion({ question });
     setPreviousStep(currentProject.currentStep);
-    updateCurrentProject({ currentStep: 'edit-question' });
+    setLastEditedQuestionUuid(question.uuid); // Sync local state
+    updateCurrentProject({ currentStep: 'edit-question', lastActiveQuestionUuid: question.uuid });
   };
 
   const handleCloneQuestion = (question: Question) => {
@@ -757,7 +793,7 @@ function App() {
 
     // Return to previous step
     if (previousStep) {
-      updateCurrentProject({ currentStep: previousStep });
+      updateCurrentProject({ currentStep: previousStep, lastActiveQuestionUuid: updatedQuestion.uuid });
     }
     setEditingQuestion(null);
   };
