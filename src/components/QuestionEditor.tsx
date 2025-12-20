@@ -3,7 +3,6 @@ import { Question, Solution } from '../types';
 import QuestionDisplay from './QuestionDisplay';
 import ImageUpload from './ImageUpload';
 import { FloatingTextMenu } from './FloatingTextMenu';
-import chaptersDataImport from '../data/chapters.json';
 import { useUndoRedo } from '../hooks/useUndoRedo';
 
 // Helper component for Undo/Redo buttons
@@ -99,7 +98,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
   const [availableChapters, setAvailableChapters] = useState<{ [type: string]: string[] }>({});
 
   // Local state for chapters data to handle live updates
-  const [chaptersData, setChaptersData] = useState<any>(chaptersDataImport);
+  const [chaptersData, setChaptersData] = useState<any>({});
 
   // State for additional topics UI
   const [showAdditionalTopics, setShowAdditionalTopics] = useState(false);

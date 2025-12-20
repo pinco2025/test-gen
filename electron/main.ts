@@ -90,28 +90,13 @@ ipcMain.handle('window:close', () => {
 // Helper to locate chapters.json
 // Priority:
 // 1. Configured path from projectService (selected by user)
-// 2. Next to the executable (process.exePath directory) - Backwards compatibility
-// 3. Development source path
-function getChaptersPath(): string {
+function getChaptersPath(): string | null {
   // Check configured path first
   const config = projectService.getConfigSync();
   if (config.chaptersPath && fs.existsSync(config.chaptersPath)) {
       return config.chaptersPath;
   }
-
-  // Check next to executable first
-  const exeDir = path.dirname(app.getPath('exe'));
-  const localChaptersPath = path.join(exeDir, 'chapters.json');
-  if (fs.existsSync(localChaptersPath)) {
-    return localChaptersPath;
-  }
-
-  // Fallback to source/development path
-  if (isDev) {
-      return path.join(__dirname, '../src/data/chapters.json');
-  } else {
-      return path.join(process.resourcesPath, 'chapters.json');
-  }
+  return null;
 }
 
 ipcMain.handle('chapters:selectFile', async () => {
@@ -145,15 +130,7 @@ ipcMain.handle('chapters:load', async () => {
     try {
         let chaptersPath = getChaptersPath();
 
-        if (!fs.existsSync(chaptersPath)) {
-             // Fallback for dev/internal structure if not found in resources
-             const internalPath = path.join(__dirname, '../src/data/chapters.json');
-             if (fs.existsSync(internalPath)) {
-                 chaptersPath = internalPath;
-             }
-        }
-
-        if (fs.existsSync(chaptersPath)) {
+        if (chaptersPath && fs.existsSync(chaptersPath)) {
             const content = fs.readFileSync(chaptersPath, 'utf-8');
             return JSON.parse(content);
         } else {
@@ -170,8 +147,8 @@ ipcMain.handle('chapters:addTopic', async (_, subject: string, chapterCode: stri
   try {
     let chaptersPath = getChaptersPath();
 
-    if (!fs.existsSync(chaptersPath)) {
-      throw new Error(`Chapters file not found at ${chaptersPath}`);
+    if (!chaptersPath || !fs.existsSync(chaptersPath)) {
+      throw new Error(`Chapters file not found`);
     }
 
     const fileContent = fs.readFileSync(chaptersPath, 'utf-8');
