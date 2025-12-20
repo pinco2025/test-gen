@@ -40,8 +40,17 @@ export const QuestionDisplay = memo<QuestionDisplayProps>(({
     }
   };
 
+  // Verification Tint
+  const getVerificationTint = () => {
+    switch (question.verification_level_1) {
+        case 'approved': return 'bg-green-50/50 dark:bg-green-900/10';
+        case 'rejected': return 'bg-red-50/50 dark:bg-red-900/10';
+        default: return '';
+    }
+  };
+
   return (
-    <div className={`flex flex-col gap-6 relative ${isSelected ? 'ring-2 ring-primary' : ''}`}>
+    <div className={`flex flex-col gap-6 relative p-4 rounded-xl transition-colors ${getVerificationTint()} ${isSelected ? 'ring-2 ring-primary' : ''}`}>
        {showCheckbox && (
          <input
             type="checkbox"

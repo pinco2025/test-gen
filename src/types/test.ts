@@ -143,6 +143,7 @@ export interface ProjectState {
   currentStep: string; // WorkflowStep as string
   createdAt: string;
   lastModified: string;
+  lastActiveQuestionUuid?: string | null; // Track the last viewed/edited question
 }
 
 // Project metadata for listing
