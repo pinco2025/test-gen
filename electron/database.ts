@@ -30,6 +30,8 @@ export class DatabaseService {
         'jee_mains_relevance': "INTEGER",
         'is_multi_concept': "BOOLEAN DEFAULT 0",
         'related_concepts': "TEXT",
+        'scary': "BOOLEAN DEFAULT 0",
+        'calc': "BOOLEAN DEFAULT 0",
         'legacy_question': "TEXT",
         'legacy_a': "TEXT",
         'legacy_b': "TEXT",
@@ -431,6 +433,7 @@ export class DatabaseService {
         'topic_tags', 'importance_level',
         'verification_level_1', 'verification_level_2',
         'jee_mains_relevance', 'is_multi_concept', 'related_concepts',
+        'scary', 'calc',
         'legacy_question', 'legacy_a', 'legacy_b', 'legacy_c', 'legacy_d', 'legacy_solution'
       ];
 
@@ -488,6 +491,7 @@ export class DatabaseService {
         'topic_tags', 'importance_level',
         'verification_level_1', 'verification_level_2',
         'jee_mains_relevance', 'is_multi_concept', 'related_concepts',
+        'scary', 'calc',
         'legacy_question', 'legacy_a', 'legacy_b', 'legacy_c', 'legacy_d', 'legacy_solution',
         'created_at', 'updated_at', 'frequency'
       ];
