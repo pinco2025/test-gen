@@ -6,6 +6,30 @@ import { FloatingTextMenu } from './FloatingTextMenu';
 import chaptersDataImport from '../data/chapters.json';
 import { useUndoRedo } from '../hooks/useUndoRedo';
 
+// Helper component for Undo/Redo buttons
+const UndoRedoControls = ({ undoRedo }: { undoRedo: any }) => (
+    <div className="flex items-center gap-0.5 ml-2 bg-gray-100 dark:bg-white/5 rounded-lg p-0.5 border border-border-light dark:border-border-dark">
+        <button
+            onClick={undoRedo.undo}
+            disabled={!undoRedo.canUndo}
+            className="p-1 rounded hover:bg-gray-200 dark:hover:bg-white/10 text-text-secondary disabled:opacity-30 transition-colors"
+            title="Undo"
+            type="button"
+        >
+            <span className="material-symbols-outlined text-[16px]">undo</span>
+        </button>
+        <button
+            onClick={undoRedo.redo}
+            disabled={!undoRedo.canRedo}
+            className="p-1 rounded hover:bg-gray-200 dark:hover:bg-white/10 text-text-secondary disabled:opacity-30 transition-colors"
+            title="Redo"
+            type="button"
+        >
+            <span className="material-symbols-outlined text-[16px]">redo</span>
+        </button>
+    </div>
+);
+
 interface QuestionEditorProps {
   question: Question;
   solution?: Solution;
@@ -152,21 +176,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
     setEditedSolution(prev => ({ ...(prev || { uuid: editedQuestion.uuid, solution_text: '', solution_image_url: '' }), [field]: value }));
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent, undoRedo: any) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
-          e.preventDefault();
-          if (e.shiftKey) {
-              undoRedo.redo();
-          } else {
-              undoRedo.undo();
-          }
-      }
-      if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
-          e.preventDefault();
-          undoRedo.redo();
-      }
-  };
-
   const handleSave = () => {
     onSave(editedQuestion, editedSolution);
   };
@@ -201,20 +210,16 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
 
   // Format Options Handler
   const handleFormatOptions = () => {
-      const options = ['a', 'b', 'c', 'd'] as const;
-      const updates: Partial<Question> = {};
+      const formatText = (text: string) => {
+          if (!text) return text;
+          const cleanText = text.replace(/\$/g, '').replace(/\\\\/g, '\\');
+          return `$${cleanText}$`;
+      };
 
-      options.forEach(opt => {
-          const key = `option_${opt}` as 'option_a' | 'option_b' | 'option_c' | 'option_d';
-          const originalText = editedQuestion[key] as string;
-          if (originalText) {
-              // Remove existing $, replace \\ with \, wrap in $...$
-              const cleanText = originalText.replace(/\$/g, '').replace(/\\\\/g, '\\');
-              updates[key] = `$${cleanText}$`;
-          }
-      });
-
-      setEditedQuestion(prev => ({ ...prev, ...updates }));
+      if (optionA.value) optionA.setValue(formatText(optionA.value));
+      if (optionB.value) optionB.setValue(formatText(optionB.value));
+      if (optionC.value) optionC.setValue(formatText(optionC.value));
+      if (optionD.value) optionD.setValue(formatText(optionD.value));
   };
 
   // Helper to find topics for the current chapter (Primary Topic)
@@ -482,14 +487,18 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
             <div className="flex-1 overflow-y-auto p-5 space-y-6">
                 {/* Section: Question Text */}
                 <div className="space-y-3">
-                    <label className="block text-sm font-semibold text-text-main dark:text-gray-200">Question Statement</label>
+                    <div className="flex items-center justify-between">
+                         <div className="flex items-center">
+                            <label className="block text-sm font-semibold text-text-main dark:text-gray-200">Question Statement</label>
+                            <UndoRedoControls undoRedo={questionText} />
+                         </div>
+                    </div>
                     <div className="relative border border-border-light dark:border-border-dark rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-all group">
                         <textarea
                             className="w-full p-4 min-h-[120px] bg-transparent border-none focus:ring-0 outline-none text-text-main dark:text-gray-200 text-sm leading-relaxed resize-y"
                             placeholder="Type your question here... Use LaTeX for math like $x^2$."
                             value={questionText.value}
                             onChange={(e) => questionText.setValue(e.target.value)}
-                            onKeyDown={(e) => handleKeyDown(e, questionText)}
                         />
                         <button
                             onClick={() => cleanNewlines('question')}
@@ -535,6 +544,11 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
                         <div className="space-y-3">
                             {(['a', 'b', 'c', 'd'] as const).map(opt => {
                                 const isChecked = editedQuestion.answer === opt.toUpperCase();
+                                let currentOptionHook = optionA;
+                                if (opt === 'b') currentOptionHook = optionB;
+                                else if (opt === 'c') currentOptionHook = optionC;
+                                else if (opt === 'd') currentOptionHook = optionD;
+
                                 return (
                                     <div key={opt} className="flex items-start gap-3">
                                         <div className="pt-2.5">
@@ -547,34 +561,20 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
                                             />
                                         </div>
                                         <div className="flex-1 flex flex-col gap-2">
-                                            <div className="flex w-full">
-                                                <div className={`w-10 flex-shrink-0 flex items-center justify-center border border-r-0 rounded-l-lg font-semibold text-sm ${isChecked ? 'bg-primary text-white border-primary' : 'bg-gray-50 dark:bg-white/5 border-border-light dark:border-border-dark text-text-secondary'}`}>
-                                                    {opt.toUpperCase()}
+                                            <div className="flex w-full items-center gap-2">
+                                                <div className="flex flex-1">
+                                                    <div className={`w-10 flex-shrink-0 flex items-center justify-center border border-r-0 rounded-l-lg font-semibold text-sm ${isChecked ? 'bg-primary text-white border-primary' : 'bg-gray-50 dark:bg-white/5 border-border-light dark:border-border-dark text-text-secondary'}`}>
+                                                        {opt.toUpperCase()}
+                                                    </div>
+                                                    <input
+                                                        className={`flex-1 min-w-0 px-4 py-2.5 bg-white dark:bg-[#1e1e2d] border border-l-0 rounded-r-lg focus:ring-2 focus:ring-primary/20 text-sm text-gray-900 dark:text-gray-100 transition-all ${isChecked ? 'border-primary font-medium' : 'border-border-light dark:border-border-dark focus:border-primary'}`}
+                                                        placeholder={`Option ${opt.toUpperCase()} text`}
+                                                        type="text"
+                                                        value={currentOptionHook.value}
+                                                        onChange={(e) => currentOptionHook.setValue(e.target.value)}
+                                                    />
                                                 </div>
-                                                <input
-                                                    className={`flex-1 min-w-0 px-4 py-2.5 bg-white dark:bg-[#1e1e2d] border border-l-0 rounded-r-lg focus:ring-2 focus:ring-primary/20 text-sm text-gray-900 dark:text-gray-100 transition-all ${isChecked ? 'border-primary font-medium' : 'border-border-light dark:border-border-dark focus:border-primary'}`}
-                                                    placeholder={`Option ${opt.toUpperCase()} text`}
-                                                    type="text"
-                                                    value={
-                                                        opt === 'a' ? optionA.value :
-                                                        opt === 'b' ? optionB.value :
-                                                        opt === 'c' ? optionC.value :
-                                                        optionD.value
-                                                    }
-                                                    onChange={(e) => {
-                                                        const val = e.target.value;
-                                                        if (opt === 'a') optionA.setValue(val);
-                                                        else if (opt === 'b') optionB.setValue(val);
-                                                        else if (opt === 'c') optionC.setValue(val);
-                                                        else optionD.setValue(val);
-                                                    }}
-                                                    onKeyDown={(e) => {
-                                                        if (opt === 'a') handleKeyDown(e, optionA);
-                                                        else if (opt === 'b') handleKeyDown(e, optionB);
-                                                        else if (opt === 'c') handleKeyDown(e, optionC);
-                                                        else handleKeyDown(e, optionD);
-                                                    }}
-                                                />
+                                                <UndoRedoControls undoRedo={currentOptionHook} />
                                             </div>
                                             <ImageUpload
                                                 label=""
@@ -601,14 +601,18 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
                     )}
                 </div>
                 <div className="space-y-3">
-                    <label className="block text-sm font-semibold text-text-main dark:text-gray-200">Detailed Solution</label>
+                    <div className="flex items-center justify-between">
+                         <div className="flex items-center">
+                            <label className="block text-sm font-semibold text-text-main dark:text-gray-200">Detailed Solution</label>
+                            <UndoRedoControls undoRedo={solutionText} />
+                         </div>
+                    </div>
                     <div className="relative border border-border-light dark:border-border-dark rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-all group">
                         <textarea
                             className="w-full p-4 min-h-[100px] bg-transparent border-none focus:ring-0 text-text-main dark:text-gray-200 text-sm leading-relaxed resize-y"
                             placeholder="Explain the logic behind the correct answer..."
                             value={solutionText.value}
                             onChange={(e) => solutionText.setValue(e.target.value)}
-                            onKeyDown={(e) => handleKeyDown(e, solutionText)}
                         />
                         <button
                             onClick={() => cleanNewlines('solution_text')}
