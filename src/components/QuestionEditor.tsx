@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Question, Solution } from '../types';
 import QuestionDisplay from './QuestionDisplay';
-import ImageUpload from './ImageUpload'; // Import the new component
+import ImageUpload from './ImageUpload';
 import { FloatingTextMenu } from './FloatingTextMenu';
 import chaptersDataImport from '../data/chapters.json';
 
@@ -25,8 +25,30 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
   // Local state for chapters data to handle live updates
   const [chaptersData, setChaptersData] = useState<any>(chaptersDataImport);
 
+  // State for additional topics UI
+  const [showAdditionalTopics, setShowAdditionalTopics] = useState(false);
+  const [addTopicSubject, setAddTopicSubject] = useState<string>(subject || '');
+  const [addTopicChapter, setAddTopicChapter] = useState<string>('');
+  const [addTopicId, setAddTopicId] = useState<string>('');
+
+  // Add Topic Modal State
+  const [isTopicModalOpen, setIsTopicModalOpen] = useState(false);
+  const [newTopicName, setNewTopicName] = useState('');
+
   useEffect(() => {
     setEditedQuestion(question);
+    // Initialize showAdditionalTopics based on whether there are multiple topics
+    try {
+        if (question.topic_tags) {
+            const parsed = JSON.parse(question.topic_tags);
+            if (Array.isArray(parsed) && parsed.length > 1) {
+                setShowAdditionalTopics(true);
+            }
+        }
+    } catch (e) {
+        // ignore
+    }
+
     const fetchSolution = async () => {
         if (!solution && window.electronAPI) {
             try {
@@ -66,6 +88,13 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
     };
     fetchMetadata();
   }, []);
+
+  // Sync addTopicSubject when subject prop changes or is available
+  useEffect(() => {
+      if (subject && !addTopicSubject) {
+          setAddTopicSubject(subject);
+      }
+  }, [subject]);
 
   const handleQuestionChange = (field: keyof Question, value: any) => {
     setEditedQuestion(prev => ({ ...prev, [field]: value }));
@@ -107,7 +136,25 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
       showOptions = isMCQType;
   }
 
-  // Helper to find topics for the current chapter
+  // Format Options Handler
+  const handleFormatOptions = () => {
+      const options = ['a', 'b', 'c', 'd'] as const;
+      const updates: Partial<Question> = {};
+
+      options.forEach(opt => {
+          const key = `option_${opt}` as keyof Question;
+          const originalText = editedQuestion[key] as string;
+          if (originalText) {
+              // Remove existing $, replace \\ with \, wrap in $...$
+              const cleanText = originalText.replace(/\$/g, '').replace(/\\\\/g, '\\');
+              updates[key] = `$${cleanText}$`;
+          }
+      });
+
+      setEditedQuestion(prev => ({ ...prev, ...updates }));
+  };
+
+  // Helper to find topics for the current chapter (Primary Topic)
   const availableTopics = useMemo(() => {
       const chapterCode = editedQuestion.tag_2;
       if (!chapterCode) return null;
@@ -122,59 +169,101 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
       return null;
   }, [editedQuestion.tag_2, chaptersData]);
 
-  // Helper to parse topic_tags (assuming it's a JSON array string e.g., '["1"]')
-  const currentTopicId = useMemo(() => {
+  // Helper to parse topic_tags (assuming it's a JSON array string e.g., '["1", "C2-T2"]')
+  const currentTopicTags = useMemo(() => {
       try {
-          if (!editedQuestion.topic_tags) return '';
+          if (!editedQuestion.topic_tags) return [];
           const parsed = JSON.parse(editedQuestion.topic_tags);
-          return Array.isArray(parsed) && parsed.length > 0 ? parsed[0] : '';
+          return Array.isArray(parsed) ? parsed : [];
       } catch (e) {
-          // Fallback if not JSON or just a raw string
-          return editedQuestion.topic_tags || '';
+          return editedQuestion.topic_tags ? [editedQuestion.topic_tags] : [];
       }
   }, [editedQuestion.topic_tags]);
 
-  const handleTopicChange = (topicId: string) => {
+  const handlePrimaryTopicChange = (topicId: string) => {
       if (topicId === 'NEW_TOPIC') {
-        handleAddTopic();
+        openAddTopicModal();
         return;
       }
-      // Store as JSON array string containing the single ID
-      const newValue = topicId ? JSON.stringify([topicId]) : null;
-      handleQuestionChange('topic_tags', newValue);
+
+      // Update the first element of the array, preserve others
+      const newTags = [...currentTopicTags];
+      if (newTags.length === 0) {
+          newTags.push(topicId);
+      } else {
+          newTags[0] = topicId;
+      }
+      handleQuestionChange('topic_tags', JSON.stringify(newTags));
   };
 
-  const handleAddTopic = async () => {
-    if (!window.electronAPI) return;
+  const handleAddAdditionalTopic = () => {
+      if (!addTopicChapter || !addTopicId) return;
+      const topicString = `${addTopicChapter}-${addTopicId}`;
+      if (!currentTopicTags.includes(topicString)) {
+          const newTags = [...currentTopicTags, topicString];
+          handleQuestionChange('topic_tags', JSON.stringify(newTags));
+      }
+      // Reset selection
+      setAddTopicId('');
+  };
 
-    // Determine subject and chapter
-    const chapterCode = editedQuestion.tag_2;
-    if (!chapterCode) {
-        alert("Please select a Chapter Code first.");
-        return;
-    }
+  const handleRemoveTopic = (index: number) => {
+      const newTags = currentTopicTags.filter((_, i) => i !== index);
+      handleQuestionChange('topic_tags', JSON.stringify(newTags));
+  };
 
-    // Find the subject for this chapter
-    let targetSubject = subject;
-    if (!targetSubject) {
-        for (const [subj, chapters] of Object.entries(chaptersData)) {
-            if ((chapters as any[]).some((c: any) => c.code === chapterCode)) {
-                targetSubject = subj;
-                break;
-            }
-        }
-    }
+  // Helper for Additional Topic Dropdowns
+  const availableAdditionalChapters = useMemo(() => {
+      if (!addTopicSubject || !chaptersData[addTopicSubject]) return [];
+      return chaptersData[addTopicSubject] as any[];
+  }, [addTopicSubject, chaptersData]);
 
-    if (!targetSubject) {
-        alert("Could not determine subject for this chapter.");
-        return;
-    }
+  const availableAdditionalTopics = useMemo(() => {
+      if (!addTopicChapter) return null;
+      // Find chapter in current subject (or search all if subject logic is loose)
+      // Assuming addTopicSubject is correct context
+      const chapter = availableAdditionalChapters.find(c => c.code === addTopicChapter);
+      return chapter ? (chapter.topics || {}) : null;
+  }, [addTopicChapter, availableAdditionalChapters]);
 
-    const topicName = window.prompt("Enter new topic name:");
-    if (!topicName || topicName.trim() === "") return;
+  const openAddTopicModal = () => {
+    // We need to know which context we are adding for.
+    // If primary topic dropdown triggered this, it uses editedQuestion.tag_2
+    // If additional topic dropdown triggered this, we should support that too.
+    // For now, implementing for primary topic add flow as requested in Step 1 of original request
+    setIsTopicModalOpen(true);
+    setNewTopicName('');
+  };
 
-    try {
-        const result = await window.electronAPI.chapters.addTopic(targetSubject, chapterCode, topicName.trim());
+  const handleConfirmAddTopic = async () => {
+      if (!window.electronAPI) return;
+
+      const chapterCode = editedQuestion.tag_2;
+      if (!chapterCode) {
+          alert("Please select a Chapter Code first.");
+          return;
+      }
+
+       // Find the subject for this chapter
+       let targetSubject = subject;
+       if (!targetSubject) {
+           for (const [subj, chapters] of Object.entries(chaptersData)) {
+               if ((chapters as any[]).some((c: any) => c.code === chapterCode)) {
+                   targetSubject = subj;
+                   break;
+               }
+           }
+       }
+
+       if (!targetSubject) {
+           alert("Could not determine subject for this chapter.");
+           return;
+       }
+
+       if (!newTopicName || newTopicName.trim() === "") return;
+
+       try {
+        const result = await window.electronAPI.chapters.addTopic(targetSubject, chapterCode, newTopicName.trim());
         if (result.success && result.topicId) {
              // Update local chapters data
              setChaptersData((prev: any) => {
@@ -184,13 +273,14 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
                      if (!newData[targetSubject!][chapterIndex].topics) {
                          newData[targetSubject!][chapterIndex].topics = {};
                      }
-                     newData[targetSubject!][chapterIndex].topics[result.topicId!] = topicName;
+                     newData[targetSubject!][chapterIndex].topics[result.topicId!] = newTopicName;
                  }
                  return newData;
              });
 
-             // Select the new topic
-             handleQuestionChange('topic_tags', JSON.stringify([result.topicId]));
+             // Select the new topic as primary
+             handlePrimaryTopicChange(result.topicId);
+             setIsTopicModalOpen(false);
         } else {
             alert("Failed to add topic: " + result.error);
         }
@@ -221,7 +311,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
      } else if (field === 'solution_text') {
          value = editedSolution?.solution_text || '';
      } else {
-         // Handle dynamic fields (options, etc) if needed, currently only called for question/solution
          return;
      }
 
@@ -250,6 +339,44 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
                 scrollbar-width: none !important;  /* Firefox */
             }
         `}</style>
+
+        {/* Add Topic Modal */}
+        {isTopicModalOpen && (
+            <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+                <div className="bg-white dark:bg-surface-dark rounded-xl shadow-2xl p-6 w-full max-w-md border border-border-light dark:border-border-dark transform scale-100 animate-in zoom-in-95 duration-200">
+                    <h3 className="text-lg font-bold text-text-main dark:text-white mb-4">Add New Topic</h3>
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-text-secondary mb-1">Topic Name</label>
+                            <input
+                                autoFocus
+                                type="text"
+                                className="w-full px-4 py-2 bg-gray-50 dark:bg-white/5 border border-border-light dark:border-border-dark rounded-lg text-text-main dark:text-white focus:ring-2 focus:ring-primary focus:border-primary outline-none"
+                                placeholder="Enter topic name..."
+                                value={newTopicName}
+                                onChange={(e) => setNewTopicName(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleConfirmAddTopic()}
+                            />
+                        </div>
+                        <div className="flex justify-end gap-3 pt-2">
+                            <button
+                                onClick={() => setIsTopicModalOpen(false)}
+                                className="px-4 py-2 rounded-lg text-sm font-medium text-text-secondary hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleConfirmAddTopic}
+                                className="px-4 py-2 rounded-lg text-sm font-medium text-white bg-primary hover:bg-primary/90 transition-colors shadow-lg shadow-primary/25"
+                            >
+                                Add Topic
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        )}
+
         {/* Left Pane: Preview */}
         <aside className="lg:col-span-5 flex flex-col gap-4 h-full overflow-hidden">
             <div className="flex items-center justify-between">
@@ -313,9 +440,21 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
                             ? 'Options'
                             : 'Answer'}
                         </label>
-                         {showOptions && (
-                            <span className="text-xs text-text-secondary">Select the radio button for the correct answer</span>
-                        )}
+                        <div className="flex items-center gap-2">
+                             {showOptions && (
+                                <button
+                                    onClick={handleFormatOptions}
+                                    className="px-2 py-1 text-xs font-medium text-primary hover:bg-primary/10 rounded-md transition-colors flex items-center gap-1"
+                                    title="Auto-format all options (clean $ and wrap in $...$)"
+                                >
+                                    <span className="material-symbols-outlined text-[14px]">auto_fix_high</span>
+                                    Format Options
+                                </button>
+                            )}
+                            {showOptions && (
+                                <span className="text-xs text-text-secondary">Select the radio button for the correct answer</span>
+                            )}
+                        </div>
                     </div>
 
                     {showOptions ? (
@@ -456,7 +595,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
 
                     {/* New Metadata Fields */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-                        {/* Chapter Code (Moved from Legacy) */}
+                        {/* Chapter Code (Tag 2) */}
                         <div className="space-y-1.5">
                             <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Chapter Code (Tag 2)</label>
                             <select
@@ -482,7 +621,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
                             </select>
                         </div>
 
-                        {/* Difficulty (Moved from Legacy) */}
+                        {/* Difficulty (Tag 3) */}
                         <div className="space-y-1.5">
                             <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Difficulty (Tag 3)</label>
                             <div className="flex gap-2" onClick={(e) => e.preventDefault()}>
@@ -523,26 +662,115 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
 
                         {/* Topic Selection */}
                         <div className="space-y-1.5 md:col-span-2">
-                            <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Topic Selection</label>
-                            {availableTopics ? (
-                                <div className="flex gap-2">
-                                    <select
-                                        className="w-full bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-main dark:text-white text-sm rounded-lg focus:ring-primary focus:border-primary p-2.5"
-                                        value={currentTopicId}
-                                        onChange={(e) => handleTopicChange(e.target.value)}
-                                    >
-                                        <option value="">Select Topic</option>
-                                        {Object.entries(availableTopics).map(([id, name]) => (
-                                            <option key={id} value={id}>
-                                                {name}
-                                            </option>
-                                        ))}
-                                        <option value="NEW_TOPIC" className="font-semibold text-primary">+ Add New Topic</option>
-                                    </select>
+                            <div className="flex items-center justify-between mb-1">
+                                <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Topic Selection</label>
+                                <div className="flex items-center gap-2">
+                                     <input
+                                        type="checkbox"
+                                        id="show_additional_topics"
+                                        className="w-3.5 h-3.5 text-primary bg-gray-100 border-gray-300 rounded focus:ring-primary dark:focus:ring-primary dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                                        checked={showAdditionalTopics}
+                                        onChange={(e) => setShowAdditionalTopics(e.target.checked)}
+                                    />
+                                    <label htmlFor="show_additional_topics" className="text-xs text-text-secondary cursor-pointer">Additional Topics</label>
                                 </div>
-                            ) : (
-                                <div className="text-sm text-text-secondary italic p-2 border border-border-light dark:border-border-dark rounded-lg bg-gray-50 dark:bg-white/5">
-                                    Please select a Chapter Code (Tag 2) above to unlock topic selection.
+                            </div>
+
+                            {/* Primary Topic */}
+                            <div className="mb-2">
+                                {availableTopics ? (
+                                    <div className="flex gap-2">
+                                        <select
+                                            className="w-full bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-main dark:text-white text-sm rounded-lg focus:ring-primary focus:border-primary p-2.5"
+                                            value={currentTopicTags[0] || ''}
+                                            onChange={(e) => handlePrimaryTopicChange(e.target.value)}
+                                        >
+                                            <option value="">Select Topic</option>
+                                            {Object.entries(availableTopics).map(([id, name]) => (
+                                                <option key={id} value={id}>
+                                                    {name}
+                                                </option>
+                                            ))}
+                                            <option value="NEW_TOPIC" className="font-semibold text-primary">+ Add New Topic</option>
+                                        </select>
+                                    </div>
+                                ) : (
+                                    <div className="text-sm text-text-secondary italic p-2 border border-border-light dark:border-border-dark rounded-lg bg-gray-50 dark:bg-white/5">
+                                        Please select a Chapter Code (Tag 2) above to unlock topic selection.
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Additional Topics UI */}
+                            {showAdditionalTopics && (
+                                <div className="p-3 bg-gray-50 dark:bg-white/5 border border-border-light dark:border-border-dark rounded-lg space-y-3">
+                                    <div className="text-xs font-semibold text-text-main dark:text-gray-300">Add Extra Topic</div>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                        <select
+                                            className="bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark text-xs rounded p-2"
+                                            value={addTopicSubject}
+                                            onChange={(e) => {
+                                                setAddTopicSubject(e.target.value);
+                                                setAddTopicChapter('');
+                                                setAddTopicId('');
+                                            }}
+                                        >
+                                            <option value="">Select Subject</option>
+                                            {Object.keys(chaptersData).map(subj => (
+                                                <option key={subj} value={subj}>{subj}</option>
+                                            ))}
+                                        </select>
+
+                                        <select
+                                            className="bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark text-xs rounded p-2"
+                                            value={addTopicChapter}
+                                            onChange={(e) => {
+                                                setAddTopicChapter(e.target.value);
+                                                setAddTopicId('');
+                                            }}
+                                            disabled={!addTopicSubject}
+                                        >
+                                            <option value="">Select Chapter</option>
+                                            {availableAdditionalChapters.map((c: any) => (
+                                                <option key={c.code} value={c.code}>{c.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div className="flex gap-2">
+                                        <select
+                                            className="flex-1 bg-white dark:bg-surface-dark border border-border-light dark:border-border-dark text-xs rounded p-2"
+                                            value={addTopicId}
+                                            onChange={(e) => setAddTopicId(e.target.value)}
+                                            disabled={!addTopicChapter}
+                                        >
+                                            <option value="">Select Topic</option>
+                                            {availableAdditionalTopics && Object.entries(availableAdditionalTopics).map(([id, name]) => (
+                                                <option key={id} value={id}>{name as string}</option>
+                                            ))}
+                                        </select>
+                                        <button
+                                            onClick={handleAddAdditionalTopic}
+                                            disabled={!addTopicId}
+                                            className="px-3 py-1 bg-primary text-white text-xs font-semibold rounded disabled:opacity-50 hover:bg-primary/90"
+                                        >
+                                            Add
+                                        </button>
+                                    </div>
+
+                                    {/* List of added extra topics */}
+                                    {currentTopicTags.length > 1 && (
+                                        <div className="flex flex-wrap gap-2 mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                                            {currentTopicTags.slice(1).map((tag, index) => (
+                                                <span key={index} className="inline-flex items-center gap-1 px-2 py-1 bg-white dark:bg-surface-dark border border-gray-200 dark:border-gray-600 rounded text-xs text-text-secondary">
+                                                    {tag}
+                                                    <button onClick={() => handleRemoveTopic(index + 1)} className="hover:text-red-500">
+                                                        <span className="material-symbols-outlined text-[14px]">close</span>
+                                                    </button>
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -565,15 +793,29 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
 
                         {/* JEE Mains Relevance */}
                         <div className="space-y-1.5">
-                            <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">JEE Mains Relevance (1-5)</label>
+                            <div className="flex items-center justify-between mb-2">
+                                <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">JEE Mains Relevance</label>
+                                <span className="text-sm font-bold text-primary">
+                                    {editedQuestion.jee_mains_relevance ?? 5}
+                                </span>
+                            </div>
                             <input
-                                className="w-full bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark text-text-main dark:text-white text-sm rounded-lg focus:ring-primary focus:border-primary p-2.5"
-                                type="number"
-                                min="1"
+                                type="range"
+                                min="0"
                                 max="5"
-                                value={editedQuestion.jee_mains_relevance || ''}
-                                onChange={(e) => handleQuestionChange('jee_mains_relevance', parseInt(e.target.value) || null)}
+                                step="1"
+                                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer dark:bg-gray-700 accent-primary"
+                                value={editedQuestion.jee_mains_relevance ?? 5}
+                                onChange={(e) => handleQuestionChange('jee_mains_relevance', parseInt(e.target.value))}
                             />
+                             <div className="flex justify-between text-[10px] text-text-secondary px-1">
+                                <span>0</span>
+                                <span>1</span>
+                                <span>2</span>
+                                <span>3</span>
+                                <span>4</span>
+                                <span>5</span>
+                            </div>
                         </div>
 
                         {/* Verification Level 1 */}
