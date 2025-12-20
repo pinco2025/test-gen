@@ -111,6 +111,22 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
   const [isTopicModalOpen, setIsTopicModalOpen] = useState(false);
   const [newTopicName, setNewTopicName] = useState('');
 
+  // Load chapters data from backend (filesystem)
+  useEffect(() => {
+      const loadChapters = async () => {
+          if (!window.electronAPI) return;
+          try {
+              const data = await window.electronAPI.chapters.load();
+              if (data) {
+                  setChaptersData(data);
+              }
+          } catch (error) {
+              console.error("Failed to load chapters from file:", error);
+          }
+      };
+      loadChapters();
+  }, []);
+
   useEffect(() => {
     setEditedQuestion(question);
     // Initialize showAdditionalTopics based on whether there are related concepts (multi-concept)
