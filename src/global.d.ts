@@ -68,6 +68,7 @@ declare global {
       };
       chapters: {
         load: () => Promise<any>;
+        selectFile: () => Promise<{ success: boolean; path?: string; error?: string }>;
         addTopic: (subject: string, chapterCode: string, topicName: string) => Promise<{ success: boolean; topicId?: string; topicName?: string; error?: string }>;
       };
       questions: {

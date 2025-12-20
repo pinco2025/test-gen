@@ -28,6 +28,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Chapter operations
   chapters: {
     load: () => ipcRenderer.invoke('chapters:load'),
+    selectFile: () => ipcRenderer.invoke('chapters:selectFile'),
     addTopic: (subject: string, chapterCode: string, topicName: string) => ipcRenderer.invoke('chapters:addTopic', subject, chapterCode, topicName)
   },
 

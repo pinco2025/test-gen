@@ -89,9 +89,16 @@ ipcMain.handle('window:close', () => {
 
 // Helper to locate chapters.json
 // Priority:
-// 1. Next to the executable (process.exePath directory) - Allows user customization
-// 2. Development source path
+// 1. Configured path from projectService (selected by user)
+// 2. Next to the executable (process.exePath directory) - Backwards compatibility
+// 3. Development source path
 function getChaptersPath(): string {
+  // Check configured path first
+  const config = projectService.getConfigSync();
+  if (config.chaptersPath && fs.existsSync(config.chaptersPath)) {
+      return config.chaptersPath;
+  }
+
   // Check next to executable first
   const exeDir = path.dirname(app.getPath('exe'));
   const localChaptersPath = path.join(exeDir, 'chapters.json');
@@ -100,45 +107,44 @@ function getChaptersPath(): string {
   }
 
   // Fallback to source/development path
-  // In production, resources are often packed, but we might want to allow providing a file.
-  // If not found locally, we default to the one in the src directory (for dev) or resources (for prod if we shipped it externally)
-  // For this implementation, we'll rely on the source one if the local one doesn't exist.
-  // Note: in a packed app, __dirname might be inside an asar archive, which fs.existsSync handles for reading, but not writing usually.
-
   if (isDev) {
       return path.join(__dirname, '../src/data/chapters.json');
   } else {
-      // In production (ASAR), we can't write to the internal file.
-      // If the user wants to customize, they MUST put a file next to the EXE.
-      // If we need to read the default one, we can try to find it in resources.
-      // However, for read-only access (default), we might need to handle ASAR paths carefully.
-      // For addTopic (write), we should probably fail if we are trying to write to ASAR,
-      // or auto-create the external file.
-
-      // For now, let's return the dev path location relative to __dirname which in prod `dist-electron`
-      // would point to something inside the bundle if we don't copy it out.
-      // A safe bet for a default read is the bundled one.
-
-      // But typically we want to allow editing. So if we are in prod and no local file exists,
-      // we might want to copy the default one to the local path or just read from ASAR.
-      // Let's assume for now we just return the ASAR path for reading.
-      // But for writing, we'll see.
-
-      // For simplicity in this request: "can i put it inside the directory where the exe file is" -> Yes.
-      return path.join(process.resourcesPath, 'chapters.json'); // Standard place for extra resources if configured
+      return path.join(process.resourcesPath, 'chapters.json');
   }
 }
 
-// Ensure we have a valid path for reading/writing.
-// If we are in production and the file is in ASAR, we can't write to it.
-// So we should probably verify writability or copy it out.
-// For the purpose of "load", we just need to read.
+ipcMain.handle('chapters:selectFile', async () => {
+    const result = await dialog.showOpenDialog({
+        properties: ['openFile'],
+        filters: [
+            { name: 'JSON Files', extensions: ['json'] }
+        ]
+    });
+
+    if (!result.canceled && result.filePaths.length > 0) {
+        const chaptersPath = result.filePaths[0];
+        try {
+             // Validate it's a valid JSON and looks like chapters file
+             const content = fs.readFileSync(chaptersPath, 'utf-8');
+             const json = JSON.parse(content);
+             if (!json.Physics || !json.Chemistry || !json.Mathematics) {
+                 return { success: false, error: "Invalid chapters file format. Must contain Physics, Chemistry, and Mathematics keys." };
+             }
+
+             projectService.updateConfig({ chaptersPath });
+             return { success: true, path: chaptersPath };
+        } catch (error: any) {
+            return { success: false, error: "Failed to read or parse file: " + error.message };
+        }
+    }
+    return { success: false, error: 'No file selected' };
+});
+
 ipcMain.handle('chapters:load', async () => {
     try {
         let chaptersPath = getChaptersPath();
 
-        // If the calculated path doesn't exist (e.g. process.resourcesPath/chapters.json wasn't shipped),
-        // try looking in the app bundle (internal) as a fallback for defaults.
         if (!fs.existsSync(chaptersPath)) {
              // Fallback for dev/internal structure if not found in resources
              const internalPath = path.join(__dirname, '../src/data/chapters.json');
@@ -151,7 +157,6 @@ ipcMain.handle('chapters:load', async () => {
             const content = fs.readFileSync(chaptersPath, 'utf-8');
             return JSON.parse(content);
         } else {
-            // Should not happen if build includes it, but return null or empty to be safe
              return null;
         }
     } catch (error: any) {
@@ -164,42 +169,6 @@ ipcMain.handle('chapters:load', async () => {
 ipcMain.handle('chapters:addTopic', async (_, subject: string, chapterCode: string, topicName: string) => {
   try {
     let chaptersPath = getChaptersPath();
-
-    // If path is in ASAR (default in prod), we cannot write to it.
-    // We should check if we are allowed to write.
-    // If the file doesn't exist externally, we should create it from the internal default?
-    // Or just fail?
-    // The user asked "can i put it inside the directory where the exe file is".
-    // If they did, `getChaptersPath` returns that.
-
-    // If `getChaptersPath` returned the ASAR path or a non-existent path, we need to handle it.
-    const isAsar = chaptersPath.includes('.asar');
-
-    if (isAsar || !fs.existsSync(chaptersPath)) {
-        // We cannot write to ASAR. We must create a local copy next to the EXE.
-        const exeDir = path.dirname(app.getPath('exe'));
-        const localChaptersPath = path.join(exeDir, 'chapters.json');
-
-        if (!fs.existsSync(localChaptersPath)) {
-             // Copy from internal if possible, or start with what we have in memory?
-             // Best to read the internal one first.
-             const internalPath = path.join(__dirname, '../src/data/chapters.json');
-             let initialData = {};
-             if (fs.existsSync(internalPath)) {
-                 initialData = JSON.parse(fs.readFileSync(internalPath, 'utf-8'));
-             } else if (isAsar && fs.existsSync(chaptersPath)) {
-                  initialData = JSON.parse(fs.readFileSync(chaptersPath, 'utf-8'));
-             }
-
-             // Now write this to local path
-             fs.writeFileSync(localChaptersPath, JSON.stringify(initialData, null, 2), 'utf-8');
-             chaptersPath = localChaptersPath; // Switch to using the local file
-        } else {
-            // It exists, so we should have used it via getChaptersPath logic...
-            // Unless getChaptersPath logic failed.
-             chaptersPath = localChaptersPath;
-        }
-    }
 
     if (!fs.existsSync(chaptersPath)) {
       throw new Error(`Chapters file not found at ${chaptersPath}`);
