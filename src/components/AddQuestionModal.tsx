@@ -81,6 +81,8 @@ const AddQuestionModal: React.FC<AddQuestionModalProps> = ({ onClose, onSave }) 
         verification_level_2: data.verification_level_2 || null,
         jee_mains_relevance: data.jee_mains_relevance || null,
         is_multi_concept: data.is_multi_concept || null,
+        scary: data.scary || false,
+        calc: data.calc || false,
         related_concepts: data.related_concepts || null,
         legacy_question: data.legacy_question || null,
         legacy_a: data.legacy_a || null,
