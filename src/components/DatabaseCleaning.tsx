@@ -18,6 +18,7 @@ interface DatabaseCleaningProps {
   scrollToQuestionUuid?: string | null;
   onScrollComplete?: () => void;
   refreshTrigger?: number;
+  chaptersPath?: string | null;
 }
 
 interface ItemData {
@@ -65,7 +66,8 @@ const Row = ({ index, style, data }: ListChildComponentProps<ItemData>) => {
 export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
   scrollToQuestionUuid,
   onScrollComplete,
-  refreshTrigger = 0
+  refreshTrigger = 0,
+  chaptersPath
 }) => {
   const { addNotification } = useNotification();
   const [activeSection, setActiveSection] = useState<SectionName>('Physics');
@@ -136,7 +138,7 @@ export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
     listRef.current?.resetAfterIndex(0);
   }, [zoomLevel]);
 
-  // Load chapters data once on mount
+  // Load chapters data when component mounts or chaptersPath changes
   useEffect(() => {
     const loadChaptersData = async () => {
       if (window.electronAPI) {
@@ -144,14 +146,18 @@ export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
           const data = await window.electronAPI.chapters.load();
           if (data) {
             setChaptersData(data);
+          } else {
+            // If load returns null (e.g. no file selected), clear data
+            setChaptersData({});
           }
         } catch (error) {
           console.error("Failed to load chapters:", error);
+          setChaptersData({});
         }
       }
     };
     loadChaptersData();
-  }, []);
+  }, [chaptersPath]);
 
   // Update chapters list when activeSection or chaptersData changes
   useEffect(() => {

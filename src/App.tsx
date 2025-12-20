@@ -881,6 +881,7 @@ function App() {
             scrollToQuestionUuid={lastEditedQuestionUuid}
             onScrollComplete={() => setLastEditedQuestionUuid(null)}
             refreshTrigger={questionsRefreshTrigger}
+            chaptersPath={chaptersPath}
           />
         );
     }
