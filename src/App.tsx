@@ -81,6 +81,10 @@ function App() {
   const [dbPath, setDbPath] = useState<string | null>(null);
   const [showDbDropdown, setShowDbDropdown] = useState(false);
 
+  // Chapters file state
+  const [chaptersConnected, setChaptersConnected] = useState(false);
+  const [chaptersPath, setChaptersPath] = useState<string | null>(null);
+
   // App mode state
   const [appMode, setAppMode] = useState<'landing' | 'test-generation' | 'database-cleaning'>('landing');
 
@@ -111,7 +115,7 @@ function App() {
 
   // Current project display state (derived from projectsData)
   const step = currentProject?.currentStep ||
-    (isCreatingNew ? 'test-creation' : (dbConnected ? 'dashboard' : 'database-connect'));
+    (isCreatingNew ? 'test-creation' : ((dbConnected && chaptersConnected) ? 'dashboard' : 'database-connect'));
   const testMetadata = currentProject?.testMetadata || null;
   const sections = currentProject?.sections || [];
   const currentSectionIndex = currentProject?.currentSectionIndex || 0;
@@ -141,6 +145,12 @@ function App() {
 
     // Get saved config
     const config = await window.electronAPI.config.get();
+
+    // Check chapters file
+    if (config.chaptersPath) {
+        setChaptersConnected(true);
+        setChaptersPath(config.chaptersPath);
+    }
 
     // Auto-connect to saved database if it exists
     if (config.databasePath) {
@@ -440,7 +450,6 @@ function App() {
       setDbPath(result.path || null);
       setShowDbDropdown(false);
       await window.electronAPI.config.update({ databasePath: result.path || null });
-      createNewProject();
     } else {
         addNotification('error', 'Failed to connect to database: ' + result.error);
     }
@@ -450,10 +459,23 @@ function App() {
     setShowDbDropdown(!showDbDropdown);
   };
 
-  const getDbFileName = (path: string | null): string => {
-    if (!path) return 'Unknown';
-    const parts = path.split(/[/\\]/);
-    return parts[parts.length - 1];
+  const handleChaptersSelect = async () => {
+      if (!window.electronAPI) return;
+
+      const result = await window.electronAPI.chapters.selectFile();
+      if (result.success && result.path) {
+          setChaptersConnected(true);
+          setChaptersPath(result.path);
+          addNotification('success', 'Chapters file loaded successfully');
+      } else if (result.error) {
+          addNotification('error', 'Failed to load chapters file: ' + result.error);
+      }
+  };
+
+  const getFileName = (path: string | null): string => {
+      if (!path) return 'Unknown';
+      const parts = path.split(/[/\\]/);
+      return parts[parts.length - 1];
   };
 
   const handleTestCreation = async (metadata: TestMetadata, chapters: Chapter[][]) => {
@@ -880,15 +902,59 @@ function App() {
             </div>
             <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-3">Test Generation System</h1>
             <p className="text-gray-600 dark:text-gray-400 mb-8 text-lg max-w-md">
-              Please connect to a question database to begin.
+              Please connect to a question database and select a chapters file to begin.
             </p>
-            <button
-              onClick={handleDatabaseSelect}
-              className="bg-primary text-white px-8 py-4 rounded-lg font-semibold flex items-center gap-2 hover:bg-primary/90 transition-all shadow-lg hover:shadow-xl"
-            >
-              <span className="material-symbols-outlined text-xl">folder_open</span>
-              Select Database File
-            </button>
+
+            <div className="flex flex-col gap-4 w-full max-w-md">
+                {/* Database Selection */}
+                <div className={`p-4 rounded-xl border transition-all ${dbConnected ? 'bg-green-50 border-green-200 dark:bg-green-900/10 dark:border-green-800' : 'bg-white dark:bg-[#1e1e2d] border-gray-200 dark:border-[#2d2d3b]'}`}>
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                            <span className={`material-symbols-outlined ${dbConnected ? 'text-green-600 dark:text-green-400' : 'text-gray-400'}`}>database</span>
+                            <div className="text-left">
+                                <h3 className={`font-semibold ${dbConnected ? 'text-green-900 dark:text-green-100' : 'text-gray-900 dark:text-white'}`}>Database</h3>
+                                {dbConnected && <p className="text-xs text-green-700 dark:text-green-300 truncate max-w-[200px]">{getFileName(dbPath)}</p>}
+                            </div>
+                        </div>
+                        {dbConnected && <span className="material-symbols-outlined text-green-600 dark:text-green-400">check_circle</span>}
+                    </div>
+                    <button
+                        onClick={handleDatabaseSelect}
+                        className={`w-full py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
+                            dbConnected
+                                ? 'bg-white border border-green-200 text-green-700 hover:bg-green-50 dark:bg-transparent dark:border-green-800 dark:text-green-300 dark:hover:bg-green-900/20'
+                                : 'bg-primary text-white hover:bg-primary/90 shadow-md'
+                        }`}
+                    >
+                        {dbConnected ? 'Change Database' : 'Select Database File'}
+                    </button>
+                </div>
+
+                {/* Chapters Selection */}
+                <div className={`p-4 rounded-xl border transition-all ${chaptersConnected ? 'bg-green-50 border-green-200 dark:bg-green-900/10 dark:border-green-800' : 'bg-white dark:bg-[#1e1e2d] border-gray-200 dark:border-[#2d2d3b]'}`}>
+                     <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                            <span className={`material-symbols-outlined ${chaptersConnected ? 'text-green-600 dark:text-green-400' : 'text-gray-400'}`}>menu_book</span>
+                            <div className="text-left">
+                                <h3 className={`font-semibold ${chaptersConnected ? 'text-green-900 dark:text-green-100' : 'text-gray-900 dark:text-white'}`}>Chapters File</h3>
+                                {chaptersConnected && <p className="text-xs text-green-700 dark:text-green-300 truncate max-w-[200px]">{getFileName(chaptersPath)}</p>}
+                            </div>
+                        </div>
+                         {chaptersConnected && <span className="material-symbols-outlined text-green-600 dark:text-green-400">check_circle</span>}
+                    </div>
+                    <button
+                        onClick={handleChaptersSelect}
+                        className={`w-full py-2 px-4 rounded-lg text-sm font-medium transition-colors ${
+                            chaptersConnected
+                                ? 'bg-white border border-green-200 text-green-700 hover:bg-green-50 dark:bg-transparent dark:border-green-800 dark:text-green-300 dark:hover:bg-green-900/20'
+                                : 'bg-primary text-white hover:bg-primary/90 shadow-md'
+                        }`}
+                    >
+                        {chaptersConnected ? 'Change Chapters File' : 'Select Chapters File'}
+                    </button>
+                </div>
+
+            </div>
           </div>
         );
 
@@ -1163,23 +1229,60 @@ function App() {
             </div>
 
             {showDbDropdown && (
-              <div className="absolute top-full right-0 mt-2 w-72 bg-white dark:bg-[#1e1e2d] border border-gray-200 dark:border-[#2d2d3b] rounded-xl shadow-xl z-50 animate-fade-in">
+              <div className="absolute top-full right-0 mt-2 w-80 bg-white dark:bg-[#1e1e2d] border border-gray-200 dark:border-[#2d2d3b] rounded-xl shadow-xl z-50 animate-fade-in">
                 <div className="p-4 font-semibold border-b border-gray-200 dark:border-[#2d2d3b] text-gray-900 dark:text-white">
-                  Database Connection
+                  Connections
                 </div>
-                {dbConnected && dbPath && (
-                  <div className="p-4 border-b border-gray-200 dark:border-[#2d2d3b]">
-                    <div className="text-sm font-medium text-gray-900 dark:text-white truncate">{getDbFileName(dbPath)}</div>
-                    <div className="text-xs text-gray-600 dark:text-gray-400 truncate mt-1">{dbPath}</div>
-                  </div>
-                )}
-                <button
-                  className="w-full text-left p-4 hover:bg-gray-50 dark:hover:bg-[#252535] flex items-center gap-2 transition-colors text-gray-900 dark:text-white rounded-b-xl"
-                  onClick={handleDatabaseSelect}
-                >
-                  <span className="material-symbols-outlined text-sm">folder_open</span>
-                  {dbConnected ? 'Change Database' : 'Select Database'}
-                </button>
+
+                {/* Database Info */}
+                <div className="p-4 border-b border-gray-200 dark:border-[#2d2d3b]">
+                   <div className="flex items-center justify-between mb-2">
+                       <span className="text-xs font-semibold text-gray-500 uppercase">Database</span>
+                       {dbConnected ? (
+                           <span className="text-xs text-green-600 bg-green-50 dark:bg-green-900/20 px-2 py-0.5 rounded">Connected</span>
+                       ) : (
+                           <span className="text-xs text-red-600 bg-red-50 dark:bg-red-900/20 px-2 py-0.5 rounded">Disconnected</span>
+                       )}
+                   </div>
+                   {dbConnected && dbPath ? (
+                        <div className="text-sm truncate text-gray-700 dark:text-gray-300" title={dbPath}>{getFileName(dbPath)}</div>
+                   ) : (
+                       <div className="text-sm text-gray-400 italic">No database selected</div>
+                   )}
+                   <button
+                       onClick={() => { setShowDbDropdown(false); handleDatabaseSelect(); }}
+                       className="mt-2 text-xs text-primary hover:underline"
+                   >
+                       Change
+                   </button>
+                </div>
+
+                {/* Chapters Info */}
+                <div className="p-4 border-b border-gray-200 dark:border-[#2d2d3b]">
+                    <div className="flex items-center justify-between mb-2">
+                       <span className="text-xs font-semibold text-gray-500 uppercase">Chapters File</span>
+                       {chaptersConnected ? (
+                           <span className="text-xs text-green-600 bg-green-50 dark:bg-green-900/20 px-2 py-0.5 rounded">Loaded</span>
+                       ) : (
+                           <span className="text-xs text-red-600 bg-red-50 dark:bg-red-900/20 px-2 py-0.5 rounded">Not Loaded</span>
+                       )}
+                   </div>
+                   {chaptersConnected && chaptersPath ? (
+                        <div className="text-sm truncate text-gray-700 dark:text-gray-300" title={chaptersPath}>{getFileName(chaptersPath)}</div>
+                   ) : (
+                       <div className="text-sm text-gray-400 italic">No file selected</div>
+                   )}
+                   <button
+                       onClick={() => { setShowDbDropdown(false); handleChaptersSelect(); }}
+                       className="mt-2 text-xs text-primary hover:underline"
+                   >
+                       Change
+                   </button>
+                </div>
+
+                <div className="p-2 bg-gray-50 dark:bg-[#252535] rounded-b-xl">
+                    <p className="text-[10px] text-gray-500 text-center">Settings persist across sessions</p>
+                </div>
               </div>
             )}
           </div>

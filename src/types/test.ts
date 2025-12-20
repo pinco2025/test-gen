@@ -159,5 +159,6 @@ export interface ProjectInfo {
 // App configuration
 export interface AppConfig {
   databasePath: string | null;
+  chaptersPath: string | null;
   lastProjectId: string | null;
 }
