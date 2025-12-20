@@ -100,12 +100,15 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
                 const fetchedSolution = await window.electronAPI.questions.getSolution(question.uuid);
                 if (fetchedSolution) {
                     setEditedSolution(fetchedSolution);
+                    solutionText.reset(fetchedSolution.solution_text || '');
                 } else {
                     setEditedSolution({ uuid: question.uuid, solution_text: '', solution_image_url: '' });
+                    solutionText.reset('');
                 }
             } catch (error) {
                 console.error("Failed to fetch solution:", error);
                 setEditedSolution({ uuid: question.uuid, solution_text: '', solution_image_url: '' });
+                solutionText.reset('');
             }
         } else {
              setEditedSolution(solution);
