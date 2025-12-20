@@ -92,7 +92,7 @@ ipcMain.handle('window:close', () => {
 // 1. Configured path from projectService (selected by user)
 function getChaptersPath(): string | null {
   // Check configured path first
-  const config = projectService.getConfigSync();
+  const config = projectService.getConfig();
   if (config.chaptersPath && fs.existsSync(config.chaptersPath)) {
       return config.chaptersPath;
   }
