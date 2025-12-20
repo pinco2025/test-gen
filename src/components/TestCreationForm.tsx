@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { TestMetadata, TestType, Chapter } from '../types';
-import chaptersData from '../data/chapters.json';
 
 interface TestCreationFormProps {
   onSubmit: (metadata: TestMetadata, sectionsChapters: Chapter[][]) => void;
@@ -15,6 +14,7 @@ export const TestCreationForm: React.FC<TestCreationFormProps> = ({
 
   const [availableCodesInDb, setAvailableCodesInDb] = useState<Set<string>>(new Set());
   const [chaptersLoading, setChaptersLoading] = useState(true);
+  const [chaptersData, setChaptersData] = useState<any>({ Physics: [], Chemistry: [], Mathematics: [] });
 
   const [physicsChapters, setPhysicsChapters] = useState<Chapter[]>([]);
   const [chemistryChapters, setChemistryChapters] = useState<Chapter[]>([]);
@@ -25,9 +25,10 @@ export const TestCreationForm: React.FC<TestCreationFormProps> = ({
   const [mathSearch, setMathSearch] = useState('');
 
   useEffect(() => {
-    const loadAvailableCodes = async () => {
+    const fetchData = async () => {
       setChaptersLoading(true);
       try {
+        // Load available codes from DB
         const dbChapters = await window.electronAPI.db.getChaptersByType();
         const codesSet = new Set<string>();
         Object.values(dbChapters).forEach((codes) => {
@@ -36,15 +37,21 @@ export const TestCreationForm: React.FC<TestCreationFormProps> = ({
           }
         });
         setAvailableCodesInDb(codesSet);
+
+        // Load chapters structure from file
+        const data = await window.electronAPI.chapters.load();
+        if (data) {
+          setChaptersData(data);
+        }
       } catch (error) {
-        console.error('Failed to load chapter codes:', error);
+        console.error('Failed to load data:', error);
         setAvailableCodesInDb(new Set());
       } finally {
         setChaptersLoading(false);
       }
     };
 
-    loadAvailableCodes();
+    fetchData();
   }, []);
 
   const handleSubmit = (e: React.FormEvent) => {

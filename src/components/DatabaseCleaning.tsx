@@ -10,7 +10,6 @@ import {
 import FilterMenu, { FilterState } from './FilterMenu';
 import QuestionRow from './QuestionRow';
 import QuestionEditor from './QuestionEditor';
-import chaptersData from '../data/chapters.json';
 import { useNotification } from './Notification';
 
 interface DatabaseCleaningProps {
@@ -71,6 +70,7 @@ export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
   const { addNotification } = useNotification();
   const [activeSection, setActiveSection] = useState<SectionName>('Physics');
   const [activeChapterCode, setActiveChapterCode] = useState<string | null>(null);
+  const [chaptersData, setChaptersData] = useState<any>({});
   const [chapters, setChapters] = useState<Chapter[]>([]);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [availableQuestions, setAvailableQuestions] = useState<Question[]>([]);
@@ -136,18 +136,34 @@ export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
     listRef.current?.resetAfterIndex(0);
   }, [zoomLevel]);
 
-  // Load chapters when activeSection changes
+  // Load chapters data once on mount
   useEffect(() => {
-    // @ts-ignore
+    const loadChaptersData = async () => {
+      if (window.electronAPI) {
+        try {
+          const data = await window.electronAPI.chapters.load();
+          if (data) {
+            setChaptersData(data);
+          }
+        } catch (error) {
+          console.error("Failed to load chapters:", error);
+        }
+      }
+    };
+    loadChaptersData();
+  }, []);
+
+  // Update chapters list when activeSection or chaptersData changes
+  useEffect(() => {
     const sectionChapters = chaptersData[activeSection] || [];
-    const loadedChapters: Chapter[] = sectionChapters.map((ch: any) => ({
+    const loadedChapters: Chapter[] = Array.isArray(sectionChapters) ? sectionChapters.map((ch: any) => ({
         code: ch.code,
         name: ch.name,
         level: ch.level
-    }));
+    })) : [];
     setChapters(loadedChapters);
     setActiveChapterCode(null); // Reset chapter selection on subject change
-  }, [activeSection]);
+  }, [activeSection, chaptersData]);
 
 
   // Load questions when activeChapterCode changes
