@@ -25,9 +25,16 @@ interface AppConfig {
 class GitHubService {
   private octokit: Octokit | null = null;
   private config: GitHubConfig | null = null;
+  private initialized = false;
 
   constructor() {
+    // Initialization is lazy
+  }
+
+  private ensureInitialized() {
+    if (this.initialized) return;
     this.loadConfig();
+    this.initialized = true;
   }
 
   private getConfigPath(): string {
@@ -78,6 +85,7 @@ class GitHubService {
   }
 
   saveConfig(config: GitHubConfig): void {
+    this.ensureInitialized();
     try {
       const configPath = this.getConfigPath();
       let appConfig: AppConfig = {};
@@ -103,10 +111,12 @@ class GitHubService {
   }
 
   getConfig(): GitHubConfig | null {
+    this.ensureInitialized();
     return this.config;
   }
 
   isConfigured(): boolean {
+    this.ensureInitialized();
     return !!(
       this.config?.enabled &&
       this.config?.token &&
@@ -123,6 +133,7 @@ class GitHubService {
     content: string,
     commitMessage: string
   ): Promise<UploadResult> {
+    this.ensureInitialized();
     if (!this.octokit || !this.config) {
       return { success: false, error: 'GitHub not configured' };
     }
@@ -184,6 +195,7 @@ class GitHubService {
     testContent: string,
     solutionsContent: string
   ): Promise<{ test: UploadResult; solutions: UploadResult }> {
+    this.ensureInitialized();
     const testPath = `tests/${testId}.json`;
     const solutionsPath = `tests/${testId}_solutions.json`;
     const timestamp = new Date().toISOString();
@@ -207,6 +219,7 @@ class GitHubService {
   }
 
   async testConnection(): Promise<{ success: boolean; error?: string }> {
+    this.ensureInitialized();
     if (!this.octokit || !this.config) {
       return { success: false, error: 'GitHub not configured' };
     }
