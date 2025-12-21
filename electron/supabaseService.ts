@@ -37,9 +37,16 @@ interface AppConfig {
 class SupabaseService {
   private client: SupabaseClient | null = null;
   private config: SupabaseConfig | null = null;
+  private initialized = false;
 
   constructor() {
+    // Initialization is lazy
+  }
+
+  private ensureInitialized() {
+    if (this.initialized) return;
     this.loadConfig();
+    this.initialized = true;
   }
 
   private getConfigPath(): string {
@@ -99,6 +106,7 @@ class SupabaseService {
   }
 
   saveConfig(config: SupabaseConfig): void {
+    this.ensureInitialized();
     try {
       const configPath = this.getConfigPath();
       let appConfig: AppConfig = {};
@@ -127,10 +135,12 @@ class SupabaseService {
   }
 
   getConfig(): SupabaseConfig | null {
+    this.ensureInitialized();
     return this.config;
   }
 
   isConfigured(): boolean {
+    this.ensureInitialized();
     return !!(
       this.config?.enabled &&
       this.config?.url &&
@@ -142,6 +152,7 @@ class SupabaseService {
   }
 
   async insertTest(record: TestRecord): Promise<InsertResult> {
+    this.ensureInitialized();
     if (!this.client) {
       return { success: false, error: 'Supabase not configured' };
     }
@@ -188,6 +199,7 @@ class SupabaseService {
   }
 
   async getTest(testId: string): Promise<InsertResult> {
+    this.ensureInitialized();
     if (!this.client) {
       return { success: false, error: 'Supabase not configured' };
     }
@@ -210,6 +222,7 @@ class SupabaseService {
   }
 
   async testConnection(): Promise<{ success: boolean; error?: string }> {
+    this.ensureInitialized();
     if (!this.client) {
       return { success: false, error: 'Supabase not configured' };
     }

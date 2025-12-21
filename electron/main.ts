@@ -1,6 +1,6 @@
 import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import path from 'path';
-import { google } from 'googleapis';
+// Removed top-level googleapis import
 import mime from 'mime-types';
 import { dbService } from './database';
 import { projectService } from './projectService';
@@ -275,6 +275,9 @@ ipcMain.handle('questions:saveSolution', async (_, uuid: string, solutionText: s
 // Image Upload with OAuth 2.0
 ipcMain.handle('upload-image', async (_, filePath: string) => {
   try {
+    // Dynamically import googleapis
+    const { google } = await import('googleapis');
+
     // Get authenticated OAuth client
     const auth = await oauthService.getAuthClient();
     const drive = google.drive({ version: 'v3', auth });

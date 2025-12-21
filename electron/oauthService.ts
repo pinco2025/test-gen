@@ -1,5 +1,4 @@
 import { app, BrowserWindow } from 'electron';
-import { google } from 'googleapis';
 import path from 'path';
 import fs from 'fs';
 
@@ -15,13 +14,25 @@ export interface OAuthTokens {
 }
 
 export class OAuthService {
-  private oauth2Client: any;
+  private oauth2Client: any = null;
   private clientId: string = '';
   private clientSecret: string = '';
   private redirectUri: string = 'http://localhost';
+  private initialized = false;
 
   constructor() {
+    // Initialization is lazy
+  }
+
+  private async ensureInitialized() {
+    if (this.initialized) return;
+
+    // Dynamic import to avoid heavy load at startup
+    // We only need this if we are actually authenticating or creating the client
+    // But we need google.auth.OAuth2 constructor.
+    // We can delay loading credentials until we need them.
     this.loadCredentials();
+    this.initialized = true;
   }
 
   private getCredentialsPath(): string {
@@ -49,7 +60,7 @@ export class OAuthService {
     return path.join(app.getPath('userData'), 'oauth-credentials.json');
   }
 
-  private loadCredentials() {
+  private async loadCredentials() {
     try {
       const credPath = this.getCredentialsPath();
       if (fs.existsSync(credPath)) {
@@ -66,6 +77,7 @@ export class OAuthService {
         this.clientSecret = credentials.client_secret;
         this.redirectUri = credentials.redirect_uris?.[0] || 'http://localhost';
 
+        const { google } = await import('googleapis');
         this.oauth2Client = new google.auth.OAuth2(
           this.clientId,
           this.clientSecret,
@@ -80,6 +92,15 @@ export class OAuthService {
   }
 
   async authenticate(): Promise<boolean> {
+    await this.ensureInitialized();
+    if (!this.oauth2Client) {
+        // Try loading again if it failed or wasn't ready
+        await this.loadCredentials();
+        if (!this.oauth2Client) {
+             throw new Error('OAuth client could not be initialized. Please check oauth-credentials.json.');
+        }
+    }
+
     return new Promise((resolve, reject) => {
       const authUrl = this.oauth2Client.generateAuthUrl({
         access_type: 'offline',
@@ -146,8 +167,14 @@ export class OAuthService {
   }
 
   async getAuthClient() {
+    await this.ensureInitialized();
+
     if (!this.oauth2Client) {
-      throw new Error('OAuth client not initialized. Please ensure oauth-credentials.json exists.');
+      // One last try
+      await this.loadCredentials();
+      if (!this.oauth2Client) {
+          throw new Error('OAuth client not initialized. Please ensure oauth-credentials.json exists.');
+      }
     }
 
     const tokens = this.loadTokens();
@@ -179,6 +206,8 @@ export class OAuthService {
   }
 
   isAuthenticated(): boolean {
+    // This is synchronous, so we can't async load credentials here easily if we want to keep signature.
+    // However, checking token file existence doesn't require googleapis.
     const tokens = this.loadTokens();
     return tokens !== null && tokens.access_token !== undefined;
   }

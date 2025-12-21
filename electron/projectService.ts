@@ -7,11 +7,18 @@ import { ProjectState, ProjectInfo, AppConfig } from '../src/types';
  * ProjectService handles persistence of project states and app configuration
  */
 class ProjectService {
-  private projectsDir: string;
-  private configPath: string;
-  private config: AppConfig;
+  private projectsDir: string = '';
+  private configPath: string = '';
+  private config: AppConfig | null = null;
+  private initialized = false;
 
   constructor() {
+    // Initialization is lazy
+  }
+
+  private ensureInitialized() {
+    if (this.initialized) return;
+
     // Use app.getPath('userData') for persistent storage
     const userDataPath = app.getPath('userData');
     this.projectsDir = path.join(userDataPath, 'projects');
@@ -22,6 +29,7 @@ class ProjectService {
 
     // Load or initialize config
     this.config = this.loadConfig();
+    this.initialized = true;
   }
 
   private ensureDirectories(): void {
@@ -60,13 +68,15 @@ class ProjectService {
    * Get app configuration
    */
   getConfig(): AppConfig {
-    return { ...this.config };
+    this.ensureInitialized();
+    return { ...this.config } as AppConfig;
   }
 
   /**
    * Update app configuration
    */
   updateConfig(updates: Partial<AppConfig>): void {
+    this.ensureInitialized();
     this.config = { ...this.config, ...updates };
     this.saveConfig();
   }
@@ -82,6 +92,7 @@ class ProjectService {
    * Save a project state to disk
    */
   saveProject(projectState: ProjectState): void {
+    this.ensureInitialized();
     try {
       const filePath = this.getProjectPath(projectState.id);
       const data = JSON.stringify(projectState, null, 2);
@@ -96,6 +107,7 @@ class ProjectService {
    * Load a project state from disk
    */
   loadProject(projectId: string): ProjectState | null {
+    this.ensureInitialized();
     try {
       const filePath = this.getProjectPath(projectId);
       if (!fs.existsSync(filePath)) {
@@ -114,6 +126,7 @@ class ProjectService {
    * Delete a project
    */
   deleteProject(projectId: string): boolean {
+    this.ensureInitialized();
     try {
       const filePath = this.getProjectPath(projectId);
       if (fs.existsSync(filePath)) {
@@ -131,6 +144,7 @@ class ProjectService {
    * Check if a project exists
    */
   projectExists(projectId: string): boolean {
+    this.ensureInitialized();
     const filePath = this.getProjectPath(projectId);
     return fs.existsSync(filePath);
   }
@@ -139,6 +153,7 @@ class ProjectService {
    * List all projects with metadata
    */
   listProjects(): ProjectInfo[] {
+    this.ensureInitialized();
     try {
       const files = fs.readdirSync(this.projectsDir);
       const projects: ProjectInfo[] = [];
@@ -214,6 +229,7 @@ class ProjectService {
    * Delete all projects (for database change)
    */
   deleteAllProjects(): number {
+    this.ensureInitialized();
     try {
       const files = fs.readdirSync(this.projectsDir);
       let count = 0;
