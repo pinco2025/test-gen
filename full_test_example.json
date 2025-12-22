@@ -1,0 +1,78 @@
+{
+  "tests": [
+    {
+      "testCode": "FT-01",
+      "description": "Full Syllabus Test 1",
+      "sections": [
+        {
+          "name": "Physics",
+          "type": "Div 1",
+          "maxQuestions": 25,
+          "weightage": {
+            "PHY01": 2,
+            "PHY02": 1,
+            "PHY03": 3,
+            "PHY04": 2,
+            "PHY05": 1
+          }
+        },
+        {
+          "name": "Chemistry",
+          "type": "Div 1",
+          "maxQuestions": 25,
+          "weightage": {
+            "CHE01": 2,
+            "CHE02": 2,
+            "CHE03": 1
+          }
+        },
+        {
+          "name": "Mathematics",
+          "type": "Div 1",
+          "maxQuestions": 25,
+          "weightage": {
+            "MAT01": 3,
+            "MAT02": 2
+          }
+        }
+      ]
+    },
+    {
+      "testCode": "FT-02",
+      "description": "Full Syllabus Test 2",
+      "sections": [
+        {
+          "name": "Physics",
+          "type": "Div 1",
+          "maxQuestions": 25,
+          "weightage": {
+            "PHY01": 1,
+            "PHY02": 2,
+            "PHY03": 2,
+            "PHY04": 2,
+            "PHY05": 1
+          }
+        },
+        {
+          "name": "Chemistry",
+          "type": "Div 1",
+          "maxQuestions": 25,
+          "weightage": {
+            "CHE01": 3,
+            "CHE02": 1,
+            "CHE03": 2
+          }
+        },
+        {
+          "name": "Mathematics",
+          "type": "Div 1",
+          "maxQuestions": 25,
+          "weightage": {
+            "MAT01": 2,
+            "MAT02": 3
+          }
+        }
+      ]
+    }
+  ]
+}

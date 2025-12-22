@@ -3,14 +3,16 @@ import { TestMetadata, TestType, Chapter } from '../types';
 
 interface TestCreationFormProps {
   onSubmit: (metadata: TestMetadata, sectionsChapters: Chapter[][]) => void;
+  defaultTestType?: TestType;
 }
 
 export const TestCreationForm: React.FC<TestCreationFormProps> = ({
-  onSubmit
+  onSubmit,
+  defaultTestType = 'Part'
 }) => {
   const [code, setCode] = useState('');
   const [description, setDescription] = useState('');
-  const [testType, setTestType] = useState<TestType>('Full');
+  const [testType] = useState<TestType>(defaultTestType);
 
   const [availableCodesInDb, setAvailableCodesInDb] = useState<Set<string>>(new Set());
   const [chaptersLoading, setChaptersLoading] = useState(true);
@@ -100,11 +102,10 @@ export const TestCreationForm: React.FC<TestCreationFormProps> = ({
               <input id="code" type="text" value={code} onChange={(e) => setCode(e.target.value)} placeholder="e.g., JEE-2024-01" required className="w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-background-light dark:bg-background-dark" />
             </div>
             <div className="form-group">
-              <label htmlFor="testType" className="block text-sm font-medium text-text-secondary mb-1">Test Type *</label>
-              <select id="testType" value={testType} onChange={(e) => setTestType(e.target.value as TestType)} className="w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-md focus:outline-none focus:ring-2 focus:ring-primary bg-background-light dark:bg-background-dark">
-                <option value="Full">Full Test</option>
-                <option value="Part">Part Test</option>
-              </select>
+              <label htmlFor="testType" className="block text-sm font-medium text-text-secondary mb-1">Test Type</label>
+              <div className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 rounded-md bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 cursor-not-allowed">
+                {testType} Test
+              </div>
             </div>
             <div className="form-group md:col-span-2">
               <label htmlFor="description" className="block text-sm font-medium text-text-secondary mb-1">Description *</label>

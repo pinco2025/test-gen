@@ -13,10 +13,12 @@ import {
   ProjectInfo,
   WorkflowStep,
   Question,
-  Solution
+  Solution,
+  TestType
 } from './types';
 import { sortQuestionsForSection } from './utils/sorting';
 import TestCreationForm from './components/TestCreationForm';
+import FullTestCreation, { FullTestJson } from './components/FullTestCreation';
 import SectionConfiguration from './components/SectionConfiguration';
 import QuestionSelection from './components/QuestionSelection';
 import ProjectTabs from './components/ProjectTabs';
@@ -90,6 +92,7 @@ function App() {
 
   // Track when creating a new project
   const [isCreatingNew, setIsCreatingNew] = useState(false);
+  const [newTestType, setNewTestType] = useState<TestType>('Part');
 
   // Add Question Modal state
   const [isAddQuestionModalOpen, setIsAddQuestionModalOpen] = useState(false);
@@ -115,7 +118,7 @@ function App() {
 
   // Current project display state (derived from projectsData)
   const step = currentProject?.currentStep ||
-    (isCreatingNew ? 'test-creation' : ((dbConnected && chaptersConnected) ? 'dashboard' : 'database-connect'));
+    (isCreatingNew ? (newTestType === 'Full' ? 'full-test-creation' : 'test-creation') : ((dbConnected && chaptersConnected) ? 'dashboard' : 'database-connect'));
   const testMetadata = currentProject?.testMetadata || null;
   const sections = currentProject?.sections || [];
   const currentSectionIndex = currentProject?.currentSectionIndex || 0;
@@ -362,8 +365,9 @@ function App() {
   };
 
   // Create new project
-  const createNewProject = () => {
+  const createNewProject = (testType: TestType = 'Part') => {
     setCurrentProjectId(null);
+    setNewTestType(testType);
     setIsCreatingNew(true);
   };
 
@@ -516,6 +520,92 @@ function App() {
     setOpenProjectIds(prev => [...prev, projectId]);
     setCurrentProjectId(projectId);
     setIsCreatingNew(false);
+  };
+
+  const handleFullTestCreation = async (data: FullTestJson) => {
+    const now = new Date().toISOString();
+    const createdProjectIds: string[] = [];
+
+    let allChapters: Record<SectionName, Chapter[]> = { Physics: [], Chemistry: [], Mathematics: [] };
+    if (window.electronAPI) {
+        try {
+            const rawChapters = await window.electronAPI.chapters.load();
+            if (rawChapters) {
+                 allChapters = {
+                     Physics: rawChapters.Physics || [],
+                     Chemistry: rawChapters.Chemistry || [],
+                     Mathematics: rawChapters.Mathematics || []
+                 };
+            }
+        } catch (e) {
+            console.error("Failed to load chapters for full test creation", e);
+        }
+    }
+
+    for (const testDef of data.tests) {
+        const projectId = testDef.testCode.replace(/[^a-zA-Z0-9]/g, '-');
+
+        const metadata: TestMetadata = {
+            code: testDef.testCode,
+            description: testDef.description,
+            testType: 'Full',
+            createdAt: now
+        };
+
+        const sections: SectionConfig[] = testDef.sections.map(sectionDef => {
+            return {
+                name: sectionDef.name,
+                chapters: allChapters[sectionDef.name] || [],
+                alphaConstraint: { chapters: [] },
+                betaConstraint: {
+                    weightage: sectionDef.weightage,
+                    maxQuestions: sectionDef.maxQuestions,
+                    type: sectionDef.type
+                },
+                selectedQuestions: []
+            };
+        });
+
+        setProjectsData(prev => ({
+            ...prev,
+            [projectId]: {
+                testMetadata: metadata,
+                sections: sections,
+                currentSectionIndex: 0,
+                constraintConfig: { minIdx: 1, Sm: 0.1, Sh: 0.1 },
+                currentStep: 'section-config-physics', // Start at beginning for now
+                createdAt: now
+            }
+        }));
+
+        if (window.electronAPI) {
+             const projectState: ProjectState = {
+                id: projectId,
+                testMetadata: metadata,
+                sections: sections,
+                currentSectionIndex: 0,
+                constraintConfig: { minIdx: 1, Sm: 0.1, Sh: 0.1 },
+                currentStep: 'section-config-physics',
+                createdAt: now,
+                lastModified: now
+            };
+            await window.electronAPI.project.save(projectState);
+        }
+
+        createdProjectIds.push(projectId);
+    }
+
+    if (window.electronAPI) {
+        const updatedProjects = await window.electronAPI.project.list();
+        setProjects(updatedProjects);
+    }
+
+    addNotification('success', `${createdProjectIds.length} tests created successfully.`);
+    setIsCreatingNew(false);
+
+    if (createdProjectIds.length > 0) {
+        await loadProject(createdProjectIds[0]);
+    }
   };
 
   const handleSectionConfiguration = (
@@ -969,8 +1059,16 @@ function App() {
           />
         );
 
+      case 'full-test-creation':
+        return (
+            <FullTestCreation
+                onCancel={() => setIsCreatingNew(false)}
+                onProceed={handleFullTestCreation}
+            />
+        );
+
       case 'test-creation':
-        return <TestCreationForm onSubmit={handleTestCreation} />;
+        return <TestCreationForm onSubmit={handleTestCreation} defaultTestType={newTestType} />;
 
       case 'section-config-physics':
       case 'section-config-chemistry':
@@ -1116,7 +1214,7 @@ function App() {
                 Back to Review
               </button>
               <button
-                onClick={createNewProject}
+                onClick={() => createNewProject()}
                 className="text-primary hover:text-primary/90 transition-colors flex items-center gap-1 font-semibold"
               >
                 <span className="material-symbols-outlined text-lg">add_circle</span>

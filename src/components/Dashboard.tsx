@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import { ProjectInfo } from '../types';
+import { ProjectInfo, TestType } from '../types';
 
 interface DashboardProps {
   projects: ProjectInfo[];
   onLoadProject: (projectId: string) => void;
-  onCreateNew: () => void;
+  onCreateNew: (testType?: TestType) => void;
   onDeleteProject: (projectId: string) => void;
 }
 
@@ -27,9 +27,17 @@ export const Dashboard: React.FC<DashboardProps> = ({
   });
 
   const [isMounted, setIsMounted] = useState(false);
+  const [view, setView] = useState<'home' | 'full' | 'part'>('home');
 
-  // Sort projects by last modified (most recent first)
-  const sortedProjects = [...projects].sort((a, b) =>
+  // Filter and sort projects based on view
+  const filteredProjects = projects.filter(p => {
+    if (view === 'home') return true; // Not used in home view
+    if (view === 'full') return p.testType === 'Full';
+    if (view === 'part') return p.testType === 'Part' || !p.testType; // Assume legacy are Part tests
+    return true;
+  });
+
+  const sortedProjects = [...filteredProjects].sort((a, b) =>
     new Date(b.lastModified).getTime() - new Date(a.lastModified).getTime()
   );
 
@@ -131,14 +139,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <p className="text-text-main dark:text-white text-4xl font-black leading-tight tracking-[-0.033em] animate-text-glow">Welcome back, Admin!</p>
                 <p className="text-text-secondary dark:text-gray-400 text-base font-normal leading-normal">Here's a summary of your activity.</p>
               </div>
-              <div className="flex flex-1 md:flex-initial gap-3 flex-wrap justify-start md:justify-end mt-2 md:mt-0">
-                <button
-                  onClick={onCreateNew}
-                  className="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-lg h-12 px-5 bg-primary text-white text-base font-bold leading-normal tracking-[0.015em] hover:bg-primary/90 transition-all shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98]">
-                  <span className="material-symbols-outlined">edit_document</span>
-                  <span className="truncate">Create New Test</span>
-                </button>
-              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 p-4 mb-6">
@@ -162,59 +162,117 @@ export const Dashboard: React.FC<DashboardProps> = ({
               </div>
             </div>
 
-            <div className="flex items-center justify-between px-4 pb-3 pt-5">
-              <h2 className="text-text-main dark:text-white text-[22px] font-bold leading-tight tracking-[-0.015em]">Available Projects</h2>
-              <span className="text-text-secondary dark:text-gray-400 text-sm">{sortedProjects.length} project{sortedProjects.length !== 1 ? 's' : ''}</span>
-            </div>
-            <div className="flex flex-col p-4 pb-8">
-              {sortedProjects.length === 0 ? (
-                <div className="bg-white/80 dark:bg-background-dark/80 border border-border-light dark:border-gray-700 rounded-xl p-8 text-center backdrop-blur-sm">
-                  <div className="flex items-center justify-center size-16 rounded-full bg-primary/10 text-primary mx-auto mb-4">
-                    <span className="material-symbols-outlined text-3xl">folder_open</span>
+            {view === 'home' ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-4 mt-8">
+                <button
+                  onClick={() => setView('full')}
+                  className="group relative flex flex-col items-center justify-center h-64 rounded-2xl bg-white dark:bg-[#1e1e2d] border border-gray-200 dark:border-[#2d2d3b] hover:border-primary/50 transition-all hover:shadow-2xl overflow-hidden"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-transparent dark:from-blue-900/10 dark:to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <span className="material-symbols-outlined text-7xl text-gray-400 group-hover:text-primary transition-colors mb-4 transform group-hover:scale-110 duration-300">
+                    description
+                  </span>
+                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white group-hover:text-primary transition-colors">
+                    Full Tests
+                  </h3>
+                  <p className="text-gray-500 dark:text-gray-400 mt-2">
+                    Create comprehensive full-syllabus tests
+                  </p>
+                </button>
+
+                <button
+                  onClick={() => setView('part')}
+                  className="group relative flex flex-col items-center justify-center h-64 rounded-2xl bg-white dark:bg-[#1e1e2d] border border-gray-200 dark:border-[#2d2d3b] hover:border-primary/50 transition-all hover:shadow-2xl overflow-hidden"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-br from-green-50 to-transparent dark:from-green-900/10 dark:to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <span className="material-symbols-outlined text-7xl text-gray-400 group-hover:text-primary transition-colors mb-4 transform group-hover:scale-110 duration-300">
+                    library_books
+                  </span>
+                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white group-hover:text-primary transition-colors">
+                    Part Tests
+                  </h3>
+                  <p className="text-gray-500 dark:text-gray-400 mt-2">
+                    Create focused chapter-wise or unit tests
+                  </p>
+                </button>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between px-4 pb-3 pt-5">
+                  <div className="flex items-center gap-4">
+                    <button
+                      onClick={() => setView('home')}
+                      className="p-2 hover:bg-gray-100 dark:hover:bg-[#252535] rounded-lg transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-gray-600 dark:text-gray-400">arrow_back</span>
+                    </button>
+                    <div>
+                        <h2 className="text-text-main dark:text-white text-[22px] font-bold leading-tight tracking-[-0.015em]">
+                            {view === 'full' ? 'Full Tests' : 'Part Tests'}
+                        </h2>
+                        <span className="text-text-secondary dark:text-gray-400 text-sm">
+                            {sortedProjects.length} project{sortedProjects.length !== 1 ? 's' : ''}
+                        </span>
+                    </div>
                   </div>
-                  <p className="text-text-main dark:text-white font-medium mb-2">No projects yet</p>
-                  <p className="text-text-secondary dark:text-gray-400 text-sm mb-4">Create your first test to get started</p>
-                  <button
-                    onClick={onCreateNew}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-semibold hover:bg-primary/90 transition-all"
-                  >
-                    <span className="material-symbols-outlined text-base">add</span>
-                    Create New Test
-                  </button>
+                   <button
+                      onClick={() => onCreateNew(view === 'full' ? 'Full' : 'Part')}
+                      className="flex items-center justify-center gap-2 rounded-lg h-10 px-5 bg-primary text-white text-sm font-bold hover:bg-primary/90 transition-all shadow-md">
+                      <span className="material-symbols-outlined text-lg">add</span>
+                      Create New {view === 'full' ? 'Full' : 'Part'} Test
+                   </button>
                 </div>
-              ) : (
-                <div className="bg-white/80 dark:bg-background-dark/80 border border-border-light dark:border-gray-700 rounded-xl overflow-hidden backdrop-blur-sm">
-                  <ul className="divide-y divide-border-light dark:divide-gray-700">
-                    {sortedProjects.map(project => (
-                      <li key={project.id} onClick={() => onLoadProject(project.id)} className="flex items-center justify-between p-4 hover:bg-background-light/50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer">
-                        <div className="flex items-center gap-4">
-                          <div className="flex items-center justify-center size-10 rounded-full bg-primary/10 text-primary">
-                            <span className="material-symbols-outlined">edit_document</span>
-                          </div>
-                          <div>
-                            <p className="font-medium text-text-main dark:text-white">{project.testCode}</p>
-                            <p className="text-sm text-text-secondary dark:text-gray-400">
-                              {project.description || 'No description'} • {getRelativeTime(project.lastModified)}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <div className="hidden sm:flex items-center gap-1 px-2 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
-                            <span className="material-symbols-outlined text-sm">trending_up</span>
-                            {project.progress}%
-                          </div>
-                          <button
-                            onClick={(e) => handleDeleteClick(e, project.id, project.testCode)}
-                            className="p-1 text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400 transition-colors rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20">
-                            <span className="material-symbols-outlined text-xl">delete</span>
-                          </button>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
+                <div className="flex flex-col p-4 pb-8">
+                  {sortedProjects.length === 0 ? (
+                    <div className="bg-white/80 dark:bg-background-dark/80 border border-border-light dark:border-gray-700 rounded-xl p-8 text-center backdrop-blur-sm">
+                      <div className="flex items-center justify-center size-16 rounded-full bg-primary/10 text-primary mx-auto mb-4">
+                        <span className="material-symbols-outlined text-3xl">folder_open</span>
+                      </div>
+                      <p className="text-text-main dark:text-white font-medium mb-2">No projects yet</p>
+                      <p className="text-text-secondary dark:text-gray-400 text-sm mb-4">Create your first test to get started</p>
+                      <button
+                        onClick={() => onCreateNew(view === 'full' ? 'Full' : 'Part')}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-semibold hover:bg-primary/90 transition-all"
+                      >
+                        <span className="material-symbols-outlined text-base">add</span>
+                        Create New Test
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="bg-white/80 dark:bg-background-dark/80 border border-border-light dark:border-gray-700 rounded-xl overflow-hidden backdrop-blur-sm">
+                      <ul className="divide-y divide-border-light dark:divide-gray-700">
+                        {sortedProjects.map(project => (
+                          <li key={project.id} onClick={() => onLoadProject(project.id)} className="flex items-center justify-between p-4 hover:bg-background-light/50 dark:hover:bg-gray-800/50 transition-colors cursor-pointer">
+                            <div className="flex items-center gap-4">
+                              <div className="flex items-center justify-center size-10 rounded-full bg-primary/10 text-primary">
+                                <span className="material-symbols-outlined">edit_document</span>
+                              </div>
+                              <div>
+                                <p className="font-medium text-text-main dark:text-white">{project.testCode}</p>
+                                <p className="text-sm text-text-secondary dark:text-gray-400">
+                                  {project.description || 'No description'} • {getRelativeTime(project.lastModified)}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="hidden sm:flex items-center gap-1 px-2 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium">
+                                <span className="material-symbols-outlined text-sm">trending_up</span>
+                                {project.progress}%
+                              </div>
+                              <button
+                                onClick={(e) => handleDeleteClick(e, project.id, project.testCode)}
+                                className="p-1 text-gray-500 hover:text-red-500 dark:text-gray-400 dark:hover:text-red-400 transition-colors rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20">
+                                <span className="material-symbols-outlined text-xl">delete</span>
+                              </button>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              </>
+            )}
           </div>
         </div>
       </div>
