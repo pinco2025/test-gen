@@ -44,6 +44,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     incrementFrequency: (uuid: string) => ipcRenderer.invoke('questions:incrementFrequency', uuid),
     decrementFrequency: (uuid: string) => ipcRenderer.invoke('questions:decrementFrequency', uuid),
     updateQuestion: (uuid: string, updates: Partial<Question>) => ipcRenderer.invoke('questions:updateQuestion', uuid, updates),
+    bulkUpdateQuestions: (uuids: string[], updates: Partial<Question>) => ipcRenderer.invoke('questions:bulkUpdate', uuids, updates),
     createQuestion: (question: Question) => ipcRenderer.invoke('questions:createQuestion', question),
     getSolution: (uuid: string) => ipcRenderer.invoke('questions:getSolution', uuid),
     saveSolution: (uuid: string, solutionText: string, solutionImageUrl: string) => ipcRenderer.invoke('questions:saveSolution', uuid, solutionText, solutionImageUrl)
