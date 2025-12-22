@@ -18,7 +18,9 @@ export type WorkflowStep =
   | 'test-review'
   | 'edit-question'
   | 'complete'
-  | 'full-test-creation';
+  | 'full-test-creation'
+  | 'full-test-overview'
+  | 'full-test-question-select';
 
 // Chapter definition
 export interface Chapter {
@@ -142,6 +144,7 @@ export interface ProjectState {
   currentSectionIndex: number;
   constraintConfig: ConstraintConfig;
   currentStep: string; // WorkflowStep as string
+  activeChapterCode?: string; // For Full Tests: currently selected chapter
   createdAt: string;
   lastModified: string;
   lastActiveQuestionUuid?: string | null; // Track the last viewed/edited question

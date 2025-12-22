@@ -19,6 +19,7 @@ import {
 import { sortQuestionsForSection } from './utils/sorting';
 import TestCreationForm from './components/TestCreationForm';
 import FullTestCreation, { FullTestJson } from './components/FullTestCreation';
+import FullTestOverview from './components/FullTestOverview';
 import SectionConfiguration from './components/SectionConfiguration';
 import QuestionSelection from './components/QuestionSelection';
 import ProjectTabs from './components/ProjectTabs';
@@ -40,6 +41,7 @@ interface ProjectData {
   currentSectionIndex: number;
   constraintConfig: ConstraintConfig;
   currentStep: WorkflowStep;
+  activeChapterCode?: string;
   createdAt: string; // Track creation time
 }
 
@@ -573,7 +575,7 @@ function App() {
                 sections: sections,
                 currentSectionIndex: 0,
                 constraintConfig: { minIdx: 1, Sm: 0.1, Sh: 0.1 },
-                currentStep: 'section-config-physics', // Start at beginning for now
+                currentStep: 'full-test-overview', // Start at overview
                 createdAt: now
             }
         }));
@@ -585,7 +587,7 @@ function App() {
                 sections: sections,
                 currentSectionIndex: 0,
                 constraintConfig: { minIdx: 1, Sm: 0.1, Sh: 0.1 },
-                currentStep: 'section-config-physics',
+                currentStep: 'full-test-overview',
                 createdAt: now,
                 lastModified: now
             };
@@ -666,36 +668,52 @@ function App() {
       selectedQuestions
     };
 
-    if (currentSectionIndex < 2) {
-      const newIndex = currentSectionIndex + 1;
-      const stepMap: { [key: number]: WorkflowStep } = {
-        1: 'section-config-chemistry',
-        2: 'section-config-math'
-      };
-
-      updateCurrentProject({
-        sections: updatedSections,
-        currentSectionIndex: newIndex,
-        currentStep: stepMap[newIndex]
-      });
+    if (testMetadata?.testType === 'Full') {
+        // Return to overview
+        updateCurrentProject({
+            sections: updatedSections,
+            currentStep: 'full-test-overview',
+            activeChapterCode: undefined // Clear active chapter
+        });
     } else {
-      updateCurrentProject({
-        sections: updatedSections,
-        currentStep: 'test-review'
-      });
+        if (currentSectionIndex < 2) {
+            const newIndex = currentSectionIndex + 1;
+            const stepMap: { [key: number]: WorkflowStep } = {
+                1: 'section-config-chemistry',
+                2: 'section-config-math'
+            };
+
+            updateCurrentProject({
+                sections: updatedSections,
+                currentSectionIndex: newIndex,
+                currentStep: stepMap[newIndex]
+            });
+        } else {
+            updateCurrentProject({
+                sections: updatedSections,
+                currentStep: 'test-review'
+            });
+        }
     }
   };
 
   const handleBackFromSelection = () => {
-    const stepMap: { [key: number]: WorkflowStep } = {
-      0: 'section-config-physics',
-      1: 'section-config-chemistry',
-      2: 'section-config-math'
-    };
+    if (testMetadata?.testType === 'Full') {
+         updateCurrentProject({
+            currentStep: 'full-test-overview',
+            activeChapterCode: undefined
+        });
+    } else {
+        const stepMap: { [key: number]: WorkflowStep } = {
+            0: 'section-config-physics',
+            1: 'section-config-chemistry',
+            2: 'section-config-math'
+        };
 
-    updateCurrentProject({
-      currentStep: stepMap[currentSectionIndex]
-    });
+        updateCurrentProject({
+            currentStep: stepMap[currentSectionIndex]
+        });
+    }
   };
 
   const handleNavigation = (targetStep: WorkflowStep, sectionIndex?: number) => {
@@ -1070,6 +1088,24 @@ function App() {
       case 'test-creation':
         return <TestCreationForm onSubmit={handleTestCreation} defaultTestType={newTestType} />;
 
+      case 'full-test-overview':
+        if (!testMetadata) return <div>Loading...</div>;
+        return (
+            <FullTestOverview
+                testMetadata={testMetadata}
+                sections={sections}
+                onSelectChapter={(sectionIndex, chapterCode) => {
+                    updateCurrentProject({
+                        currentSectionIndex: sectionIndex,
+                        activeChapterCode: chapterCode,
+                        currentStep: 'full-test-question-select'
+                    });
+                }}
+                onReview={() => updateCurrentProject({ currentStep: 'test-review' })}
+                onBack={() => setIsCreatingNew(false)} // Or dashboard
+            />
+        );
+
       case 'section-config-physics':
       case 'section-config-chemistry':
       case 'section-config-math':
@@ -1086,11 +1122,27 @@ function App() {
       case 'question-select-physics':
       case 'question-select-chemistry':
       case 'question-select-math':
+      case 'full-test-question-select':
         const currentSection = sections[currentSectionIndex];
         if (!currentSection) return <div>Loading...</div>;
+
+        // Full Test Logic
+        const isFullTest = testMetadata?.testType === 'Full';
+        const activeChapterCode = currentProject?.activeChapterCode;
+
+        let limitCount = undefined;
+        let lockedDivision: 1 | 2 | undefined = undefined;
+
+        if (isFullTest && activeChapterCode) {
+            limitCount = currentSection.betaConstraint?.weightage?.[activeChapterCode];
+            // Infer division from section type (Div 1 or Div 2)
+            if (currentSection.betaConstraint?.type === "Div 1") lockedDivision = 1;
+            if (currentSection.betaConstraint?.type === "Div 2") lockedDivision = 2;
+        }
+
         return (
           <QuestionSelection
-            key={`${currentProjectId}-${currentSectionIndex}`}
+            key={`${currentProjectId}-${currentSectionIndex}-${activeChapterCode || ''}`}
             sectionName={currentSection.name}
             chapters={currentSection.chapters}
             alphaConstraint={currentSection.alphaConstraint}
@@ -1104,6 +1156,10 @@ function App() {
             scrollToQuestionUuid={lastEditedQuestionUuid}
             onScrollComplete={() => setLastEditedQuestionUuid(null)}
             refreshTrigger={questionsRefreshTrigger}
+            // New props for Full Test
+            lockedChapterCode={activeChapterCode}
+            limitCount={limitCount}
+            lockedDivision={lockedDivision}
           />
         );
 
