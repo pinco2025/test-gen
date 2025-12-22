@@ -17,7 +17,8 @@ export type WorkflowStep =
   | 'question-select-math'
   | 'test-review'
   | 'edit-question'
-  | 'complete';
+  | 'complete'
+  | 'full-test-creation';
 
 // Chapter definition
 export interface Chapter {
@@ -151,6 +152,7 @@ export interface ProjectInfo {
   id: string;
   testCode: string;
   description: string;
+  testType?: TestType;
   createdAt: string;
   lastModified: string;
   progress: number; // 0-100 percentage

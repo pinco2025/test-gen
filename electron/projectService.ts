@@ -171,6 +171,7 @@ class ProjectService {
             id: projectState.id,
             testCode: projectState.testMetadata?.code || 'Untitled',
             description: projectState.testMetadata?.description || '',
+            testType: projectState.testMetadata?.testType,
             createdAt: projectState.createdAt,
             lastModified: projectState.lastModified,
             progress
