@@ -6,6 +6,7 @@ interface QuestionRowProps {
   question: Question;
   index: number;
   selected: boolean;
+  isSelectionMode?: boolean;
   isDivision2Question: boolean;
   onToggle: (question: Question) => void;
   onEdit: (e: React.MouseEvent, question: Question) => void;
@@ -18,6 +19,7 @@ const QuestionRow: React.FC<QuestionRowProps> = React.memo(({
   question,
   index,
   selected,
+  isSelectionMode = false,
   isDivision2Question,
   onToggle,
   onEdit,
@@ -51,15 +53,25 @@ const QuestionRow: React.FC<QuestionRowProps> = React.memo(({
         }`}
       >
         <div className="flex justify-between items-start mb-2">
-          <div className="flex-1">
-            {isDivision2Question && (
-              <div className="inline-flex items-center gap-1.5 bg-yellow-500 text-white text-xs font-semibold px-2 py-1 rounded">
-                <span className="material-symbols-outlined text-sm">edit_note</span>
-                NUMERICAL ({question.answer}) - Division 2 Only
-              </div>
-            )}
+          <div className="flex items-center gap-3 flex-1">
+             {isSelectionMode && (
+                <div className="flex items-center justify-center p-1">
+                     <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${selected ? 'bg-primary border-primary' : 'bg-transparent border-gray-400 dark:border-gray-500'}`}>
+                         {selected && <span className="material-symbols-outlined text-white text-sm font-bold">check</span>}
+                     </div>
+                </div>
+             )}
+            <div className="flex-1">
+                {isDivision2Question && (
+                <div className="inline-flex items-center gap-1.5 bg-yellow-500 text-white text-xs font-semibold px-2 py-1 rounded">
+                    <span className="material-symbols-outlined text-sm">edit_note</span>
+                    NUMERICAL ({question.answer}) - Division 2 Only
+                </div>
+                )}
+            </div>
           </div>
 
+          {!isSelectionMode && (
           <div className="relative" ref={menuRef}>
             <button
               onClick={(e) => {
@@ -94,6 +106,7 @@ const QuestionRow: React.FC<QuestionRowProps> = React.memo(({
               </div>
             )}
           </div>
+          )}
         </div>
         <QuestionDisplay
           question={question}

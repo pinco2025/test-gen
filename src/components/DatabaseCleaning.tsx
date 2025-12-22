@@ -10,6 +10,7 @@ import {
 import FilterMenu, { FilterState } from './FilterMenu';
 import QuestionRow from './QuestionRow';
 import QuestionEditor from './QuestionEditor';
+import BulkEditModal from './BulkEditModal';
 import { useNotification } from './Notification';
 
 interface DatabaseCleaningProps {
@@ -27,12 +28,15 @@ interface ItemData {
   onClone: (e: React.MouseEvent, question: Question) => void;
   setSize: (index: number, size: number) => void;
   zoomLevel: number;
+  isSelectionMode: boolean;
+  selectedUuids: Set<string>;
+  onToggleSelect: (uuid: string) => void;
 }
 
 const isNumericalAnswer = (question: Question): boolean => !['A', 'B', 'C', 'D'].includes(question.answer.toUpperCase().trim());
 
 const Row = ({ index, style, data }: ListChildComponentProps<ItemData>) => {
-  const { questions, onEdit, onClone, setSize, zoomLevel } = data;
+  const { questions, onEdit, onClone, setSize, zoomLevel, isSelectionMode, selectedUuids, onToggleSelect } = data;
   const question = questions[index];
   const rowRef = useRef<HTMLDivElement>(null);
 
@@ -50,9 +54,10 @@ const Row = ({ index, style, data }: ListChildComponentProps<ItemData>) => {
         <QuestionRow
           question={question}
           index={index}
-          selected={false}
+          selected={selectedUuids.has(question.uuid)}
+          isSelectionMode={isSelectionMode}
           isDivision2Question={isNumericalAnswer(question)}
-          onToggle={() => {}} // No toggle functionality
+          onToggle={(q) => isSelectionMode && onToggleSelect(q.uuid)}
           onEdit={onEdit}
           onClone={onClone}
           highlightCorrectAnswer={true}
@@ -84,11 +89,71 @@ export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
       verificationLevel1: 'all', verificationLevel2: 'all'
   });
 
+  // Bulk Selection State
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedUuids, setSelectedUuids] = useState<Set<string>>(new Set());
+  const [showBulkEditModal, setShowBulkEditModal] = useState(false);
+
   // Local editing state
   const [editingQuestion, setEditingQuestion] = useState<{ question: Question, solution?: Solution } | null>(null);
 
   const handleFilterChange = (newFilters: Partial<FilterState>) => {
     setFilters(prev => ({ ...prev, ...newFilters }));
+  };
+
+  const toggleSelectionMode = () => {
+    setIsSelectionMode(prev => {
+        if (prev) {
+            setSelectedUuids(new Set()); // Clear selection when exiting
+        }
+        return !prev;
+    });
+  };
+
+  const toggleQuestionSelection = useCallback((uuid: string) => {
+      setSelectedUuids(prev => {
+          const next = new Set(prev);
+          if (next.has(uuid)) {
+              next.delete(uuid);
+          } else {
+              next.add(uuid);
+          }
+          return next;
+      });
+  }, []);
+
+  const selectAllFiltered = () => {
+      const allIds = filteredQuestions.map(q => q.uuid);
+      setSelectedUuids(new Set(allIds));
+  };
+
+  const handleBulkUpdate = async (updates: Partial<Question>) => {
+      if (!window.electronAPI) return;
+      if (selectedUuids.size === 0) return;
+
+      const uuids = Array.from(selectedUuids);
+      try {
+          const result = await window.electronAPI.questions.bulkUpdateQuestions(uuids, updates);
+          if (result.success) {
+              addNotification('success', `Successfully updated ${result.updatedCount} questions.`);
+              setShowBulkEditModal(false);
+              setIsSelectionMode(false);
+              setSelectedUuids(new Set());
+
+              // Trigger refresh logic - reusing existing pattern or forcing re-fetch
+              // Since availableQuestions is local, we need to update it or reload
+              // Reloading is safer for bulk updates
+              if (activeChapterCode) {
+                 const questions = await window.electronAPI.questions.getAllForSubject([activeChapterCode]);
+                 setAvailableQuestions(questions);
+              }
+          } else {
+              addNotification('error', 'Failed to update questions.');
+          }
+      } catch (error) {
+          console.error("Bulk update failed:", error);
+          addNotification('error', 'An error occurred during bulk update.');
+      }
   };
 
   const handleEdit = (e: React.MouseEvent, question: Question) => {
@@ -243,8 +308,11 @@ export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
     onEdit: handleEdit,
     onClone: handleClone,
     setSize,
-    zoomLevel
-  }), [filteredQuestions, handleEdit, handleClone, setSize, zoomLevel]);
+    zoomLevel,
+    isSelectionMode,
+    selectedUuids,
+    onToggleSelect: toggleQuestionSelection
+  }), [filteredQuestions, handleEdit, handleClone, setSize, zoomLevel, isSelectionMode, selectedUuids, toggleQuestionSelection]);
 
   const handleZoom = (direction: 'in' | 'out') => {
     setZoomLevel(prev => {
@@ -380,6 +448,16 @@ export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
 
   return (
     <div className="w-full h-full flex flex-col overflow-y-auto overflow-x-hidden bg-gray-50 dark:bg-[#121121]">
+        {showBulkEditModal && (
+            <BulkEditModal
+                selectedCount={selectedUuids.size}
+                onSave={handleBulkUpdate}
+                onCancel={() => setShowBulkEditModal(false)}
+                availableTypes={availableTypes}
+                availableYears={availableYears}
+            />
+        )}
+
       {/* Subject Tabs */}
       <div className="flex-shrink-0 bg-white dark:bg-[#1e1e2d] border-b border-gray-200 dark:border-[#2d2d3b] px-6 py-0 sticky top-0 z-20 shadow-sm">
         <div className="flex gap-8">
@@ -453,8 +531,44 @@ export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 pointer-events-none">fingerprint</span>
                 <input type="text" placeholder="UUID" value={searchUuid} onChange={(e) => setSearchUuid(e.target.value)} className="w-full pl-12 pr-4 py-2 border border-gray-200 dark:border-[#2d2d3b] rounded-full bg-gray-50 dark:bg-[#252535] text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-transparent transition-all" />
               </div>
+              <button
+                  onClick={toggleSelectionMode}
+                  className={`px-4 py-2 rounded-full border transition-all flex items-center gap-2 font-medium ${
+                      isSelectionMode
+                      ? 'bg-primary text-white border-primary shadow-md'
+                      : 'bg-white dark:bg-[#252535] border-gray-200 dark:border-[#2d2d3b] text-gray-700 dark:text-gray-300 hover:border-primary'
+                  }`}
+              >
+                  <span className="material-symbols-outlined">{isSelectionMode ? 'check_box' : 'check_box_outline_blank'}</span>
+                  {isSelectionMode ? 'Done' : 'Select'}
+              </button>
               <FilterMenu chapters={[]} availableTypes={availableTypes} availableYears={availableYears} currentFilters={filters} onFilterChange={handleFilterChange} />
             </div>
+
+            {/* Bulk Selection Actions Bar */}
+            {isSelectionMode && (
+                <div className="flex-shrink-0 flex items-center justify-between p-3 mb-4 bg-primary/5 border border-primary/20 rounded-xl animate-fade-in">
+                    <div className="flex items-center gap-4">
+                         <span className="font-semibold text-primary ml-2">{selectedUuids.size} Selected</span>
+                         <button
+                            onClick={selectAllFiltered}
+                            className="text-sm font-medium text-text-secondary hover:text-primary transition-colors underline"
+                         >
+                            Select All {filteredQuestions.length}
+                         </button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setShowBulkEditModal(true)}
+                            disabled={selectedUuids.size === 0}
+                            className="px-4 py-1.5 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-all flex items-center gap-2"
+                        >
+                            <span className="material-symbols-outlined text-[18px]">edit_note</span>
+                            Bulk Edit
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* Questions List */}
             <div className="flex-1 relative questions-panel border-t border-gray-100 dark:border-[#2d2d3b] mt-1 pt-4">

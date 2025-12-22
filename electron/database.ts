@@ -472,6 +472,64 @@ export class DatabaseService {
   }
 
   /**
+   * Bulk update question properties
+   */
+  bulkUpdateQuestions(uuids: string[], updates: Partial<Question>): { success: boolean, updatedCount: number } {
+    if (!this.db) throw new Error('Database not connected');
+    if (uuids.length === 0) return { success: true, updatedCount: 0 };
+
+    try {
+      const allowedFields = [
+        'type', 'year',
+        'tag_1', 'tag_2', 'tag_3', 'tag_4',
+        'topic_tags', 'importance_level',
+        'verification_level_1', 'verification_level_2',
+        'jee_mains_relevance', 'is_multi_concept', 'related_concepts',
+        'scary', 'calc'
+      ];
+
+      // Filter updates to only include allowed fields
+      const filteredUpdates: Partial<Question> = {};
+      Object.keys(updates).forEach(key => {
+        if (allowedFields.includes(key)) {
+          // @ts-ignore
+          filteredUpdates[key] = updates[key];
+        }
+      });
+
+      if (Object.keys(filteredUpdates).length === 0) {
+          console.log('[DB] No valid updates for bulk operation');
+          return { success: false, updatedCount: 0 };
+      }
+
+      const setClauses: string[] = [];
+      const params: any[] = [];
+
+      for (const [key, value] of Object.entries(filteredUpdates)) {
+        setClauses.push(`${key} = ?`);
+        params.push(value);
+      }
+      setClauses.push('updated_at = CURRENT_TIMESTAMP');
+
+      const placeholders = uuids.map(() => '?').join(',');
+      params.push(...uuids);
+
+      const query = `UPDATE questions SET ${setClauses.join(', ')} WHERE uuid IN (${placeholders})`;
+      console.log('[DB] Bulk Update query:', query, 'params count:', params.length);
+
+      const stmt = this.db.prepare(query);
+      const result = stmt.run(...params);
+
+      console.log(`[DB] Bulk updated ${result.changes} questions`);
+      return { success: true, updatedCount: result.changes };
+
+    } catch (error) {
+      console.error('[DB] Error in bulk update:', error);
+      return { success: false, updatedCount: 0 };
+    }
+  }
+
+  /**
    * Create a new question
    */
   createQuestion(question: Question): boolean {

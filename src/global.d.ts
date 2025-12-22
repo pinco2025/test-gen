@@ -82,6 +82,7 @@ declare global {
         incrementFrequency: (uuid: string) => Promise<boolean>;
         decrementFrequency: (uuid: string) => Promise<boolean>;
         updateQuestion: (uuid: string, updates: Partial<Question>) => Promise<boolean>;
+        bulkUpdateQuestions: (uuids: string[], updates: Partial<Question>) => Promise<{ success: boolean, updatedCount: number }>;
         createQuestion: (question: Question) => Promise<boolean>;
         getSolution: (uuid: string) => Promise<Solution | null>;
         saveSolution: (uuid: string, solutionText: string, solutionImageUrl: string) => Promise<boolean>;
