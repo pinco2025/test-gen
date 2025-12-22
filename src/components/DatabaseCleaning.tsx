@@ -455,6 +455,9 @@ export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
                 onCancel={() => setShowBulkEditModal(false)}
                 availableTypes={availableTypes}
                 availableYears={availableYears}
+                availableChapters={Object.entries(chaptersData).flatMap(([subject, chapters]: [string, any]) =>
+                    chapters.map((c: any) => ({ code: c.code, name: c.name, subject }))
+                )}
             />
         )}
 

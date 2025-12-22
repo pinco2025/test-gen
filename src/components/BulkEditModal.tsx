@@ -7,6 +7,7 @@ interface BulkEditModalProps {
   onCancel: () => void;
   availableTypes: string[];
   availableYears: string[];
+  availableChapters: { code: string; name: string; subject: string }[];
 }
 
 const BulkEditModal: React.FC<BulkEditModalProps> = ({
@@ -14,7 +15,8 @@ const BulkEditModal: React.FC<BulkEditModalProps> = ({
   onSave,
   onCancel,
   availableTypes,
-  availableYears
+  availableYears,
+  availableChapters
 }) => {
   // We use "undefined" to represent "No Change"
   const [updates, setUpdates] = useState<Partial<Question>>({});
@@ -71,6 +73,36 @@ const BulkEditModal: React.FC<BulkEditModalProps> = ({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Topic (Tag 1) */}
+                <div className="space-y-2">
+                    <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Topic (Tag 1)</label>
+                    <input
+                        type="text"
+                        className="w-full px-3 py-2 bg-white dark:bg-[#121121] border border-gray-300 dark:border-[#2d2d3b] rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-gray-900 dark:text-white"
+                        value={updates.tag_1 || ''}
+                        placeholder={updates.tag_1 === undefined ? "-- No Change --" : "Enter topic name"}
+                        onChange={(e) => handleChange('tag_1', e.target.value === '' ? '__NO_CHANGE__' : e.target.value)}
+                    />
+                    {updates.tag_1 === undefined && <div className="text-xs text-gray-500 italic">Leave empty to keep original values</div>}
+                </div>
+
+                {/* Chapter Code (Tag 2) */}
+                <div className="space-y-2">
+                    <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Chapter Code (Tag 2)</label>
+                    <select
+                        className="w-full px-3 py-2 bg-white dark:bg-[#121121] border border-gray-300 dark:border-[#2d2d3b] rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent outline-none text-gray-900 dark:text-white"
+                        value={updates.tag_2 || '__NO_CHANGE__'}
+                        onChange={(e) => handleChange('tag_2', e.target.value)}
+                    >
+                        <option value="__NO_CHANGE__" className="text-gray-500 italic">-- No Change --</option>
+                        {availableChapters.map(chapter => (
+                            <option key={chapter.code} value={chapter.code}>
+                                {chapter.code} - {chapter.name} ({chapter.subject})
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
                 {/* Question Type */}
                 <div className="space-y-2">
                     <label className="text-sm font-semibold text-gray-700 dark:text-gray-300">Question Type</label>
