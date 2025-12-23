@@ -371,9 +371,19 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
           {sectionName} - Question Selection
         </h2>
         <div className="flex gap-2 text-sm font-semibold">
-          <span className={`px-3 py-1 rounded-full ${summary.division1 === 20 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>Div 1: {summary.division1}/20</span>
-          <span className={`px-3 py-1 rounded-full ${summary.division2 === 5 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>Div 2: {summary.division2}/5</span>
-          <span className="px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white">Total: {summary.total}/25</span>
+          {limitCount !== undefined && lockedChapterCode ? (
+             // Full Test Header
+             <span className={`px-3 py-1 rounded-full ${selectedQuestions.filter(sq => sq.chapterCode === lockedChapterCode).length === limitCount ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'}`}>
+                Selected: {selectedQuestions.filter(sq => sq.chapterCode === lockedChapterCode).length} / {limitCount}
+             </span>
+          ) : (
+            // Part Test Header
+            <>
+              <span className={`px-3 py-1 rounded-full ${summary.division1 === 20 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>Div 1: {summary.division1}/20</span>
+              <span className={`px-3 py-1 rounded-full ${summary.division2 === 5 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>Div 2: {summary.division2}/5</span>
+              <span className="px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white">Total: {summary.total}/25</span>
+            </>
+          )}
         </div>
       </div>
       </div>
@@ -417,8 +427,30 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
                         <div>
                             <h4 className="text-xs font-bold uppercase text-gray-500 dark:text-gray-400 mb-2">Topic Breakdown</h4>
                             <div className="space-y-2">
-                                {Array.from(new Set(filteredQuestions.filter(q => selectedUuids.has(q.uuid)).map(q => q.tag_1 || 'Unspecified'))).map(topic => {
-                                    const count = filteredQuestions.filter(q => selectedUuids.has(q.uuid) && (q.tag_1 || 'Unspecified') === topic).length;
+                                {Array.from(new Set(filteredQuestions.filter(q => selectedUuids.has(q.uuid)).flatMap(q => {
+                                    if (!q.topic_tags) return ['Unspecified'];
+                                    try {
+                                        const tags = JSON.parse(q.topic_tags);
+                                        return Array.isArray(tags) && tags.length > 0 ? tags : ['Unspecified'];
+                                    } catch {
+                                        // If it's a plain string, use it. If malformed JSON, treat as Unspecified.
+                                        return typeof q.topic_tags === 'string' && q.topic_tags.trim() !== '' ? [q.topic_tags] : ['Unspecified'];
+                                    }
+                                }))).map(topic => {
+                                    const count = filteredQuestions.filter(q => {
+                                        if (!selectedUuids.has(q.uuid)) return false;
+                                        if (!q.topic_tags) return topic === 'Unspecified';
+
+                                        let tags: string[] = [];
+                                        try {
+                                            const parsed = JSON.parse(q.topic_tags);
+                                            tags = Array.isArray(parsed) && parsed.length > 0 ? parsed : ['Unspecified'];
+                                        } catch {
+                                            tags = typeof q.topic_tags === 'string' && q.topic_tags.trim() !== '' ? [q.topic_tags] : ['Unspecified'];
+                                        }
+                                        return tags.includes(topic);
+                                    }).length;
+
                                     return (
                                         <div key={topic} className="flex justify-between items-center text-sm p-2 bg-gray-50 dark:bg-[#252535] rounded-lg">
                                             <span className="truncate max-w-[150px]" title={topic}>{topic}</span>
