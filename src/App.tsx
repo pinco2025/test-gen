@@ -98,6 +98,7 @@ function App() {
 
   // Add Question Modal state
   const [isAddQuestionModalOpen, setIsAddQuestionModalOpen] = useState(false);
+  const [switchTargetQuestionUuid, setSwitchTargetQuestionUuid] = useState<string | null>(null);
   const [questionsRefreshTrigger, setQuestionsRefreshTrigger] = useState(0);
 
   // Export Test Modal state
@@ -284,6 +285,71 @@ function App() {
     } catch (error) {
       console.error(error);
       addNotification('error', 'An error occurred while adding the question.');
+    }
+  };
+
+  const handleSwitchQuestion = async (newQuestion: Question, newSolution?: Partial<Solution>) => {
+    if (!currentProjectId || !switchTargetQuestionUuid || !window.electronAPI) return;
+
+    try {
+        // 1. Save new question
+        const success = await window.electronAPI.questions.createQuestion(newQuestion);
+        if (!success) {
+            addNotification('error', 'Failed to save new question to database.');
+            return;
+        }
+
+        // 2. Save solution if exists
+        if (newSolution && (newSolution.solution_text || newSolution.solution_image_url)) {
+            await window.electronAPI.questions.saveSolution(
+                newQuestion.uuid,
+                newSolution.solution_text || '',
+                newSolution.solution_image_url || ''
+            );
+        }
+
+        // 3. Update links
+        const originalQuestion = await window.electronAPI.questions.getByUUID(switchTargetQuestionUuid);
+        if (originalQuestion) {
+            // Update original question links
+            const originalLinks = originalQuestion.links ? JSON.parse(originalQuestion.links) : [];
+            if (!originalLinks.includes(newQuestion.uuid)) {
+                originalLinks.push(newQuestion.uuid);
+                await window.electronAPI.questions.updateQuestion(originalQuestion.uuid, {
+                    links: JSON.stringify(originalLinks)
+                });
+            }
+
+            // Update new question links
+            const newLinks = [originalQuestion.uuid];
+            await window.electronAPI.questions.updateQuestion(newQuestion.uuid, {
+                links: JSON.stringify(newLinks)
+            });
+        }
+
+        // 4. Replace in project state
+        const updatedSections = sections.map(section => ({
+            ...section,
+            selectedQuestions: section.selectedQuestions.map(sq => {
+                if (sq.question.uuid === switchTargetQuestionUuid) {
+                    return {
+                        ...sq,
+                        question: newQuestion,
+                        status: 'pending' // Reset status for the new question? Or keep same? Usually pending for review.
+                    };
+                }
+                return sq;
+            })
+        }));
+
+        updateCurrentProject({ sections: updatedSections });
+        addNotification('success', 'Question switched successfully!');
+        setSwitchTargetQuestionUuid(null);
+        setQuestionsRefreshTrigger(prev => prev + 1);
+
+    } catch (error) {
+        console.error('Error switching question:', error);
+        addNotification('error', 'An error occurred while switching the question.');
     }
   };
 
@@ -1174,6 +1240,7 @@ function App() {
             onUpdateQuestionStatus={handleQuestionStatusUpdate}
             initialQuestionUuid={lastEditedQuestionUuid}
             onNavigationComplete={() => setLastEditedQuestionUuid(null)}
+            onSwitchQuestion={(uuid) => setSwitchTargetQuestionUuid(uuid)}
           />
         );
 
@@ -1466,6 +1533,14 @@ function App() {
         <AddQuestionModal
           onClose={() => setIsAddQuestionModalOpen(false)}
           onSave={handleAddQuestion}
+        />
+      )}
+
+      {/* Switch Question Modal */}
+      {switchTargetQuestionUuid && (
+        <AddQuestionModal
+            onClose={() => setSwitchTargetQuestionUuid(null)}
+            onSave={handleSwitchQuestion}
         />
       )}
 

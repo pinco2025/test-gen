@@ -37,7 +37,8 @@ export class DatabaseService {
         'legacy_b': "TEXT",
         'legacy_c': "TEXT",
         'legacy_d': "TEXT",
-        'legacy_solution': "TEXT"
+        'legacy_solution': "TEXT",
+        'links': "TEXT"
       };
 
       for (const [colName, colDef] of Object.entries(newColumns)) {
@@ -434,7 +435,8 @@ export class DatabaseService {
         'verification_level_1', 'verification_level_2',
         'jee_mains_relevance', 'is_multi_concept', 'related_concepts',
         'scary', 'calc',
-        'legacy_question', 'legacy_a', 'legacy_b', 'legacy_c', 'legacy_d', 'legacy_solution'
+        'legacy_question', 'legacy_a', 'legacy_b', 'legacy_c', 'legacy_d', 'legacy_solution',
+        'links'
       ];
 
       const setClauses: string[] = [];
@@ -551,6 +553,7 @@ export class DatabaseService {
         'jee_mains_relevance', 'is_multi_concept', 'related_concepts',
         'scary', 'calc',
         'legacy_question', 'legacy_a', 'legacy_b', 'legacy_c', 'legacy_d', 'legacy_solution',
+        'links',
         'created_at', 'updated_at', 'frequency'
       ];
 
