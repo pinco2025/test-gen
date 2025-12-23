@@ -7,6 +7,9 @@ interface FullTestOverviewProps {
   onSelectChapter: (sectionIndex: number, chapterCode: string) => void;
   onReview: () => void;
   onBack: () => void;
+  // Controlled state for active section view
+  activeSectionIndex?: number | null;
+  onSectionIndexChange?: (index: number | null) => void;
 }
 
 const FullTestOverview: React.FC<FullTestOverviewProps> = ({
@@ -14,9 +17,23 @@ const FullTestOverview: React.FC<FullTestOverviewProps> = ({
   sections,
   onSelectChapter,
   onReview,
-  onBack
+  onBack,
+  activeSectionIndex: controlledActiveSectionIndex,
+  onSectionIndexChange
 }) => {
-  const [activeSectionIndex, setActiveSectionIndex] = useState<number | null>(null);
+  // Use controlled state if provided, otherwise local state
+  const [localActiveSectionIndex, setLocalActiveSectionIndex] = useState<number | null>(null);
+
+  const isControlled = controlledActiveSectionIndex !== undefined;
+  const activeSectionIndex = isControlled ? controlledActiveSectionIndex : localActiveSectionIndex;
+
+  const setActiveSectionIndex = (index: number | null) => {
+    if (isControlled && onSectionIndexChange) {
+      onSectionIndexChange(index);
+    } else {
+      setLocalActiveSectionIndex(index);
+    }
+  };
 
   // Calculate overall stats
   const stats = useMemo(() => {
@@ -47,8 +64,10 @@ const FullTestOverview: React.FC<FullTestOverviewProps> = ({
   const isTestComplete = stats.totalSelected === stats.totalRequired && stats.totalRequired > 0;
 
   // View: Chapter List for a Section
-  if (activeSectionIndex !== null) {
+  if (activeSectionIndex !== null && activeSectionIndex !== undefined) {
     const section = sections[activeSectionIndex];
+    if (!section) return <div>Error: Invalid section index</div>;
+
     const weightage = section.betaConstraint?.weightage || {};
 
     // Calculate chapter stats

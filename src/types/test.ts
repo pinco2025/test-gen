@@ -27,6 +27,7 @@ export interface Chapter {
   code: string; // e.g., "PHY01", "CHE01", "MAT01"
   name: string; // e.g., "Mechanics", "Organic Chemistry"
   level: number; // Importance/weightage (1-4): 1=low, 2=medium, 3=high, 4=very high
+  topics?: Record<string, string>; // Map of topic ID to topic name
 }
 
 // Chapters data structure
@@ -145,6 +146,7 @@ export interface ProjectState {
   constraintConfig: ConstraintConfig;
   currentStep: string; // WorkflowStep as string
   activeChapterCode?: string; // For Full Tests: currently selected chapter
+  fullTestSectionView?: number | null; // For Full Tests: persistent section view in overview
   createdAt: string;
   lastModified: string;
   lastActiveQuestionUuid?: string | null; // Track the last viewed/edited question
