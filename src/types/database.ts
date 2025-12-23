@@ -63,6 +63,9 @@ export interface Question {
   legacy_c: string | null;
   legacy_d: string | null;
   legacy_solution: string | null;
+
+  // Question Links
+  links: string | null; // JSON array of linked question UUIDs
 }
 
 export interface QuestionFilter {

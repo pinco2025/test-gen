@@ -90,6 +90,7 @@ const AddQuestionModal: React.FC<AddQuestionModalProps> = ({ onClose, onSave }) 
         legacy_c: data.legacy_c || null,
         legacy_d: data.legacy_d || null,
         legacy_solution: data.legacy_solution || null,
+        links: data.links || null,
         created_at: data.created_at || new Date().toISOString(),
         updated_at: data.updated_at || new Date().toISOString(),
         frequency: data.frequency || 0

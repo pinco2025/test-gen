@@ -166,32 +166,32 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 p-4 mt-8">
                 <button
                   onClick={() => setView('full')}
-                  className="group relative flex flex-col items-center justify-center h-64 rounded-2xl bg-white dark:bg-[#1e1e2d] border border-gray-200 dark:border-[#2d2d3b] hover:border-primary/50 transition-all hover:shadow-2xl overflow-hidden"
+                  className="group relative flex flex-col items-center justify-center h-64 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 dark:from-blue-600 dark:to-blue-900 border border-blue-400/50 hover:border-blue-300 transition-all hover:shadow-[0_0_30px_rgba(59,130,246,0.3)] hover:-translate-y-1 overflow-hidden"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-transparent dark:from-blue-900/10 dark:to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <span className="material-symbols-outlined text-7xl text-gray-400 group-hover:text-primary transition-colors mb-4 transform group-hover:scale-110 duration-300">
-                    description
-                  </span>
-                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white group-hover:text-primary transition-colors">
+                  <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-20 transition-opacity" />
+                  <div className="p-4 rounded-full bg-white/20 mb-4 backdrop-blur-sm group-hover:scale-110 transition-transform duration-300">
+                     <span className="material-symbols-outlined text-5xl text-white">description</span>
+                  </div>
+                  <h3 className="text-2xl font-black text-white tracking-tight">
                     Full Tests
                   </h3>
-                  <p className="text-gray-500 dark:text-gray-400 mt-2">
+                  <p className="text-blue-100 font-medium mt-2 text-center max-w-[200px]">
                     Create comprehensive full-syllabus tests
                   </p>
                 </button>
 
                 <button
                   onClick={() => setView('part')}
-                  className="group relative flex flex-col items-center justify-center h-64 rounded-2xl bg-white dark:bg-[#1e1e2d] border border-gray-200 dark:border-[#2d2d3b] hover:border-primary/50 transition-all hover:shadow-2xl overflow-hidden"
+                  className="group relative flex flex-col items-center justify-center h-64 rounded-2xl bg-gradient-to-br from-teal-500 to-teal-700 dark:from-teal-600 dark:to-teal-900 border border-teal-400/50 hover:border-teal-300 transition-all hover:shadow-[0_0_30px_rgba(20,184,166,0.3)] hover:-translate-y-1 overflow-hidden"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-br from-green-50 to-transparent dark:from-green-900/10 dark:to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <span className="material-symbols-outlined text-7xl text-gray-400 group-hover:text-primary transition-colors mb-4 transform group-hover:scale-110 duration-300">
-                    library_books
-                  </span>
-                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white group-hover:text-primary transition-colors">
+                  <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-20 transition-opacity" />
+                  <div className="p-4 rounded-full bg-white/20 mb-4 backdrop-blur-sm group-hover:scale-110 transition-transform duration-300">
+                     <span className="material-symbols-outlined text-5xl text-white">library_books</span>
+                  </div>
+                  <h3 className="text-2xl font-black text-white tracking-tight">
                     Part Tests
                   </h3>
-                  <p className="text-gray-500 dark:text-gray-400 mt-2">
+                  <p className="text-teal-100 font-medium mt-2 text-center max-w-[200px]">
                     Create focused chapter-wise or unit tests
                   </p>
                 </button>
