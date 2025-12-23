@@ -1,5 +1,5 @@
-import React, { useState, useRef } from 'react';
-import { SectionName } from '../types';
+import React, { useState, useRef, useEffect } from 'react';
+import { SectionName, ChaptersData } from '../types';
 
 interface FullTestCreationProps {
   onCancel: () => void;
@@ -33,6 +33,22 @@ const FullTestCreation: React.FC<FullTestCreationProps> = ({ onCancel, onProceed
   const [parsedData, setParsedData] = useState<FullTestJson | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeTestIndex, setActiveTestIndex] = useState<number>(0);
+  const [chaptersData, setChaptersData] = useState<ChaptersData | null>(null);
+
+  // Load chapters on mount
+  useEffect(() => {
+    const loadChapters = async () => {
+      if (window.electronAPI) {
+        try {
+          const data = await window.electronAPI.chapters.load();
+          setChaptersData(data);
+        } catch (error) {
+          console.error("Failed to load chapters:", error);
+        }
+      }
+    };
+    loadChapters();
+  }, []);
 
   // Ref to file input
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -63,6 +79,44 @@ const FullTestCreation: React.FC<FullTestCreationProps> = ({ onCancel, onProceed
     };
     reader.readAsText(file);
   };
+
+  const detectSubject = (weightage: SectionWeightage, chaptersData: ChaptersData): SectionName | null => {
+    const codes = Object.keys(weightage);
+    if (codes.length === 0) return null;
+
+    // Check Physics
+    if (chaptersData.Physics && chaptersData.Physics.some(c => codes.includes(c.code))) return 'Physics';
+    // Check Chemistry
+    if (chaptersData.Chemistry && chaptersData.Chemistry.some(c => codes.includes(c.code))) return 'Chemistry';
+    // Check Mathematics
+    if (chaptersData.Mathematics && chaptersData.Mathematics.some(c => codes.includes(c.code))) return 'Mathematics';
+
+    return null;
+  };
+
+  // Auto-detect and correct section names based on chapters
+  useEffect(() => {
+    if (parsedData && chaptersData) {
+      let hasChanges = false;
+      const newParsedData = JSON.parse(JSON.stringify(parsedData)); // Deep clone
+
+      newParsedData.tests.forEach((test: any) => {
+        test.sections.forEach((section: any) => {
+          if (section.weightage) {
+            const detectedSubject = detectSubject(section.weightage, chaptersData);
+            if (detectedSubject && section.name !== detectedSubject) {
+              section.name = detectedSubject;
+              hasChanges = true;
+            }
+          }
+        });
+      });
+
+      if (hasChanges) {
+        setParsedData(newParsedData);
+      }
+    }
+  }, [parsedData, chaptersData]);
 
   const handleWeightageChange = (
     testIndex: number,
