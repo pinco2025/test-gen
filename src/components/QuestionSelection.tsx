@@ -444,7 +444,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
                              </div>
                              <div className="w-full h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
                                 <div
-                                    className={`h-full transition-all duration-300 ${selectedQuestions.filter(sq => sq.chapterCode === lockedChapterCode).length === limitCount ? 'bg-green-500' : 'bg-primary'}`}
+                                    className={`h-full transition-all duration-500 ease-out ${selectedQuestions.filter(sq => sq.chapterCode === lockedChapterCode).length === limitCount ? 'bg-green-500' : 'bg-primary'}`}
                                     style={{ width: `${(selectedQuestions.filter(sq => sq.chapterCode === lockedChapterCode).length / limitCount) * 100}%` }}
                                 />
                              </div>
