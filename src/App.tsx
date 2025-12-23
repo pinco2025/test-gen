@@ -827,24 +827,12 @@ function App() {
 
       const currentIndex = orderedCodes.indexOf(activeChapterCode);
 
-      // Find next incomplete chapter
+      // Find next chronological chapter
       let nextChapterCode: string | undefined = undefined;
 
-      // NOTE: We need to use the Updated selectedQuestions count here for accuracy,
-      // but since handleQuestionSelection updates via setState/updateCurrentProject,
-      // the 'currentSection' variable here is stale.
-      // However, the selectedQuestions passed in are fresh.
-
-      // Start looking from next index
-      for (let i = currentIndex + 1; i < orderedCodes.length; i++) {
-          const code = orderedCodes[i];
-          const required = weightage[code] || 0;
-          const selected = selectedQuestions.filter(sq => sq.chapterCode === code).length;
-
-          if (selected < required) {
-              nextChapterCode = code;
-              break;
-          }
+      // Simply get the next chapter in the list (if exists)
+      if (currentIndex !== -1 && currentIndex < orderedCodes.length - 1) {
+          nextChapterCode = orderedCodes[currentIndex + 1];
       }
 
       if (nextChapterCode) {
@@ -853,12 +841,40 @@ function App() {
           });
           // Scroll to top or reset view handled by QuestionSelection key prop change
       } else {
-          // No more incomplete chapters in this section (following the current one)
-          // Go to overview
-          updateCurrentProject({
-             currentStep: 'full-test-overview',
-             activeChapterCode: undefined
-          });
+          // End of current section. Check for next section.
+          const nextSectionIndex = currentProject.currentSectionIndex + 1;
+
+          if (nextSectionIndex < sections.length) {
+              const nextSection = sections[nextSectionIndex];
+              const nextWeightage = nextSection.betaConstraint?.weightage || {};
+
+              // Get ordered codes for the next section
+              const nextOrderedCodes = nextSection.chapters
+                 .filter(c => nextWeightage[c.code] !== undefined)
+                 .map(c => c.code);
+
+              if (nextOrderedCodes.length > 0) {
+                   // Go to first chapter of next section
+                   updateCurrentProject({
+                       currentSectionIndex: nextSectionIndex,
+                       currentStep: 'full-test-question-select',
+                       activeChapterCode: nextOrderedCodes[0],
+                       fullTestSectionView: nextSectionIndex
+                   });
+              } else {
+                   // Next section has no chapters? Go to overview.
+                   updateCurrentProject({
+                      currentStep: 'full-test-overview',
+                      activeChapterCode: undefined
+                   });
+              }
+          } else {
+               // No more sections. Go to overview.
+               updateCurrentProject({
+                   currentStep: 'full-test-overview',
+                   activeChapterCode: undefined
+               });
+          }
       }
   };
 
