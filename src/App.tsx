@@ -335,7 +335,7 @@ function App() {
                     return {
                         ...sq,
                         question: newQuestion,
-                        status: 'pending' // Reset status for the new question? Or keep same? Usually pending for review.
+                        status: 'pending' as const // Reset status for the new question? Or keep same? Usually pending for review.
                     };
                 }
                 return sq;
