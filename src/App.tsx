@@ -100,6 +100,7 @@ function App() {
   // Add Question Modal state
   const [isAddQuestionModalOpen, setIsAddQuestionModalOpen] = useState(false);
   const [switchTargetQuestionUuid, setSwitchTargetQuestionUuid] = useState<string | null>(null);
+  const [switchTargetQuestionData, setSwitchTargetQuestionData] = useState<Question | null>(null); // To store data for IPQ modal
   const [questionsRefreshTrigger, setQuestionsRefreshTrigger] = useState(0);
 
   // Export Test Modal state
@@ -354,6 +355,19 @@ function App() {
         console.error('Error switching question:', error);
         addNotification('error', 'An error occurred while switching the question.');
     }
+  };
+
+  // Helper to initiate switch with data fetching
+  const initiateSwitchQuestion = async (uuid: string) => {
+      setSwitchTargetQuestionUuid(uuid);
+      if (window.electronAPI) {
+          try {
+              const q = await window.electronAPI.questions.getByUUID(uuid);
+              if (q) setSwitchTargetQuestionData(q);
+          } catch (e) {
+              console.error("Failed to fetch target question for switch:", e);
+          }
+      }
   };
 
   // Load a project (from disk if not in memory, or just switch to it)
@@ -1004,12 +1018,53 @@ function App() {
     updateCurrentProject({ sections: updatedSections });
   }, [currentProjectId, sections, updateCurrentProject]);
 
+  const handleVerifyQuestion = useCallback(async (questionUuid: string, status: 'approved' | 'rejected' | 'pending') => {
+      if (!window.electronAPI) return;
+      try {
+          const success = await window.electronAPI.questions.updateQuestion(questionUuid, { verification_level_1: status });
+          if (!success) {
+              console.error("Failed to update verification status in DB");
+          } else {
+              // Also update status in memory if needed
+              handleQuestionStatusUpdate(questionUuid, status === 'approved' ? 'accepted' : 'pending');
+          }
+      } catch (e) {
+          console.error("Error verifying question:", e);
+      }
+  }, [handleQuestionStatusUpdate]);
+
   const handleStartEditing = (question: Question) => {
     if (!currentProject) return;
     setEditingQuestion({ question });
     setPreviousStep(currentProject.currentStep);
     setLastEditedQuestionUuid(question.uuid); // Sync local state
     updateCurrentProject({ currentStep: 'edit-question', lastActiveQuestionUuid: question.uuid });
+  };
+
+  // Next/Previous functionality for Editor
+  const handleEditorNext = () => {
+    if (!currentProjectId || !editingQuestion) return;
+    // Find next question in current section
+    const currentSection = sections[currentSectionIndex];
+    if (!currentSection) return;
+
+    const currentIndex = currentSection.selectedQuestions.findIndex(sq => sq.question.uuid === editingQuestion.question.uuid);
+    if (currentIndex !== -1 && currentIndex < currentSection.selectedQuestions.length - 1) {
+        const nextQ = currentSection.selectedQuestions[currentIndex + 1].question;
+        handleStartEditing(nextQ);
+    }
+  };
+
+  const handleEditorPrevious = () => {
+     if (!currentProjectId || !editingQuestion) return;
+     const currentSection = sections[currentSectionIndex];
+     if (!currentSection) return;
+
+     const currentIndex = currentSection.selectedQuestions.findIndex(sq => sq.question.uuid === editingQuestion.question.uuid);
+     if (currentIndex > 0) {
+         const prevQ = currentSection.selectedQuestions[currentIndex - 1].question;
+         handleStartEditing(prevQ);
+     }
   };
 
   const handleCloneQuestion = (question: Question) => {
@@ -1310,7 +1365,8 @@ function App() {
             onUpdateQuestionStatus={handleQuestionStatusUpdate}
             initialQuestionUuid={lastEditedQuestionUuid}
             onNavigationComplete={() => setLastEditedQuestionUuid(null)}
-            onSwitchQuestion={(uuid) => setSwitchTargetQuestionUuid(uuid)}
+            onSwitchQuestion={initiateSwitchQuestion} // Use the new initiator
+            onVerifyQuestion={handleVerifyQuestion} // Pass handler
           />
         );
 
@@ -1325,6 +1381,13 @@ function App() {
             <div className="text-gray-500">Redirecting...</div>
           </div>;
         }
+        // Calculate Question Number
+        let absoluteIndex = 0;
+        if (sections[currentSectionIndex]) {
+             const currentIndex = sections[currentSectionIndex].selectedQuestions.findIndex(sq => sq.question.uuid === editingQuestion.question.uuid);
+             if (currentIndex !== -1) absoluteIndex = currentIndex + 1;
+        }
+
         return (
             <QuestionEditor
                 question={editingQuestion.question}
@@ -1332,6 +1395,9 @@ function App() {
                 onSave={handleFinishEditing}
                 onCancel={() => handleFinishEditing(null)}
                 subject={sections[currentSectionIndex]?.name}
+                onNext={handleEditorNext}
+                onPrevious={handleEditorPrevious}
+                questionNumber={absoluteIndex > 0 ? absoluteIndex : undefined}
             />
         );
 
@@ -1430,6 +1496,7 @@ function App() {
             currentStep={step}
             sections={sections}
             onNavigate={handleNavigation}
+            testType={testMetadata?.testType} // Pass testType
           />
         )}
         {stepContent}
@@ -1609,8 +1676,13 @@ function App() {
       {/* Switch Question Modal */}
       {switchTargetQuestionUuid && (
         <AddQuestionModal
-            onClose={() => setSwitchTargetQuestionUuid(null)}
+            onClose={() => {
+                setSwitchTargetQuestionUuid(null);
+                setSwitchTargetQuestionData(null);
+            }}
             onSave={handleSwitchQuestion}
+            initialData={switchTargetQuestionData} // Pass the data for pre-fill
+            isIPQMode={true} // Flag to enforce IPQ behavior
         />
       )}
 

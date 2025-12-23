@@ -9,7 +9,8 @@ interface TestReviewProps {
   onBack: () => void;
   onExport: () => void;
   onRemoveQuestion: (questionUuid: string) => void;
-  onUpdateQuestionStatus: (questionUuid: string, status: 'accepted' | 'review' | 'pending') => void;
+  onUpdateQuestionStatus: (questionUuid: string, status: 'accepted' | 'review' | 'pending') => void; // Keeping for compatibility, but we might rely on DB updates
+  onVerifyQuestion?: (questionUuid: string, status: 'approved' | 'rejected' | 'pending') => void; // New prop for verification
   initialQuestionUuid?: string | null;
   onNavigationComplete?: () => void;
   onSwitchQuestion?: (questionUuid: string) => void;
@@ -20,14 +21,18 @@ const TestReview: React.FC<TestReviewProps> = ({
   onStartEditing,
   onBack,
   onExport,
-  onRemoveQuestion,
+  // onRemoveQuestion is unused but kept in interface for potential future use or compatibility
   onUpdateQuestionStatus,
+  onVerifyQuestion,
   initialQuestionUuid,
   onNavigationComplete,
   onSwitchQuestion
 }) => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+  const [freshQuestionsMap, setFreshQuestionsMap] = useState<Record<string, Question>>({});
   const [isAcceptModalOpen, setIsAcceptModalOpen] = useState(false);
+
+  // Checklist for acceptance
   const [checklist, setChecklist] = useState({
     questionContent: false,
     optionContent: false,
@@ -37,8 +42,8 @@ const TestReview: React.FC<TestReviewProps> = ({
     solutionExistence: false,
     solutionFormatting: false
   });
-  const [freshQuestionsMap, setFreshQuestionsMap] = useState<Record<string, Question>>({});
 
+  // Fetch fresh data on mount or when sections change
   useEffect(() => {
     const fetchFreshData = async () => {
       if (!window.electronAPI) return;
@@ -56,6 +61,7 @@ const TestReview: React.FC<TestReviewProps> = ({
     fetchFreshData();
   }, [sections]);
 
+  // Flatten and sort questions
   const allQuestions = useMemo(() => {
     const flat: Array<{ sq: SelectedQuestion; sectionIndex: number; absoluteIndex: number }> = [];
     let count = 0;
@@ -63,6 +69,7 @@ const TestReview: React.FC<TestReviewProps> = ({
       const sortedQuestions = sortQuestionsForSection(section.selectedQuestions);
       sortedQuestions.forEach((sq) => {
         count++;
+        // Use fresh question data if available
         const freshQuestion = freshQuestionsMap[sq.question.uuid] || sq.question;
         flat.push({ sq: { ...sq, question: freshQuestion }, sectionIndex: sIdx, absoluteIndex: count });
       });
@@ -70,12 +77,14 @@ const TestReview: React.FC<TestReviewProps> = ({
     return flat;
   }, [sections, freshQuestionsMap]);
 
+  // Sync current index if out of bounds
   useEffect(() => {
-    if (currentQuestionIndex >= allQuestions.length) {
+    if (currentQuestionIndex >= allQuestions.length && allQuestions.length > 0) {
       setCurrentQuestionIndex(Math.max(0, allQuestions.length - 1));
     }
   }, [allQuestions.length, currentQuestionIndex]);
 
+  // Jump to initial question if provided
   useEffect(() => {
     if (initialQuestionUuid && allQuestions.length > 0) {
       const index = allQuestions.findIndex(q => q.sq.question.uuid === initialQuestionUuid);
@@ -93,6 +102,7 @@ const TestReview: React.FC<TestReviewProps> = ({
   const handlePrev = () => setCurrentQuestionIndex(prev => Math.max(prev - 1, 0));
   const handleJumpToQuestion = (index: number) => setCurrentQuestionIndex(index);
 
+  // Status Handlers
   const handleAcceptClick = () => {
     setChecklist({
       questionContent: false, optionContent: false, questionFormatting: false,
@@ -104,162 +114,250 @@ const TestReview: React.FC<TestReviewProps> = ({
 
   const confirmAccept = () => {
     if (!currentQuestion) return;
-    onUpdateQuestionStatus(currentQuestion.uuid, 'accepted');
+    // Map to Verification Level 1
+    if (onVerifyQuestion) {
+        onVerifyQuestion(currentQuestion.uuid, 'approved');
+        // Update local fresh map immediately for UI responsiveness
+        setFreshQuestionsMap(prev => ({
+            ...prev,
+            [currentQuestion.uuid]: { ...currentQuestion, verification_level_1: 'approved' }
+        }));
+    }
+    onUpdateQuestionStatus(currentQuestion.uuid, 'accepted'); // Keep legacy status for export check
     setIsAcceptModalOpen(false);
     handleNext();
   };
 
-  const handleMarkReview = () => {
-    if (!currentQuestion) return;
-    onUpdateQuestionStatus(currentQuestion.uuid, 'review');
-    handleNext();
-  };
-
   const handleReject = () => {
-    if (currentQuestion) onRemoveQuestion(currentQuestion.uuid);
+    if (!currentQuestion) return;
+    if (onVerifyQuestion) {
+        onVerifyQuestion(currentQuestion.uuid, 'rejected');
+        setFreshQuestionsMap(prev => ({
+            ...prev,
+            [currentQuestion.uuid]: { ...currentQuestion, verification_level_1: 'rejected' }
+        }));
+    }
+    // Also remove from test? User said "display on palette", so maybe keep it?
+    // "if any question is already verified/rejected then it should be displayed on the palette"
+    // So we DON'T remove it automatically anymore via onRemoveQuestion, unless user explicitly wants to remove.
+    // However, usually Reject in review means "get this out". But let's stick to the prompt:
+    // "map accept/reject button correspond to the verification level 1 now"
   };
-
-  const canExport = useMemo(() => {
-    if (allQuestions.length === 0) return false;
-    return allQuestions.every(item => item.sq.status === 'accepted');
-  }, [allQuestions]);
 
   const handleEditClick = () => {
     if (currentQuestion) onStartEditing(currentQuestion);
   };
 
-  const statusClasses = {
-    pending: 'bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-gray-200',
-    review: 'bg-yellow-200 dark:bg-yellow-800 text-yellow-800 dark:text-yellow-200',
-    accepted: 'bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-200',
-    current: 'ring-2 ring-primary ring-offset-2 ring-offset-background-light dark:ring-offset-background-dark'
+  // Determine exportability (legacy status check)
+  const canExport = useMemo(() => {
+    if (allQuestions.length === 0) return false;
+    // We can rely on verification_level_1 OR the local 'accepted' status.
+    // The previous code used 'status' field in SelectedQuestion.
+    return allQuestions.every(item => item.sq.question.verification_level_1 === 'approved');
+  }, [allQuestions]);
+
+  // UI Helper for Palette Colors
+  const getPaletteClass = (q: Question, isActive: boolean) => {
+      let base = 'bg-gray-100 dark:bg-white/5 text-text-secondary';
+      if (q.verification_level_1 === 'approved') base = 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800';
+      if (q.verification_level_1 === 'rejected') base = 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800';
+
+      if (isActive) {
+          return `${base} ring-2 ring-primary ring-offset-1 dark:ring-offset-[#1e1e2d] border-primary`;
+      }
+      return `${base} hover:bg-gray-200 dark:hover:bg-white/10 border border-transparent`;
   };
 
   return (
-    <div className="flex flex-col flex-1 min-h-0 bg-background-light dark:bg-background-dark text-text-main dark:text-text-dark">
-      {/* Header */}
-      <header className="flex items-center justify-between p-4 border-b border-border-light dark:border-border-dark shrink-0">
+    <div className="flex flex-col h-full bg-background-light dark:bg-[#121121] overflow-hidden">
+
+      {/* Top Header - Compact */}
+      <header className="flex-shrink-0 h-14 flex items-center justify-between px-6 border-b border-gray-200 dark:border-[#2d2d3b] bg-white dark:bg-[#1e1e2d]">
         <div className="flex items-center gap-4">
-          <button onClick={onBack} title="Back to Configuration" className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10">
-            <span className="material-symbols-outlined">arrow_back</span>
+          <button onClick={onBack} className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-[#252535] text-text-secondary transition-colors">
+            <span className="material-symbols-outlined text-xl">arrow_back</span>
           </button>
-          <h2 className="text-xl font-bold">Review Test</h2>
-        </div>
-        <div className="flex items-center gap-4">
-          <span className="font-semibold text-text-secondary dark:text-gray-400">
-            {allQuestions.length > 0 ? `${currentQuestionIndex + 1} / ${allQuestions.length}` : '0 / 0'}
+          <h2 className="text-base font-bold text-text-main dark:text-white">Test Review</h2>
+          <span className="text-xs font-medium px-2 py-0.5 rounded bg-gray-100 dark:bg-[#252535] text-text-secondary">
+             {allQuestions.length} Questions
           </span>
-          <button
+        </div>
+        <button
             onClick={onExport}
             disabled={!canExport}
-            title={!canExport ? "All questions must be accepted to export" : "Export Test"}
-            className="px-5 py-2 text-sm font-bold text-white transition-all bg-primary rounded-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 hover:bg-primary/90"
-          >
+            className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${
+                canExport
+                ? 'bg-primary text-white shadow-lg shadow-primary/20 hover:bg-primary/90'
+                : 'bg-gray-200 dark:bg-[#252535] text-gray-400 cursor-not-allowed'
+            }`}
+        >
+            <span className="material-symbols-outlined text-lg">ios_share</span>
             Export Test
-          </button>
-        </div>
+        </button>
       </header>
 
-      {/* Main Body */}
-      <main className="grid flex-1 grid-cols-12 gap-6 p-6 overflow-hidden">
-        {/* Palette Sidebar */}
-        <aside className="flex flex-col col-span-3 overflow-y-auto border rounded-lg bg-surface-light dark:bg-surface-dark border-border-light dark:border-border-dark">
-          <h3 className="p-4 text-lg font-bold border-b border-border-light dark:border-border-dark">Question Palette</h3>
-          <div className="p-4 space-y-6">
-            {sections.map((section, idx) => {
-              const sectionQuestions = allQuestions.filter(q => q.sectionIndex === idx);
-              if (sectionQuestions.length === 0) return null;
-              return (
-                <div key={idx} className="space-y-3">
-                  <h4 className="font-semibold">{section.name}</h4>
-                  <div className="grid grid-cols-5 gap-2">
-                    {sectionQuestions.map((item) => {
-                      const status = item.sq.status || 'pending';
-                      const isActive = currentQuestionIndex === allQuestions.findIndex(q => q.sq.question.uuid === item.sq.question.uuid);
-                      return (
-                        <button
-                          key={item.sq.question.uuid}
-                          onClick={() => handleJumpToQuestion(allQuestions.findIndex(q => q.sq.question.uuid === item.sq.question.uuid))}
-                          className={`flex items-center justify-center w-full aspect-square rounded-md text-sm font-bold transition-all ${statusClasses[status]} ${isActive ? statusClasses.current : ''}`}
-                        >
-                          {item.absoluteIndex}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+      {/* Main Content Area */}
+      <div className="flex-1 flex overflow-hidden">
+
+        {/* Palette Sidebar - Fixed Left */}
+        <aside className="w-80 flex-shrink-0 flex flex-col border-r border-gray-200 dark:border-[#2d2d3b] bg-white dark:bg-[#1e1e2d]">
+            <div className="p-4 border-b border-gray-200 dark:border-[#2d2d3b]">
+                <h3 className="font-bold text-sm text-text-main dark:text-white uppercase tracking-wider">Question Palette</h3>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-700">
+                {sections.map((section, idx) => {
+                    const sectionQuestions = allQuestions.filter(q => q.sectionIndex === idx);
+                    if (sectionQuestions.length === 0) return null;
+                    return (
+                        <div key={idx} className="mb-6 last:mb-0">
+                            <h4 className="text-xs font-semibold text-text-secondary mb-3 uppercase">{section.name}</h4>
+                            <div className="grid grid-cols-5 gap-2">
+                                {sectionQuestions.map((item) => {
+                                    const isActive = currentQuestionIndex === allQuestions.findIndex(q => q.sq.question.uuid === item.sq.question.uuid);
+                                    return (
+                                        <button
+                                            key={item.sq.question.uuid}
+                                            onClick={() => handleJumpToQuestion(allQuestions.findIndex(q => q.sq.question.uuid === item.sq.question.uuid))}
+                                            className={`aspect-square rounded-md flex items-center justify-center text-xs font-bold transition-all ${getPaletteClass(item.sq.question, isActive)}`}
+                                        >
+                                            {item.absoluteIndex}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
         </aside>
 
-        {/* Main Question Content */}
-        <section className="flex flex-col col-span-9 overflow-hidden">
-          {allQuestions.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-center text-text-secondary">
-              <p className="mb-4 text-lg">No questions in this test.</p>
-              <button onClick={onBack} className="px-5 py-2.5 rounded-lg border border-border-light dark:border-border-dark hover:bg-black/5 dark:hover:bg-white/5 text-sm font-semibold transition-all">Back to Selection</button>
-            </div>
-          ) : currentQuestion ? (
-            <div className="flex-1 overflow-y-auto">
-              <QuestionDisplay question={currentQuestion} questionNumber={currentItem.absoluteIndex} showAnswer={true} />
-              <div className="p-4 text-right">
-                <button onClick={handleEditClick} className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold transition-colors rounded-md text-primary hover:bg-primary/10">
-                  <span className="material-symbols-outlined text-base">edit</span> Edit Question
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center justify-center h-full text-text-secondary">Loading...</div>
-          )}
-        </section>
-      </main>
+        {/* Center - Question Display */}
+        <main className="flex-1 flex flex-col overflow-hidden relative bg-gray-50 dark:bg-[#121121]">
+            {allQuestions.length === 0 ? (
+                <div className="flex-1 flex flex-col items-center justify-center text-text-secondary">
+                    <span className="material-symbols-outlined text-4xl mb-2">content_paste_off</span>
+                    <p>No questions selected.</p>
+                </div>
+            ) : currentQuestion ? (
+                <div className="flex-1 overflow-y-auto p-6 md:p-8 lg:p-12">
+                     <div className="max-w-4xl mx-auto flex flex-col gap-6">
+                        {/* Status Banner */}
+                        {currentQuestion.verification_level_1 === 'approved' && (
+                            <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-sm font-medium">
+                                <span className="material-symbols-outlined text-lg">check_circle</span>
+                                Verified & Approved
+                            </div>
+                        )}
+                        {currentQuestion.verification_level_1 === 'rejected' && (
+                            <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-sm font-medium">
+                                <span className="material-symbols-outlined text-lg">cancel</span>
+                                Rejected
+                            </div>
+                        )}
 
-      {/* Footer Controls */}
-      <footer className="flex items-center justify-between p-4 border-t border-border-light dark:border-border-dark shrink-0">
-        <div className="w-1/3">
-          <button onClick={handlePrev} disabled={currentQuestionIndex === 0} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-border-light dark:border-border-dark hover:bg-black/5 dark:hover:bg-white/5 text-sm font-semibold transition-all disabled:opacity-50">
-            <span className="material-symbols-outlined">chevron_left</span> Prev
-          </button>
-        </div>
-        <div className="flex justify-center flex-1 gap-3">
-          <button onClick={handleReject} className="px-5 py-2.5 rounded-lg bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/50 text-sm font-semibold transition-all flex items-center gap-2">
-            <span className="material-symbols-outlined text-base">close</span> Reject
-          </button>
-          <button onClick={handleMarkReview} className={`px-5 py-2.5 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${currentItem?.sq.status === 'review' ? 'bg-yellow-400/80 text-yellow-900' : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300 hover:bg-yellow-200 dark:hover:bg-yellow-900/50'}`}>
-            <span className="material-symbols-outlined text-base">flag</span> Mark for Review
-          </button>
-          <button onClick={() => currentQuestion && onSwitchQuestion?.(currentQuestion.uuid)} className="px-5 py-2.5 rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/50 text-sm font-semibold transition-all flex items-center gap-2">
-            <span className="material-symbols-outlined text-base">autorenew</span> Switch with IPQ
-          </button>
-          <button onClick={handleAcceptClick} className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${currentItem?.sq.status === 'accepted' ? 'bg-green-600 text-white' : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-900/50'}`}>
-            <span className="material-symbols-outlined text-base">check</span> Accept
-          </button>
-        </div>
-        <div className="flex justify-end w-1/3">
-          <button onClick={handleNext} disabled={currentQuestionIndex === allQuestions.length - 1} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg border border-border-light dark:border-border-dark hover:bg-black/5 dark:hover:bg-white/5 text-sm font-semibold transition-all disabled:opacity-50">
-            Next <span className="material-symbols-outlined">chevron_right</span>
-          </button>
-        </div>
+                        <div className="bg-white dark:bg-[#1e1e2d] rounded-2xl shadow-sm border border-gray-200 dark:border-[#2d2d3b] overflow-hidden">
+                             <QuestionDisplay
+                                question={currentQuestion}
+                                questionNumber={currentItem.absoluteIndex}
+                                showAnswer={true}
+                             />
+                        </div>
+
+                        <div className="flex justify-end">
+                            <button
+                                onClick={handleEditClick}
+                                className="flex items-center gap-2 px-4 py-2 rounded-lg text-primary hover:bg-primary/10 transition-colors font-medium text-sm"
+                            >
+                                <span className="material-symbols-outlined text-lg">edit_note</span>
+                                Edit Question Content
+                            </button>
+                        </div>
+                     </div>
+                </div>
+            ) : (
+                <div className="flex-1 flex items-center justify-center">Loading...</div>
+            )}
+        </main>
+      </div>
+
+      {/* Footer Nav Bar - Compact & Modern */}
+      <footer className="flex-shrink-0 h-16 flex items-center justify-between px-6 border-t border-gray-200 dark:border-[#2d2d3b] bg-white dark:bg-[#1e1e2d] shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] dark:shadow-none z-10">
+
+            {/* Left: Navigation */}
+            <div className="flex items-center gap-3">
+                <button
+                    onClick={handlePrev}
+                    disabled={currentQuestionIndex === 0}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 dark:border-[#2d2d3b] hover:bg-gray-50 dark:hover:bg-[#252535] disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm font-semibold text-text-main dark:text-white"
+                >
+                    <span className="material-symbols-outlined text-lg">arrow_back</span>
+                    Prev
+                </button>
+                <button
+                    onClick={handleNext}
+                    disabled={currentQuestionIndex === allQuestions.length - 1}
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 dark:border-[#2d2d3b] hover:bg-gray-50 dark:hover:bg-[#252535] disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm font-semibold text-text-main dark:text-white"
+                >
+                    Next
+                    <span className="material-symbols-outlined text-lg">arrow_forward</span>
+                </button>
+            </div>
+
+            {/* Center: Actions */}
+            <div className="flex items-center gap-3">
+                 <button
+                    onClick={handleReject}
+                    className={`flex items-center gap-2 px-5 py-2 rounded-lg font-bold text-sm transition-all ${
+                        currentQuestion?.verification_level_1 === 'rejected'
+                        ? 'bg-red-600 text-white shadow-md'
+                        : 'bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/20'
+                    }`}
+                >
+                    <span className="material-symbols-outlined text-lg">thumb_down</span>
+                    Reject
+                </button>
+
+                <button
+                    onClick={() => currentQuestion && onSwitchQuestion?.(currentQuestion.uuid)}
+                    className="flex items-center gap-2 px-5 py-2 rounded-lg bg-blue-50 dark:bg-blue-900/10 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/20 font-bold text-sm transition-all"
+                >
+                    <span className="material-symbols-outlined text-lg">swap_calls</span>
+                    Switch IPQ
+                </button>
+
+                <button
+                    onClick={handleAcceptClick}
+                    className={`flex items-center gap-2 px-5 py-2 rounded-lg font-bold text-sm transition-all ${
+                        currentQuestion?.verification_level_1 === 'approved'
+                        ? 'bg-green-600 text-white shadow-md'
+                        : 'bg-green-50 dark:bg-green-900/10 text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/20'
+                    }`}
+                >
+                    <span className="material-symbols-outlined text-lg">thumb_up</span>
+                    Accept
+                </button>
+            </div>
+
+            {/* Right: Info (Spacer) */}
+            <div className="w-[140px] flex justify-end">
+                {/* Could add hotkey hints here */}
+            </div>
       </footer>
 
-      {/* Acceptance Checklist Modal */}
+      {/* Acceptance Modal */}
       {isAcceptModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-              <div className="w-full max-w-lg bg-surface-light dark:bg-surface-dark rounded-xl shadow-lg border border-border-light dark:border-border-dark flex flex-col">
-                  <header className="flex items-center justify-between p-4 border-b border-border-light dark:border-border-dark">
-                      <h3 className="text-lg font-bold">Review Verification</h3>
-                      <button onClick={() => setIsAcceptModalOpen(false)} className="p-1 rounded-full hover:bg-black/5 dark:hover:bg-white/10">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+              <div className="w-full max-w-md bg-white dark:bg-[#1e1e2d] rounded-2xl shadow-2xl border border-gray-200 dark:border-[#2d2d3b] flex flex-col overflow-hidden transform scale-100 animate-in zoom-in-95 duration-200">
+                  <header className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-[#2d2d3b] bg-gray-50 dark:bg-[#252535]">
+                      <h3 className="text-lg font-bold text-text-main dark:text-white">Verify Question</h3>
+                      <button onClick={() => setIsAcceptModalOpen(false)} className="p-1 rounded-full hover:bg-gray-200 dark:hover:bg-white/10">
                           <span className="material-symbols-outlined">close</span>
                       </button>
                   </header>
-                  <div className="p-6 space-y-4">
-                      <p className="text-sm text-text-secondary">
-                          Please confirm you have verified the following items. If an item does not exist (e.g., no figure), mark it as checked.
-                      </p>
+                  <div className="p-6 space-y-5">
                       <div className="space-y-3">
-                          <label className="flex items-center gap-3 font-semibold cursor-pointer">
-                              <input type="checkbox" className="w-5 h-5 rounded text-primary focus:ring-primary"
+                          <label className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 dark:border-[#2d2d3b] cursor-pointer hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
+                              <input type="checkbox" className="size-5 rounded text-primary focus:ring-primary border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-[#121121]"
                                   checked={Object.values(checklist).every(Boolean)}
                                   onChange={(e) => {
                                       const checked = e.target.checked;
@@ -270,34 +368,35 @@ const TestReview: React.FC<TestReviewProps> = ({
                                       });
                                   }}
                               />
-                              <span>Select All</span>
+                              <span className="font-semibold text-text-main dark:text-white">Select All Checks</span>
                           </label>
-                          <hr className="border-border-light dark:border-border-dark" />
-                          {Object.entries({
-                            questionContent: 'Question Content', optionContent: 'Option Content',
-                            questionFormatting: 'Question Formatting', optionFormatting: 'Option Formatting',
-                            figureFormatting: 'Figure Formatting (If Exists)', solutionExistence: 'Solution Existence',
-                            solutionFormatting: 'Solution Formatting (If image exists)'
-                          }).map(([key, label]) => (
-                            <label key={key} className="flex items-center gap-3 cursor-pointer">
-                                <input type="checkbox" className="w-5 h-5 rounded text-primary focus:ring-primary"
-                                    checked={checklist[key as keyof typeof checklist]}
-                                    onChange={(e) => setChecklist(prev => ({ ...prev, [key]: e.target.checked }))}
-                                />
-                                <span>{label}</span>
-                            </label>
-                          ))}
+
+                          <div className="grid grid-cols-1 gap-2 pl-2">
+                            {Object.entries({
+                                questionContent: 'Question Content', optionContent: 'Option Content',
+                                questionFormatting: 'Formatting', figureFormatting: 'Figures/Images',
+                                solutionExistence: 'Solution Exists', solutionFormatting: 'Solution Quality'
+                            }).map(([key, label]) => (
+                                <label key={key} className="flex items-center gap-3 cursor-pointer text-sm text-text-secondary hover:text-text-main dark:hover:text-gray-200">
+                                    <input type="checkbox" className="size-4 rounded text-primary focus:ring-primary border-gray-300 dark:border-gray-600 bg-transparent"
+                                        checked={checklist[key as keyof typeof checklist]}
+                                        onChange={(e) => setChecklist(prev => ({ ...prev, [key]: e.target.checked }))}
+                                    />
+                                    <span>{label}</span>
+                                </label>
+                            ))}
+                          </div>
                       </div>
                   </div>
-                  <footer className="flex justify-end gap-3 p-4 bg-background-light dark:bg-background-dark/50 border-t border-border-light dark:border-border-dark">
-                      <button onClick={() => setIsAcceptModalOpen(false)} className="px-5 py-2.5 rounded-lg border border-border-light dark:border-border-dark text-text-secondary hover:text-text-main dark:hover:text-white hover:bg-white dark:hover:bg-white/5 text-sm font-semibold transition-all">Cancel</button>
+                  <footer className="flex justify-end gap-3 p-4 bg-gray-50 dark:bg-[#252535] border-t border-gray-200 dark:border-[#2d2d3b]">
+                      <button onClick={() => setIsAcceptModalOpen(false)} className="px-4 py-2 rounded-lg font-medium text-text-secondary hover:bg-gray-200 dark:hover:bg-white/5 transition-all">Cancel</button>
                       <button
                           onClick={confirmAccept}
                           disabled={!Object.values(checklist).every(Boolean)}
-                          className="px-5 py-2.5 rounded-lg bg-primary text-white shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 hover:bg-primary/90 text-sm font-bold transition-all flex items-center gap-2 disabled:opacity-50"
+                          className="px-6 py-2 rounded-lg bg-green-600 text-white font-bold hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-green-600/20 transition-all flex items-center gap-2"
                       >
-                          <span className="material-symbols-outlined text-base">check</span>
-                          Confirm Accept
+                          <span className="material-symbols-outlined">check_circle</span>
+                          Approve
                       </button>
                   </footer>
               </div>

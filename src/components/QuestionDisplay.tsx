@@ -72,6 +72,13 @@ export const QuestionDisplay = memo<QuestionDisplayProps>(({
          {question.tag_2 && <span className="text-xs font-medium px-2 py-1 rounded-full bg-cyan-50 dark:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400">{question.tag_2}</span>}
          {question.tag_3 && <span className={`text-xs font-medium px-2 py-1 rounded-full ${getDifficultyClass(question.tag_3 as 'E' | 'M' | 'H')}`}>{question.tag_3 === 'E' ? 'Easy' : question.tag_3 === 'M' ? 'Medium' : 'Hard'}</span>}
          {question.year && <span className="text-xs font-medium px-2 py-1 rounded-full bg-yellow-50 text-yellow-600">{question.year}</span>}
+
+         {/* Frequency Badge */}
+         <span className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full bg-orange-50 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400" title="Selection Frequency">
+            <span className="material-symbols-outlined text-[14px]">analytics</span>
+            {question.frequency ?? 0}
+         </span>
+
          <span onClick={handleCopyUuid} title="Click to copy UUID" className="text-xs font-mono px-2 py-1 rounded bg-gray-100 dark:bg-white/10 text-text-secondary cursor-pointer hover:bg-gray-200 dark:hover:bg-white/20 transition-colors">
             {copied ? 'Copied!' : `#${question.uuid.substring(0, 8)}`}
          </span>
