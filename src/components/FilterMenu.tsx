@@ -22,6 +22,8 @@ interface FilterMenuProps {
   availableYears: string[];
   currentFilters: FilterState;
   onFilterChange: (filters: Partial<FilterState>) => void;
+  hiddenFilters?: string[]; // Array of filter keys to hide
+  defaultFilters?: Partial<FilterState>; // Default values for reset
 }
 
 const FilterMenu: React.FC<FilterMenuProps> = ({
@@ -29,21 +31,29 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
   availableTypes,
   availableYears,
   currentFilters,
-  onFilterChange
+  onFilterChange,
+  hiddenFilters = [],
+  defaultFilters = {}
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 
+  // Helper to check if a filter is active (not default 'all') AND not hidden
+  const isFilterActive = (key: keyof FilterState, defaultValue: any) => {
+      if (hiddenFilters.includes(key)) return false;
+      return currentFilters[key] !== defaultValue;
+  };
+
   const activeFilterCount =
-    (currentFilters.chapter !== 'all' ? 1 : 0) +
-    (currentFilters.difficulty !== 'all' ? 1 : 0) +
-    (currentFilters.division !== 'all' ? 1 : 0) +
-    (currentFilters.type !== 'all' ? 1 : 0) +
-    (currentFilters.year !== 'all' ? 1 : 0) +
-    (currentFilters.tag1 !== '' ? 1 : 0) +
-    (currentFilters.tag4 !== '' ? 1 : 0) +
-    (currentFilters.selectedOnly ? 1 : 0) +
-    (currentFilters.verificationLevel1 !== 'all' ? 1 : 0) +
-    (currentFilters.verificationLevel2 !== 'all' ? 1 : 0);
+    (isFilterActive('chapter', 'all') ? 1 : 0) +
+    (isFilterActive('difficulty', 'all') ? 1 : 0) +
+    (isFilterActive('division', 'all') ? 1 : 0) +
+    (isFilterActive('type', 'all') ? 1 : 0) +
+    (isFilterActive('year', 'all') ? 1 : 0) +
+    (isFilterActive('tag1', '') ? 1 : 0) +
+    (isFilterActive('tag4', '') ? 1 : 0) +
+    (isFilterActive('selectedOnly', false) ? 1 : 0) +
+    (isFilterActive('verificationLevel1', 'all') ? 1 : 0) +
+    (isFilterActive('verificationLevel2', 'all') ? 1 : 0);
 
   const resetFilters = () => {
     onFilterChange({
@@ -57,7 +67,8 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
       sort: 'default',
       selectedOnly: false,
       verificationLevel1: 'all',
-      verificationLevel2: 'all'
+      verificationLevel2: 'all',
+      ...defaultFilters
     });
   };
 
@@ -85,6 +96,7 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
         <div className="flex-1 p-5 overflow-y-auto space-y-6 text-gray-900 dark:text-gray-100">
 
             {/* Sort Section */}
+            {!hiddenFilters.includes('sort') && (
             <div className="space-y-2">
                 <label className="block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
                   Sort By
@@ -101,8 +113,10 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
                   <option value="freq_desc">Frequency (High to Low)</option>
                 </select>
             </div>
+            )}
 
             {/* Difficulty Filter */}
+            {!hiddenFilters.includes('difficulty') && (
             <div className="space-y-2">
                 <label className="block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
                   Difficulty
@@ -123,8 +137,10 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
                   ))}
                 </div>
             </div>
+            )}
 
             {/* Division Filter */}
+            {!hiddenFilters.includes('division') && (
             <div className="space-y-2">
                 <label className="block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
                   Division
@@ -149,8 +165,10 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
                   ))}
                 </div>
             </div>
+            )}
 
             {/* Verification Level 1 Filter */}
+            {!hiddenFilters.includes('verificationLevel1') && (
             <div className="space-y-2">
                 <label className="block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
                   Verification Level 1
@@ -171,8 +189,10 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
                   ))}
                 </div>
             </div>
+            )}
 
             {/* Verification Level 2 Filter */}
+            {!hiddenFilters.includes('verificationLevel2') && (
             <div className="space-y-2">
                 <label className="block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
                   Verification Level 2
@@ -193,8 +213,10 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
                   ))}
                 </div>
             </div>
+            )}
 
             {/* Show Selected Only Filter */}
+            {!hiddenFilters.includes('selectedOnly') && (
             <div className="space-y-2">
                 <label className="block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
                   Selection Filter
@@ -215,8 +237,10 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
                   </span>
                 </button>
             </div>
+            )}
 
             {/* Type Filter */}
+            {!hiddenFilters.includes('type') && (
             <div className="space-y-2">
                 <label className="block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
                   Type
@@ -232,8 +256,10 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
                   ))}
                 </select>
             </div>
+            )}
 
             {/* Year Filter */}
+            {!hiddenFilters.includes('year') && (
             <div className="space-y-2">
                 <label className="block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
                   Year
@@ -249,8 +275,10 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
                   ))}
                 </select>
             </div>
+            )}
 
             {/* Chapter Filter */}
+            {!hiddenFilters.includes('chapter') && (
             <div className="space-y-2">
                 <label className="block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
                   Chapter
@@ -268,13 +296,16 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
                   ))}
                 </select>
             </div>
+            )}
 
             {/* Tags Filter */}
+            {!hiddenFilters.includes('tag1') && !hiddenFilters.includes('tag4') && (
             <div className="space-y-2">
                 <label className="block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
                   Additional Tags
                 </label>
                 <div className="space-y-3">
+                    {!hiddenFilters.includes('tag1') && (
                     <input
                         type="text"
                         placeholder="Tag 1 (e.g. Topic)"
@@ -282,6 +313,8 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
                         onChange={(e) => onFilterChange({ tag1: e.target.value })}
                         className="w-full p-2 text-sm border rounded-md bg-white dark:bg-[#252535] border-gray-200 dark:border-[#2d2d3b] focus:ring-2 focus:ring-primary/20 focus:border-primary text-gray-900 dark:text-white"
                     />
+                    )}
+                    {!hiddenFilters.includes('tag4') && (
                     <input
                         type="text"
                         placeholder="Tag 4 (e.g. Sub-topic)"
@@ -289,8 +322,10 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
                         onChange={(e) => onFilterChange({ tag4: e.target.value })}
                         className="w-full p-2 text-sm border rounded-md bg-white dark:bg-[#252535] border-gray-200 dark:border-[#2d2d3b] focus:ring-2 focus:ring-primary/20 focus:border-primary text-gray-900 dark:text-white"
                     />
+                    )}
                 </div>
             </div>
+            )}
         </div>
 
         {/* Footer */}

@@ -42,6 +42,7 @@ interface ProjectData {
   constraintConfig: ConstraintConfig;
   currentStep: WorkflowStep;
   activeChapterCode?: string;
+  fullTestSectionView?: number | null; // For Full Test Overview persistence
   createdAt: string; // Track creation time
 }
 
@@ -222,7 +223,9 @@ function App() {
         currentStep: currentData.currentStep,
         createdAt: currentData.createdAt, // Preserve original creation time
         lastModified: new Date().toISOString(),
-        lastActiveQuestionUuid: (currentData as any).lastActiveQuestionUuid // Save active question state
+        lastActiveQuestionUuid: (currentData as any).lastActiveQuestionUuid, // Save active question state
+        activeChapterCode: currentData.activeChapterCode, // Ensure active chapter is saved
+        fullTestSectionView: currentData.fullTestSectionView // Ensure section view state is saved
       };
 
       await window.electronAPI.project.save(projectState);
@@ -375,7 +378,9 @@ function App() {
             constraintConfig: projectState.constraintConfig,
             currentStep: projectState.currentStep as WorkflowStep,
             createdAt: projectState.createdAt,
-            lastActiveQuestionUuid: projectState.lastActiveQuestionUuid
+            lastActiveQuestionUuid: projectState.lastActiveQuestionUuid,
+            activeChapterCode: projectState.activeChapterCode, // Properly restore activeChapterCode
+            fullTestSectionView: projectState.fullTestSectionView // Properly restore fullTestSectionView
           } as any
         }));
 
@@ -782,6 +787,67 @@ function App() {
     }
   };
 
+  // Logic to find and navigate to the next chapter in Full Test mode
+  const handleNextChapter = (selectedQuestions: SelectedQuestion[]) => {
+      if (!currentProjectId || !currentProject) return;
+      if (currentProject.testMetadata?.testType !== 'Full') return;
+
+      // SAVE CURRENT PROGRESS FIRST
+      // This is crucial: save the selection from the current chapter before switching
+      // Note: We need to merge the new selection with existing selection for OTHER chapters
+      // The `selectedQuestions` arg contains ALL selected questions for the section (as managed by QuestionSelection)
+      // So we can just use handleQuestionSelection to update the section state
+      handleQuestionSelection(selectedQuestions);
+
+      const currentSection = sections[currentProject.currentSectionIndex];
+      const activeChapterCode = currentProject.activeChapterCode;
+
+      if (!currentSection || !activeChapterCode) return;
+
+      const weightage = currentSection.betaConstraint?.weightage || {};
+
+      // Ideally follow the order defined in section.chapters
+      const orderedCodes = currentSection.chapters
+        .filter(c => weightage[c.code] !== undefined)
+        .map(c => c.code);
+
+      const currentIndex = orderedCodes.indexOf(activeChapterCode);
+
+      // Find next incomplete chapter
+      let nextChapterCode: string | undefined = undefined;
+
+      // NOTE: We need to use the Updated selectedQuestions count here for accuracy,
+      // but since handleQuestionSelection updates via setState/updateCurrentProject,
+      // the 'currentSection' variable here is stale.
+      // However, the selectedQuestions passed in are fresh.
+
+      // Start looking from next index
+      for (let i = currentIndex + 1; i < orderedCodes.length; i++) {
+          const code = orderedCodes[i];
+          const required = weightage[code] || 0;
+          const selected = selectedQuestions.filter(sq => sq.chapterCode === code).length;
+
+          if (selected < required) {
+              nextChapterCode = code;
+              break;
+          }
+      }
+
+      if (nextChapterCode) {
+          updateCurrentProject({
+              activeChapterCode: nextChapterCode
+          });
+          // Scroll to top or reset view handled by QuestionSelection key prop change
+      } else {
+          // No more incomplete chapters in this section (following the current one)
+          // Go to overview
+          updateCurrentProject({
+             currentStep: 'full-test-overview',
+             activeChapterCode: undefined
+          });
+      }
+  };
+
   const handleNavigation = (targetStep: WorkflowStep, sectionIndex?: number) => {
     if (!currentProjectId) return;
 
@@ -1164,9 +1230,12 @@ function App() {
                     updateCurrentProject({
                         currentSectionIndex: sectionIndex,
                         activeChapterCode: chapterCode,
+                        fullTestSectionView: sectionIndex, // Persist view preference
                         currentStep: 'full-test-question-select'
                     });
                 }}
+                activeSectionIndex={currentProject?.fullTestSectionView}
+                onSectionIndexChange={(idx) => updateCurrentProject({ fullTestSectionView: idx })}
                 onReview={() => updateCurrentProject({ currentStep: 'test-review' })}
                 onBack={() => setIsCreatingNew(false)} // Or dashboard
             />
@@ -1226,6 +1295,7 @@ function App() {
             lockedChapterCode={activeChapterCode}
             limitCount={limitCount}
             lockedDivision={lockedDivision}
+            onNextChapter={handleNextChapter}
           />
         );
 

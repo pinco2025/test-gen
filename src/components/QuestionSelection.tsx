@@ -32,6 +32,7 @@ interface QuestionSelectionProps {
   lockedChapterCode?: string;
   limitCount?: number;
   lockedDivision?: 1 | 2;
+  onNextChapter?: (selectedQuestions: SelectedQuestion[]) => void; // Added for Full Test Flow
 }
 
 interface ItemData {
@@ -93,7 +94,8 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
   refreshTrigger = 0,
   lockedChapterCode,
   limitCount,
-  lockedDivision
+  lockedDivision,
+  onNextChapter
 }) => {
   const [selectedQuestions, setSelectedQuestions] = useState<SelectedQuestion[]>(initialSelectedQuestions);
   const [zoomLevel, setZoomLevel] = useState(1);
@@ -172,10 +174,16 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
     loadQuestions();
   }, [sectionName, chapters, refreshTrigger, lockedChapterCode]);
 
-  // Apply locked filters
+  // Apply locked filters & presets
   useEffect(() => {
     if (lockedChapterCode) {
-        setFilters(prev => ({ ...prev, chapter: lockedChapterCode }));
+        // Full Test Preset: PYQ type, Year Descending Sort
+        setFilters(prev => ({
+             ...prev,
+             chapter: lockedChapterCode,
+             type: 'PYQ',
+             sort: 'year_desc'
+        }));
     }
     if (lockedDivision) {
         setFilters(prev => ({ ...prev, division: lockedDivision.toString() as '1' | '2' }));
@@ -361,6 +369,24 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
     listRef.current?.scrollToItem(prevIndex, 'center');
   };
 
+  // Determine hidden filters based on locking
+  const hiddenFilters = useMemo(() => {
+      const hidden: string[] = [];
+      if (lockedChapterCode) hidden.push('chapter');
+      if (lockedDivision) hidden.push('division');
+      return hidden;
+  }, [lockedChapterCode, lockedDivision]);
+
+  // Default filters for preset (used for Reset button)
+  const defaultFilters = useMemo(() => {
+      if (lockedChapterCode) {
+          const defaults: Partial<FilterState> = { type: 'PYQ', sort: 'year_desc', chapter: lockedChapterCode };
+          if (lockedDivision) defaults.division = lockedDivision.toString();
+          return defaults;
+      }
+      return {};
+  }, [lockedChapterCode, lockedDivision]);
+
   return (
     <div className="w-full h-full flex flex-col overflow-y-auto overflow-x-hidden">
       {/* Header */}
@@ -436,10 +462,14 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
                                         // If it's a plain string, use it. If malformed JSON, treat as Unspecified.
                                         return typeof q.topic_tags === 'string' && q.topic_tags.trim() !== '' ? [q.topic_tags] : ['Unspecified'];
                                     }
-                                }))).map(topic => {
+                                }))).map(topicIdOrName => {
+                                    // Resolve Topic Name from ID if possible
+                                    const currentChapter = chapters.find(c => c.code === lockedChapterCode);
+                                    const topicName = currentChapter?.topics?.[topicIdOrName] || topicIdOrName;
+
                                     const count = filteredQuestions.filter(q => {
                                         if (!selectedUuids.has(q.uuid)) return false;
-                                        if (!q.topic_tags) return topic === 'Unspecified';
+                                        if (!q.topic_tags) return topicIdOrName === 'Unspecified';
 
                                         let tags: string[] = [];
                                         try {
@@ -448,12 +478,12 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
                                         } catch {
                                             tags = typeof q.topic_tags === 'string' && q.topic_tags.trim() !== '' ? [q.topic_tags] : ['Unspecified'];
                                         }
-                                        return tags.includes(topic);
+                                        return tags.includes(topicIdOrName);
                                     }).length;
 
                                     return (
-                                        <div key={topic} className="flex justify-between items-center text-sm p-2 bg-gray-50 dark:bg-[#252535] rounded-lg">
-                                            <span className="truncate max-w-[150px]" title={topic}>{topic}</span>
+                                        <div key={topicIdOrName} className="flex justify-between items-center text-sm p-2 bg-gray-50 dark:bg-[#252535] rounded-lg">
+                                            <span className="truncate max-w-[150px]" title={topicName}>{topicName}</span>
                                             <span className="font-bold bg-white dark:bg-[#1e1e2d] px-2 py-0.5 rounded border border-gray-200 dark:border-gray-700">{count}</span>
                                         </div>
                                     )
@@ -513,7 +543,15 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
                 <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 pointer-events-none">fingerprint</span>
                 <input type="text" placeholder="UUID" value={searchUuid} onChange={(e) => setSearchUuid(e.target.value)} className="w-full pl-12 pr-4 py-2 border border-gray-200 dark:border-[#2d2d3b] rounded-full bg-gray-50 dark:bg-[#252535] text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-transparent transition-all" />
               </div>
-              <FilterMenu chapters={chapters} availableTypes={availableTypes} availableYears={availableYears} currentFilters={filters} onFilterChange={handleFilterChange} />
+              <FilterMenu
+                chapters={chapters}
+                availableTypes={availableTypes}
+                availableYears={availableYears}
+                currentFilters={filters}
+                onFilterChange={handleFilterChange}
+                hiddenFilters={hiddenFilters}
+                defaultFilters={defaultFilters}
+              />
             </div>
 
             {/* Questions List */}
@@ -560,9 +598,28 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
       {/* Footer - Always visible at bottom */}
       <div className="flex-shrink-0 p-4 pt-4 border-t border-gray-200 dark:border-[#2d2d3b] flex justify-between bg-gray-50 dark:bg-[#121121] sticky bottom-0 z-10">
         <button onClick={onBack} className="px-6 py-2.5 rounded-lg border border-gray-200 dark:border-[#2d2d3b] text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#252535] font-semibold transition-all">Back</button>
-        <button onClick={() => onComplete(selectedQuestions)} disabled={!isSelectionValid} className="px-6 py-2.5 rounded-lg bg-primary text-white disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:cursor-not-allowed font-semibold hover:bg-primary/90 transition-all shadow-md disabled:shadow-none">
-          {isSelectionValid ? 'Continue' : (limitCount ? `Need ${limitCount} questions` : `Need ${20 - summary.division1} for Div1, ${5 - summary.division2} for Div2`)}
-        </button>
+        {onNextChapter && lockedChapterCode ? (
+            // Full Test Next Chapter Button
+            <button
+                onClick={() => onNextChapter(selectedQuestions)}
+                disabled={!isSelectionValid}
+                className="px-6 py-2.5 rounded-lg bg-primary text-white disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:cursor-not-allowed font-semibold hover:bg-primary/90 transition-all shadow-md disabled:shadow-none flex items-center gap-2"
+            >
+                {isSelectionValid ? (
+                     <>
+                        Next Chapter
+                        <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                     </>
+                ) : (
+                    `Need ${limitCount} questions`
+                )}
+            </button>
+        ) : (
+            // Existing Continue Button
+            <button onClick={() => onComplete(selectedQuestions)} disabled={!isSelectionValid} className="px-6 py-2.5 rounded-lg bg-primary text-white disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:cursor-not-allowed font-semibold hover:bg-primary/90 transition-all shadow-md disabled:shadow-none">
+                {isSelectionValid ? 'Continue' : (limitCount ? `Need ${limitCount} questions` : `Need ${20 - summary.division1} for Div1, ${5 - summary.division2} for Div2`)}
+            </button>
+        )}
       </div>
     </div>
   );
