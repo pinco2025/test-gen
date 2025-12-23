@@ -37,9 +37,10 @@ interface QuestionEditorProps {
   onNext?: () => void;
   onPrevious?: () => void;
   subject?: string;
+  questionNumber?: number;
 }
 
-const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onSave, onCancel, onNext, onPrevious, subject }) => {
+const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onSave, onCancel, onNext, onPrevious, subject, questionNumber }) => {
   const [editedQuestion, setEditedQuestion] = useState<Question>(question);
   const [editedSolution, setEditedSolution] = useState<Solution | undefined>(solution);
 
@@ -496,7 +497,22 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
         <section className="lg:col-span-7 flex flex-col h-full overflow-hidden bg-surface-light dark:bg-surface-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm relative">
             <FloatingTextMenu />
             <div className="px-6 py-4 border-b border-border-light dark:border-border-dark flex items-center justify-between">
-                <h2 className="text-lg font-bold text-text-main dark:text-white">Editing Interface</h2>
+                <div className="flex items-center gap-3">
+                    <h2 className="text-lg font-bold text-text-main dark:text-white flex items-center gap-2">
+                        <span className="material-symbols-outlined">edit_document</span>
+                        Editing Interface
+                    </h2>
+                    {questionNumber !== undefined && (
+                        <span className="text-xs font-bold px-2 py-1 bg-gray-100 dark:bg-white/10 rounded text-text-secondary">
+                            Q.{questionNumber}
+                        </span>
+                    )}
+                </div>
+                {subject && (
+                    <span className="text-sm font-medium text-primary px-3 py-1 bg-primary/10 rounded-full border border-primary/20">
+                        {subject} Section
+                    </span>
+                )}
             </div>
             {/* Reduced padding and spacing */}
             <div className="flex-1 overflow-y-auto p-5 space-y-6">
