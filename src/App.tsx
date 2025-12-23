@@ -515,7 +515,7 @@ function App() {
     if (!window.electronAPI) return;
 
     if (projects.length > 0) {
-      await window.electronAPI.config.deleteAllProjects();
+      // Just clear from memory, don't delete the files!
       setProjects([]);
       setOpenProjectIds([]);
       setProjectsData({});
