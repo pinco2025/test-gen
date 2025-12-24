@@ -18,6 +18,11 @@ const TestNavigation: React.FC<TestNavigationProps> = ({ currentStep, sections, 
 
   if (!validSteps.includes(currentStep)) return null;
 
+  // If Full Test, hide the navigation completely
+  if (testType === 'Full') {
+      return null;
+  }
+
   const physicsQuestions = sections[0]?.selectedQuestions.length || 0;
   const chemistryQuestions = sections[1]?.selectedQuestions.length || 0;
   const mathQuestions = sections[2]?.selectedQuestions.length || 0;
@@ -27,40 +32,9 @@ const TestNavigation: React.FC<TestNavigationProps> = ({ currentStep, sections, 
   const isMathConstraintSet = sections[2]?.alphaConstraint?.chapters?.length > 0;
 
   const totalRequired = 25;
-  // For Full Test, requirements might be different or defined by Full Test constraints.
-  // Assuming basic 25/25/25 check applies or we disable it for now if strict.
-  // Actually, full test creation has different logic, but let's stick to simple counts for now.
   const canReview = physicsQuestions >= totalRequired &&
                     chemistryQuestions >= totalRequired &&
                     mathQuestions >= totalRequired;
-
-  // If Full Test, hide the subject tabs, only show Review/Export.
-  // User said: "In the full test section there is no need to display physics/chemistry/maths for the full test just the export test button"
-  if (testType === 'Full') {
-      return (
-        <div className="bg-white dark:bg-[#1e1e2d] border-b border-gray-200 dark:border-[#2d2d3b] px-6 py-4">
-            <div className="max-w-7xl mx-auto flex items-center justify-end gap-4">
-                {/* Only Review/Export Button */}
-                 <button
-                    onClick={() => onNavigate('test-review')}
-                    // disabled={!canReview} // Maybe relax this for Full Test or handle differently?
-                    // User didn't specify strict logic changes for Full Test validation here, just UI.
-                    // Assuming "Export Test" is the main goal.
-                    className={`
-                        px-6 py-3 rounded-lg font-semibold transition-all duration-200 flex items-center gap-2
-                        ${currentStep === 'test-review'
-                        ? 'bg-green-600 text-white shadow-md'
-                        : 'bg-primary text-white hover:bg-primary/90 shadow-md'
-                        }
-                    `}
-                    >
-                    <span className="material-symbols-outlined text-xl">assignment_turned_in</span>
-                    <span>Review & Export</span>
-                </button>
-            </div>
-        </div>
-      );
-  }
 
   return (
     <div className="bg-white dark:bg-[#1e1e2d] border-b border-gray-200 dark:border-[#2d2d3b] px-6 py-4">

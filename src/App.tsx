@@ -839,42 +839,14 @@ function App() {
           updateCurrentProject({
               activeChapterCode: nextChapterCode
           });
-          // Scroll to top or reset view handled by QuestionSelection key prop change
       } else {
-          // End of current section. Check for next section.
-          const nextSectionIndex = currentProject.currentSectionIndex + 1;
-
-          if (nextSectionIndex < sections.length) {
-              const nextSection = sections[nextSectionIndex];
-              const nextWeightage = nextSection.betaConstraint?.weightage || {};
-
-              // Get ordered codes for the next section
-              const nextOrderedCodes = nextSection.chapters
-                 .filter(c => nextWeightage[c.code] !== undefined)
-                 .map(c => c.code);
-
-              if (nextOrderedCodes.length > 0) {
-                   // Go to first chapter of next section
-                   updateCurrentProject({
-                       currentSectionIndex: nextSectionIndex,
-                       currentStep: 'full-test-question-select',
-                       activeChapterCode: nextOrderedCodes[0],
-                       fullTestSectionView: nextSectionIndex
-                   });
-              } else {
-                   // Next section has no chapters? Go to overview.
-                   updateCurrentProject({
-                      currentStep: 'full-test-overview',
-                      activeChapterCode: undefined
-                   });
-              }
-          } else {
-               // No more sections. Go to overview.
-               updateCurrentProject({
-                   currentStep: 'full-test-overview',
-                   activeChapterCode: undefined
-               });
-          }
+          // End of current chapter list for this section.
+          // User requested "remove the JUMP to next section thing".
+          // So we return to the Full Test Overview.
+          updateCurrentProject({
+             currentStep: 'full-test-overview',
+             activeChapterCode: undefined
+          });
       }
   };
 
@@ -1051,35 +1023,81 @@ function App() {
 
   const handleStartEditing = (question: Question) => {
     if (!currentProject) return;
+
+    // Determine which section this question belongs to
+    // This is important for "Full Test Review" where questions from all sections are visible
+    let targetSectionIndex = currentProject.currentSectionIndex;
+
+    // Search for the question in all sections
+    sections.forEach((section, index) => {
+        if (section.selectedQuestions.some(sq => sq.question.uuid === question.uuid)) {
+            targetSectionIndex = index;
+        }
+    });
+
     setEditingQuestion({ question });
     setPreviousStep(currentProject.currentStep);
     setLastEditedQuestionUuid(question.uuid); // Sync local state
-    updateCurrentProject({ currentStep: 'edit-question', lastActiveQuestionUuid: question.uuid });
+
+    updateCurrentProject({
+        currentStep: 'edit-question',
+        lastActiveQuestionUuid: question.uuid,
+        currentSectionIndex: targetSectionIndex // Switch context to the correct section
+    });
   };
 
   // Next/Previous functionality for Editor
   const handleEditorNext = () => {
     if (!currentProjectId || !editingQuestion) return;
-    // Find next question in current section
-    const currentSection = sections[currentSectionIndex];
-    if (!currentSection) return;
 
-    const currentIndex = currentSection.selectedQuestions.findIndex(sq => sq.question.uuid === editingQuestion.question.uuid);
-    if (currentIndex !== -1 && currentIndex < currentSection.selectedQuestions.length - 1) {
-        const nextQ = currentSection.selectedQuestions[currentIndex + 1].question;
-        handleStartEditing(nextQ);
+    // If we came from Test Review, we should be able to navigate across sections
+    if (previousStep === 'test-review') {
+        // Flatten all selected questions across all sections
+        const allQuestions = sections.flatMap(s => sortQuestionsForSection(s.selectedQuestions));
+        const currentIndex = allQuestions.findIndex(sq => sq.question.uuid === editingQuestion.question.uuid);
+
+        if (currentIndex !== -1 && currentIndex < allQuestions.length - 1) {
+            const nextQ = allQuestions[currentIndex + 1].question;
+            handleStartEditing(nextQ);
+        }
+    } else {
+        // Normal behavior: navigate within current section
+        const currentSection = sections[currentSectionIndex];
+        if (!currentSection) return;
+
+        // Use sorted list to match display order
+        const sortedQuestions = sortQuestionsForSection(currentSection.selectedQuestions);
+        const currentIndex = sortedQuestions.findIndex(sq => sq.question.uuid === editingQuestion.question.uuid);
+
+        if (currentIndex !== -1 && currentIndex < sortedQuestions.length - 1) {
+            const nextQ = sortedQuestions[currentIndex + 1].question;
+            handleStartEditing(nextQ);
+        }
     }
   };
 
   const handleEditorPrevious = () => {
      if (!currentProjectId || !editingQuestion) return;
-     const currentSection = sections[currentSectionIndex];
-     if (!currentSection) return;
 
-     const currentIndex = currentSection.selectedQuestions.findIndex(sq => sq.question.uuid === editingQuestion.question.uuid);
-     if (currentIndex > 0) {
-         const prevQ = currentSection.selectedQuestions[currentIndex - 1].question;
-         handleStartEditing(prevQ);
+     if (previousStep === 'test-review') {
+         // Flatten all selected questions across all sections
+         const allQuestions = sections.flatMap(s => sortQuestionsForSection(s.selectedQuestions));
+         const currentIndex = allQuestions.findIndex(sq => sq.question.uuid === editingQuestion.question.uuid);
+
+         if (currentIndex > 0) {
+             const prevQ = allQuestions[currentIndex - 1].question;
+             handleStartEditing(prevQ);
+         }
+     } else {
+        const currentSection = sections[currentSectionIndex];
+        if (!currentSection) return;
+
+        const sortedQuestions = sortQuestionsForSection(currentSection.selectedQuestions);
+        const currentIndex = sortedQuestions.findIndex(sq => sq.question.uuid === editingQuestion.question.uuid);
+        if (currentIndex > 0) {
+            const prevQ = sortedQuestions[currentIndex - 1].question;
+            handleStartEditing(prevQ);
+        }
      }
   };
 

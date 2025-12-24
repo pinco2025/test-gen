@@ -22,32 +22,23 @@ const AddQuestionModal: React.FC<AddQuestionModalProps> = ({ onClose, onSave, in
   // Initialize with initialData if provided (IPQ Mode)
   useEffect(() => {
     if (initialData) {
-        // Construct pre-filled object
-        // Borrow Tags, Year, set Type to IPQ, and clear content
-        const prefilled: Partial<Question> = {
-            // Keep content empty or minimal
-            question: '',
-            answer: '',
-            type: 'IPQ', // Force IPQ type
-            year: initialData.year,
-            tag_1: initialData.tag_1,
-            tag_2: initialData.tag_2,
-            tag_3: initialData.tag_3,
-            tag_4: initialData.tag_4,
-            topic_tags: initialData.topic_tags,
-            jee_mains_relevance: initialData.jee_mains_relevance,
-            importance_level: initialData.importance_level,
-            related_concepts: initialData.related_concepts,
-            is_multi_concept: initialData.is_multi_concept,
-            scary: false,
-            calc: false,
-            // Clear legacy
-            legacy_question: null,
-            legacy_a: null, legacy_b: null, legacy_c: null, legacy_d: null, legacy_solution: null
-        };
+        // IPQ Mode: Do NOT pre-fill the JSON with metadata.
+        // The goal is to allow the user to paste a generated JSON that contains ONLY the new content.
+        // We will merge the metadata automatically in parseInput.
 
-        // Convert to formatted JSON string
-        setJsonInput(JSON.stringify(prefilled, null, 2));
+        // Just set a minimal template with better structure
+        const template = {
+            question: "Paste question text here...",
+            answer: "A",
+            option_a: "Option A text...",
+            option_b: "Option B text...",
+            option_c: "Option C text...",
+            option_d: "Option D text...",
+            solution: {
+                solution_text: "Explanation for the answer..."
+            }
+        };
+        setJsonInput(JSON.stringify(template, null, 2));
     }
   }, [initialData]);
 
@@ -70,8 +61,10 @@ const AddQuestionModal: React.FC<AddQuestionModalProps> = ({ onClose, onSave, in
       const data = JSON.parse(text);
 
       // Enforce IPQ constraints if in IPQ mode
-      if (isIPQMode && data.type !== 'IPQ') {
-          setError('Type must be "IPQ" for this operation.');
+      // Relaxed validation: allow type to be missing (it will be auto-filled)
+      // BUT if it IS present, it must be 'IPQ'
+      if (isIPQMode && data.type && data.type !== 'IPQ') {
+          setError('Type must be "IPQ" for this operation (or omit it).');
           return;
       }
 
@@ -92,50 +85,73 @@ const AddQuestionModal: React.FC<AddQuestionModalProps> = ({ onClose, onSave, in
 
       // Validate required fields
       if (data.question === undefined) data.question = '';
-      if (!data.answer || !data.type) {
+
+      // If IPQ Mode, 'type' is optional in input (we add it)
+      if (!data.answer || (!isIPQMode && !data.type)) {
         setError('Missing required fields: answer, type');
         return null;
       }
 
+      // If in IPQ mode, merge with initialData to inherit metadata
+      let mergedData = { ...data };
+      if (isIPQMode && initialData) {
+          mergedData = {
+              ...mergedData,
+              // Inherit metadata from original question
+              year: initialData.year,
+              tag_1: initialData.tag_1,
+              tag_2: initialData.tag_2,
+              tag_3: initialData.tag_3,
+              tag_4: initialData.tag_4,
+              topic_tags: initialData.topic_tags,
+              jee_mains_relevance: initialData.jee_mains_relevance,
+              importance_level: initialData.importance_level,
+              related_concepts: initialData.related_concepts,
+              is_multi_concept: initialData.is_multi_concept,
+              // Force type to IPQ if not already set (though validation checks it)
+              type: 'IPQ'
+          };
+      }
+
       // Create question object using exact database schema
       const newQuestion: Question = {
-        uuid: data.uuid || crypto.randomUUID(),
-        question: data.question || '',
-        question_image_url: data.question_image_url || null,
-        option_a: data.option_a || null,
-        option_a_image_url: data.option_a_image_url || null,
-        option_b: data.option_b || null,
-        option_b_image_url: data.option_b_image_url || null,
-        option_c: data.option_c || null,
-        option_c_image_url: data.option_c_image_url || null,
-        option_d: data.option_d || null,
-        option_d_image_url: data.option_d_image_url || null,
-        answer: data.answer,
-        type: data.type,
-        year: data.year || null,
-        tag_1: data.tag_1 || null,
-        tag_2: data.tag_2 || null,
-        tag_3: data.tag_3 || null,
-        tag_4: data.tag_4 || null,
-        topic_tags: data.topic_tags || null,
-        importance_level: data.importance_level || null,
-        verification_level_1: data.verification_level_1 || null,
-        verification_level_2: data.verification_level_2 || null,
-        jee_mains_relevance: data.jee_mains_relevance || null,
-        is_multi_concept: data.is_multi_concept || null,
-        scary: data.scary || false,
-        calc: data.calc || false,
-        related_concepts: data.related_concepts || null,
-        legacy_question: data.legacy_question || null,
-        legacy_a: data.legacy_a || null,
-        legacy_b: data.legacy_b || null,
-        legacy_c: data.legacy_c || null,
-        legacy_d: data.legacy_d || null,
-        legacy_solution: data.legacy_solution || null,
-        links: data.links || null,
-        created_at: data.created_at || new Date().toISOString(),
-        updated_at: data.updated_at || new Date().toISOString(),
-        frequency: data.frequency || 0
+        uuid: mergedData.uuid || crypto.randomUUID(),
+        question: mergedData.question || '',
+        question_image_url: mergedData.question_image_url || null,
+        option_a: mergedData.option_a || null,
+        option_a_image_url: mergedData.option_a_image_url || null,
+        option_b: mergedData.option_b || null,
+        option_b_image_url: mergedData.option_b_image_url || null,
+        option_c: mergedData.option_c || null,
+        option_c_image_url: mergedData.option_c_image_url || null,
+        option_d: mergedData.option_d || null,
+        option_d_image_url: mergedData.option_d_image_url || null,
+        answer: mergedData.answer,
+        type: mergedData.type,
+        year: mergedData.year || null,
+        tag_1: mergedData.tag_1 || null,
+        tag_2: mergedData.tag_2 || null,
+        tag_3: mergedData.tag_3 || null,
+        tag_4: mergedData.tag_4 || null,
+        topic_tags: mergedData.topic_tags || null,
+        importance_level: mergedData.importance_level || null,
+        verification_level_1: mergedData.verification_level_1 || null,
+        verification_level_2: mergedData.verification_level_2 || null,
+        jee_mains_relevance: mergedData.jee_mains_relevance || null,
+        is_multi_concept: mergedData.is_multi_concept || null,
+        scary: mergedData.scary || false,
+        calc: mergedData.calc || false,
+        related_concepts: mergedData.related_concepts || null,
+        legacy_question: mergedData.legacy_question || null,
+        legacy_a: mergedData.legacy_a || null,
+        legacy_b: mergedData.legacy_b || null,
+        legacy_c: mergedData.legacy_c || null,
+        legacy_d: mergedData.legacy_d || null,
+        legacy_solution: mergedData.legacy_solution || null,
+        links: mergedData.links || null,
+        created_at: mergedData.created_at || new Date().toISOString(),
+        updated_at: mergedData.updated_at || new Date().toISOString(),
+        frequency: mergedData.frequency || 0
       };
 
       // Parse solution if provided
