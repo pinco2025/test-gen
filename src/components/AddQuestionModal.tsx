@@ -26,11 +26,17 @@ const AddQuestionModal: React.FC<AddQuestionModalProps> = ({ onClose, onSave, in
         // The goal is to allow the user to paste a generated JSON that contains ONLY the new content.
         // We will merge the metadata automatically in parseInput.
 
-        // Just set a minimal template or empty string
+        // Just set a minimal template with better structure
         const template = {
             question: "Paste question text here...",
             answer: "A",
-            type: "IPQ"
+            option_a: "Option A text...",
+            option_b: "Option B text...",
+            option_c: "Option C text...",
+            option_d: "Option D text...",
+            solution: {
+                solution_text: "Explanation for the answer..."
+            }
         };
         setJsonInput(JSON.stringify(template, null, 2));
     }
@@ -55,8 +61,10 @@ const AddQuestionModal: React.FC<AddQuestionModalProps> = ({ onClose, onSave, in
       const data = JSON.parse(text);
 
       // Enforce IPQ constraints if in IPQ mode
-      if (isIPQMode && data.type !== 'IPQ') {
-          setError('Type must be "IPQ" for this operation.');
+      // Relaxed validation: allow type to be missing (it will be auto-filled)
+      // BUT if it IS present, it must be 'IPQ'
+      if (isIPQMode && data.type && data.type !== 'IPQ') {
+          setError('Type must be "IPQ" for this operation (or omit it).');
           return;
       }
 
@@ -77,7 +85,9 @@ const AddQuestionModal: React.FC<AddQuestionModalProps> = ({ onClose, onSave, in
 
       // Validate required fields
       if (data.question === undefined) data.question = '';
-      if (!data.answer || !data.type) {
+
+      // If IPQ Mode, 'type' is optional in input (we add it)
+      if (!data.answer || (!isIPQMode && !data.type)) {
         setError('Missing required fields: answer, type');
         return null;
       }
