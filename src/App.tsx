@@ -732,9 +732,15 @@ function App() {
       const weightage = currentSection.betaConstraint?.weightage || {};
 
       // Ideally follow the order defined in section.chapters
-      const orderedCodes = currentSection.chapters
+      let orderedCodes = currentSection.chapters
         .filter(c => weightage[c.code] !== undefined)
         .map(c => c.code);
+
+      // Fallback: If active chapter is missing from ordered list (e.g. mismatch in chapters file or incomplete data),
+      // rely on the order of keys in the weightage object (which usually preserves JSON insertion order).
+      if (!orderedCodes.includes(activeChapterCode)) {
+          orderedCodes = Object.keys(weightage);
+      }
 
       const currentIndex = orderedCodes.indexOf(activeChapterCode);
 
