@@ -908,7 +908,7 @@ function App() {
     updateCurrentProject({ constraintConfig: config });
   };
 
-  const handleQuestionUpdate = useCallback(async (updatedQuestion: any) => {
+  const handleQuestionUpdate = useCallback(async (updatedQuestion: any, silent: boolean = false) => {
     if (!currentProjectId || !window.electronAPI) return;
 
     try {
@@ -954,7 +954,7 @@ function App() {
           }));
 
           updateCurrentProject({ sections: updatedSections });
-          addNotification('success', 'Question updated successfully!');
+          if (!silent) addNotification('success', 'Question updated successfully!');
         } else {
           // Fallback to using updatedQuestion if refetch fails
           const updatedSections = sections.map(section => ({
@@ -968,14 +968,14 @@ function App() {
           }));
 
           updateCurrentProject({ sections: updatedSections });
-          addNotification('success', 'Question updated successfully!');
+          if (!silent) addNotification('success', 'Question updated successfully!');
         }
       } else {
-        addNotification('error', 'Failed to update question in database.');
+        if (!silent) addNotification('error', 'Failed to update question in database.');
       }
     } catch (error) {
       console.error('Error updating question:', error);
-      addNotification('error', 'An error occurred while updating the question.');
+      if (!silent) addNotification('error', 'An error occurred while updating the question.');
     }
   }, [currentProjectId, sections, updateCurrentProject, addNotification]);
 
@@ -1121,7 +1121,8 @@ function App() {
     if (!updatedQuestion) return;
 
     // Update question in database and in-memory state
-    await handleQuestionUpdate(updatedQuestion);
+    // Use silent mode for auto/intermediate saves
+    await handleQuestionUpdate(updatedQuestion, true);
 
     // Save solution if provided
     if (updatedSolution && window.electronAPI) {
