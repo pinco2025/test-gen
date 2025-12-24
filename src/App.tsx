@@ -17,10 +17,8 @@ import {
   TestType
 } from './types';
 import { sortQuestionsForSection } from './utils/sorting';
-import TestCreationForm from './components/TestCreationForm';
-import FullTestCreation, { FullTestJson } from './components/FullTestCreation';
-import FullTestOverview from './components/FullTestOverview';
-import SectionConfiguration from './components/SectionConfiguration';
+import TestCreationUpload, { FullTestJson } from './components/TestCreationUpload';
+import TestOverview from './components/TestOverview';
 import QuestionSelection from './components/QuestionSelection';
 import ProjectTabs from './components/ProjectTabs';
 import TestReview from './components/TestReview';
@@ -123,7 +121,7 @@ function App() {
 
   // Current project display state (derived from projectsData)
   const step = currentProject?.currentStep ||
-    (isCreatingNew ? (newTestType === 'Full' ? 'full-test-creation' : 'test-creation') : ((dbConnected && chaptersConnected) ? 'dashboard' : 'database-connect'));
+    (isCreatingNew ? 'test-creation' : ((dbConnected && chaptersConnected) ? 'dashboard' : 'database-connect'));
   const testMetadata = currentProject?.testMetadata || null;
   const sections = currentProject?.sections || [];
   const currentSectionIndex = currentProject?.currentSectionIndex || 0;
@@ -569,47 +567,7 @@ function App() {
       return parts[parts.length - 1];
   };
 
-  const handleTestCreation = async (metadata: TestMetadata, chapters: Chapter[][]) => {
-    let projectId = metadata.code.replace(/[^a-zA-Z0-9]/g, '-');
-
-    if (window.electronAPI) {
-      const exists = await window.electronAPI.project.exists(projectId);
-      if (exists) {
-          await loadProject(projectId);
-          addNotification('info', `Loaded existing project "${metadata.code}"`);
-          return;
-      }
-    }
-
-    const sectionNames: SectionName[] = ['Physics', 'Chemistry', 'Mathematics'];
-    const initialSections: SectionConfig[] = sectionNames.map((name, idx) => ({
-      name,
-      chapters: chapters[idx],
-      alphaConstraint: { chapters: [] },
-      betaConstraint: {},
-      selectedQuestions: []
-    }));
-
-    const now = new Date().toISOString();
-
-    setProjectsData(prev => ({
-      ...prev,
-      [projectId]: {
-        testMetadata: metadata,
-        sections: initialSections,
-        currentSectionIndex: 0,
-        constraintConfig: { minIdx: 1, Sm: 0.1, Sh: 0.1 },
-        currentStep: 'section-config-physics',
-        createdAt: now
-      }
-    }));
-
-    setOpenProjectIds(prev => [...prev, projectId]);
-    setCurrentProjectId(projectId);
-    setIsCreatingNew(false);
-  };
-
-  const handleFullTestCreation = async (data: FullTestJson) => {
+  const handleJsonTestCreation = async (data: FullTestJson) => {
     const now = new Date().toISOString();
     const createdProjectIds: string[] = [];
 
@@ -625,7 +583,7 @@ function App() {
                  };
             }
         } catch (e) {
-            console.error("Failed to load chapters for full test creation", e);
+            console.error("Failed to load chapters for test creation", e);
         }
     }
 
@@ -635,7 +593,7 @@ function App() {
         const metadata: TestMetadata = {
             code: testDef.testCode,
             description: testDef.description,
-            testType: 'Full',
+            testType: newTestType, // Uses the state from dashboard selection
             createdAt: now
         };
 
@@ -660,7 +618,7 @@ function App() {
                 sections: sections,
                 currentSectionIndex: 0,
                 constraintConfig: { minIdx: 1, Sm: 0.1, Sh: 0.1 },
-                currentStep: 'full-test-overview', // Start at overview
+                currentStep: 'full-test-overview', // Start at overview for both Part and Full tests
                 createdAt: now
             }
         }));
@@ -699,25 +657,9 @@ function App() {
     alpha: AlphaConstraint,
     beta: BetaConstraint
   ) => {
+    // This function is kept for type compatibility but might be unused if we strictly follow JSON flow
     if (!currentProjectId) return;
-
-    const updatedSections = [...sections];
-    updatedSections[currentSectionIndex] = {
-      ...updatedSections[currentSectionIndex],
-      alphaConstraint: alpha,
-      betaConstraint: beta
-    };
-
-    const stepMap: { [key: number]: WorkflowStep } = {
-      0: 'question-select-physics',
-      1: 'question-select-chemistry',
-      2: 'question-select-math'
-    };
-
-    updateCurrentProject({
-      sections: updatedSections,
-      currentStep: stepMap[currentSectionIndex]
-    });
+    console.warn("handleSectionConfiguration called in JSON-only mode");
   };
 
   const handleSelectionChange = useCallback((selectedQuestions: SelectedQuestion[]) => {
@@ -753,58 +695,27 @@ function App() {
       selectedQuestions
     };
 
-    if (testMetadata?.testType === 'Full') {
-        // Return to overview
-        updateCurrentProject({
-            sections: updatedSections,
-            currentStep: 'full-test-overview',
-            activeChapterCode: undefined // Clear active chapter
-        });
-    } else {
-        if (currentSectionIndex < 2) {
-            const newIndex = currentSectionIndex + 1;
-            const stepMap: { [key: number]: WorkflowStep } = {
-                1: 'section-config-chemistry',
-                2: 'section-config-math'
-            };
-
-            updateCurrentProject({
-                sections: updatedSections,
-                currentSectionIndex: newIndex,
-                currentStep: stepMap[newIndex]
-            });
-        } else {
-            updateCurrentProject({
-                sections: updatedSections,
-                currentStep: 'test-review'
-            });
-        }
-    }
+    // For both Part and Full tests, return to the overview
+    updateCurrentProject({
+        sections: updatedSections,
+        currentStep: 'full-test-overview',
+        activeChapterCode: undefined // Clear active chapter
+    });
   };
 
   const handleBackFromSelection = () => {
-    if (testMetadata?.testType === 'Full') {
-         updateCurrentProject({
-            currentStep: 'full-test-overview',
-            activeChapterCode: undefined
-        });
-    } else {
-        const stepMap: { [key: number]: WorkflowStep } = {
-            0: 'section-config-physics',
-            1: 'section-config-chemistry',
-            2: 'section-config-math'
-        };
-
-        updateCurrentProject({
-            currentStep: stepMap[currentSectionIndex]
-        });
-    }
+    // Always go back to overview for the new flow
+     updateCurrentProject({
+        currentStep: 'full-test-overview',
+        activeChapterCode: undefined
+    });
   };
 
   // Logic to find and navigate to the next chapter in Full Test mode
   const handleNextChapter = (selectedQuestions: SelectedQuestion[]) => {
       if (!currentProjectId || !currentProject) return;
-      if (currentProject.testMetadata?.testType !== 'Full') return;
+      // Applies to both Part and Full tests in the new flow
+      // if (currentProject.testMetadata?.testType !== 'Full') return;
 
       // SAVE CURRENT PROGRESS FIRST
       // This is crucial: save the selection from the current chapter before switching
@@ -837,12 +748,13 @@ function App() {
 
       if (nextChapterCode) {
           updateCurrentProject({
-              activeChapterCode: nextChapterCode
+              activeChapterCode: nextChapterCode,
+              currentStep: 'full-test-question-select' // Stay in selection mode
           });
       } else {
           // End of current chapter list for this section.
           // User requested "remove the JUMP to next section thing".
-          // So we return to the Full Test Overview.
+          // So we return to the Overview.
           updateCurrentProject({
              currentStep: 'full-test-overview',
              activeChapterCode: undefined
@@ -1311,21 +1223,19 @@ function App() {
           />
         );
 
-      case 'full-test-creation':
+      case 'test-creation':
         return (
-            <FullTestCreation
+            <TestCreationUpload
                 onCancel={() => setIsCreatingNew(false)}
-                onProceed={handleFullTestCreation}
+                onProceed={handleJsonTestCreation}
+                testType={newTestType}
             />
         );
-
-      case 'test-creation':
-        return <TestCreationForm onSubmit={handleTestCreation} defaultTestType={newTestType} />;
 
       case 'full-test-overview':
         if (!testMetadata) return <div>Loading...</div>;
         return (
-            <FullTestOverview
+            <TestOverview
                 testMetadata={testMetadata}
                 sections={sections}
                 onSelectChapter={(sectionIndex, chapterCode) => {
@@ -1343,18 +1253,12 @@ function App() {
             />
         );
 
+      // Legacy steps are now just redirects or removed, but logic remains if needed for robustness
       case 'section-config-physics':
       case 'section-config-chemistry':
       case 'section-config-math':
-        return (
-          <SectionConfiguration
-            sectionName={sections[currentSectionIndex]?.name || 'Physics'}
-            chapters={sections[currentSectionIndex]?.chapters || []}
-            constraintConfig={constraintConfig}
-            onConfigChange={handleConstraintConfigChange}
-            onConfigure={handleSectionConfiguration}
-          />
-        );
+         // These should ideally not be reached in new flow
+         return <div>Legacy Configuration Steps</div>;
 
       case 'question-select-physics':
       case 'question-select-chemistry':
@@ -1363,14 +1267,13 @@ function App() {
         const currentSection = sections[currentSectionIndex];
         if (!currentSection) return <div>Loading...</div>;
 
-        // Full Test Logic
-        const isFullTest = testMetadata?.testType === 'Full';
+        // Apply Logic for both Part and Full tests in the new flow
         const activeChapterCode = currentProject?.activeChapterCode;
 
         let limitCount = undefined;
         let lockedDivision: 1 | 2 | undefined = undefined;
 
-        if (isFullTest && activeChapterCode) {
+        if (activeChapterCode) {
             limitCount = currentSection.betaConstraint?.weightage?.[activeChapterCode];
             // Infer division from section type (Div 1 or Div 2)
             if (currentSection.betaConstraint?.type === "Div 1") lockedDivision = 1;
@@ -1393,7 +1296,7 @@ function App() {
             scrollToQuestionUuid={lastEditedQuestionUuid}
             onScrollComplete={() => setLastEditedQuestionUuid(null)}
             refreshTrigger={questionsRefreshTrigger}
-            // New props for Full Test
+            // Props for constraints
             lockedChapterCode={activeChapterCode}
             limitCount={limitCount}
             lockedDivision={lockedDivision}

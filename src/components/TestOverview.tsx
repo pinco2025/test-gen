@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { SectionConfig, TestMetadata } from '../types';
 
-interface FullTestOverviewProps {
+interface TestOverviewProps {
   testMetadata: TestMetadata;
   sections: SectionConfig[];
   onSelectChapter: (sectionIndex: number, chapterCode: string) => void;
@@ -12,7 +12,7 @@ interface FullTestOverviewProps {
   onSectionIndexChange?: (index: number | null) => void;
 }
 
-const FullTestOverview: React.FC<FullTestOverviewProps> = ({
+const TestOverview: React.FC<TestOverviewProps> = ({
   testMetadata,
   sections,
   onSelectChapter,
@@ -49,14 +49,14 @@ const FullTestOverview: React.FC<FullTestOverviewProps> = ({
         name: section.name,
         selected,
         required,
-        progress: Math.min(100, (selected / required) * 100)
+        progress: required > 0 ? Math.min(100, (selected / required) * 100) : (selected > 0 ? 100 : 0)
       };
     });
 
     return {
       totalSelected,
       totalRequired,
-      progress: totalRequired > 0 ? (totalSelected / totalRequired) * 100 : 0,
+      progress: totalRequired > 0 ? (totalSelected / totalRequired) * 100 : (totalSelected > 0 ? 100 : 0),
       sections: sectionStats
     };
   }, [sections]);
@@ -84,7 +84,7 @@ const FullTestOverview: React.FC<FullTestOverviewProps> = ({
         name,
         required: requiredCount as number,
         selected: selectedCount,
-        progress: (requiredCount as number) > 0 ? (selectedCount / (requiredCount as number)) * 100 : 0,
+        progress: (requiredCount as number) > 0 ? (selectedCount / (requiredCount as number)) * 100 : (selectedCount > 0 ? 100 : 0),
         isComplete: selectedCount === (requiredCount as number)
       };
     }).sort((a, b) => {
@@ -178,7 +178,7 @@ const FullTestOverview: React.FC<FullTestOverviewProps> = ({
           <div>
             <h1 className="text-xl font-bold">{testMetadata.code}</h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              {testMetadata.description || 'Full Test Configuration'}
+              {testMetadata.description || `${testMetadata.testType} Test Configuration`}
             </p>
           </div>
         </div>
@@ -275,4 +275,4 @@ const FullTestOverview: React.FC<FullTestOverviewProps> = ({
   );
 };
 
-export default FullTestOverview;
+export default TestOverview;

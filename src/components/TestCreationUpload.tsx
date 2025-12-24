@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { SectionName, ChaptersData } from '../types';
+import { SectionName, ChaptersData, TestType } from '../types';
 
-interface FullTestCreationProps {
+interface TestCreationUploadProps {
   onCancel: () => void;
   onProceed: (data: FullTestJson) => void;
+  testType: TestType;
 }
 
 // JSON Structure Definitions
@@ -28,7 +29,7 @@ export interface FullTestJson {
   tests: JsonTestDefinition[];
 }
 
-const FullTestCreation: React.FC<FullTestCreationProps> = ({ onCancel, onProceed }) => {
+const TestCreationUpload: React.FC<TestCreationUploadProps> = ({ onCancel, onProceed, testType }) => {
   const [jsonFile, setJsonFile] = useState<File | null>(null);
   const [parsedData, setParsedData] = useState<FullTestJson | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -160,9 +161,9 @@ const FullTestCreation: React.FC<FullTestCreationProps> = ({ onCancel, onProceed
           <div className="bg-primary/10 dark:bg-primary/20 rounded-full p-6 mb-6 inline-block">
             <span className="material-symbols-outlined text-5xl text-primary">upload_file</span>
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Upload Test Matrix</h2>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Upload {testType} Test Matrix</h2>
           <p className="text-gray-600 dark:text-gray-400 mb-8">
-            Select a JSON file containing the full test structure and weightage matrix.
+            Select a JSON file containing the {testType.toLowerCase()} test structure and weightage matrix.
           </p>
 
           <input
@@ -213,7 +214,7 @@ const FullTestCreation: React.FC<FullTestCreationProps> = ({ onCancel, onProceed
             <span className="material-symbols-outlined text-gray-600 dark:text-gray-400">arrow_back</span>
           </button>
           <div>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white">Review Test Matrix</h1>
+            <h1 className="text-xl font-bold text-gray-900 dark:text-white">Review {testType} Test Matrix</h1>
             <p className="text-sm text-gray-500 dark:text-gray-400">
                {parsedData.tests.length} test{parsedData.tests.length !== 1 ? 's' : ''} found in {jsonFile?.name}
             </p>
@@ -326,4 +327,4 @@ const FullTestCreation: React.FC<FullTestCreationProps> = ({ onCancel, onProceed
   );
 };
 
-export default FullTestCreation;
+export default TestCreationUpload;
