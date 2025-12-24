@@ -29,6 +29,20 @@ const UndoRedoControls = ({ undoRedo }: { undoRedo: any }) => (
     </div>
 );
 
+// Simple debounce hook
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+  return debouncedValue;
+}
+
 interface QuestionEditorProps {
   question: Question;
   solution?: Solution;
@@ -84,6 +98,16 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
           return prev;
       });
   }, [solutionText.value, editedQuestion.uuid]);
+
+  // Debounced auto-save
+  const debouncedQuestion = useDebounce(editedQuestion, 1000);
+  const debouncedSolution = useDebounce(editedSolution, 1000);
+
+  useEffect(() => {
+      if (onIntermediateSave) {
+          onIntermediateSave(debouncedQuestion, debouncedSolution);
+      }
+  }, [debouncedQuestion, debouncedSolution, onIntermediateSave]);
 
   // Re-initialize undo stacks when question prop changes (switching questions)
   useEffect(() => {
@@ -193,10 +217,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
     setEditedSolution(prev => ({ ...(prev || { uuid: editedQuestion.uuid, solution_text: '', solution_image_url: '' }), [field]: value }));
   };
 
-  const handleSave = () => {
-    onSave(editedQuestion, editedSolution);
-  };
-
   const handleNext = () => {
       if (onIntermediateSave) {
           onIntermediateSave(editedQuestion, editedSolution);
@@ -213,6 +233,14 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
           onSave(editedQuestion, editedSolution);
       }
       onPrevious?.();
+  };
+
+  const handleBack = () => {
+      // Ensure we save latest state before leaving
+      if (onIntermediateSave) {
+          onIntermediateSave(editedQuestion, editedSolution);
+      }
+      onCancel();
   };
 
   const [showLegacyMetadata, setShowLegacyMetadata] = useState(false);
@@ -1111,9 +1139,9 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
 
             <div className="px-6 py-4 border-t border-border-light dark:border-border-dark bg-gray-50 dark:bg-surface-dark/50 flex items-center justify-between shrink-0">
                 <button
-                    onClick={onCancel}
+                    onClick={handleBack}
                     className="px-5 py-2.5 rounded-lg border border-border-light dark:border-border-dark text-text-secondary hover:text-text-main dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 text-sm font-semibold transition-all">
-                    Cancel
+                    Back
                 </button>
                 <div className="flex gap-3">
                      {(onPrevious || onNext) && (
@@ -1122,7 +1150,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
                                 <button
                                     onClick={handlePrevious}
                                     className="p-2.5 rounded-l-lg border border-border-light dark:border-border-dark bg-white dark:bg-surface-light text-text-secondary hover:text-text-main dark:hover:text-white hover:bg-gray-50 dark:hover:bg-white/5 transition-all"
-                                    title="Previous Question (Auto-saves)"
+                                    title="Previous Question"
                                 >
                                     <span className="material-symbols-outlined text-[18px]">arrow_back</span>
                                 </button>
@@ -1131,19 +1159,13 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
                                 <button
                                     onClick={handleNext}
                                     className="p-2.5 rounded-r-lg border border-l-0 border-border-light dark:border-border-dark bg-white dark:bg-surface-light text-text-secondary hover:text-text-main dark:hover:text-white hover:bg-gray-50 dark:hover:bg-white/5 transition-all"
-                                    title="Next Question (Auto-saves)"
+                                    title="Next Question"
                                 >
                                     <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
                                 </button>
                              )}
                         </div>
                      )}
-                    <button
-                        onClick={handleSave}
-                        className="px-6 py-2.5 rounded-lg bg-primary text-white shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 hover:bg-primary/90 text-sm font-bold transition-all flex items-center gap-2">
-                        <span className="material-symbols-outlined text-[18px]">save</span>
-                        Save Changes
-                    </button>
                 </div>
             </div>
         </section>
