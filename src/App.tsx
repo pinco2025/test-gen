@@ -1036,7 +1036,12 @@ function App() {
     });
 
     setEditingQuestion({ question });
-    setPreviousStep(currentProject.currentStep);
+
+    // Only set previousStep if we are NOT already in editing mode
+    if (currentProject.currentStep !== 'edit-question') {
+        setPreviousStep(currentProject.currentStep);
+    }
+
     setLastEditedQuestionUuid(question.uuid); // Sync local state
 
     updateCurrentProject({
@@ -1112,15 +1117,8 @@ function App() {
     handleStartEditing(clonedQuestion);
   };
 
-  const handleFinishEditing = async (updatedQuestion: Question | null, updatedSolution?: Solution) => {
-    if (!updatedQuestion) {
-      if (previousStep) {
-        updateCurrentProject({ currentStep: previousStep });
-      }
-      setEditingQuestion(null);
-      setLastEditedQuestionUuid(null);
-      return;
-    }
+  const handleIntermediateSave = async (updatedQuestion: Question, updatedSolution?: Solution) => {
+    if (!updatedQuestion) return;
 
     // Update question in database and in-memory state
     await handleQuestionUpdate(updatedQuestion);
@@ -1138,6 +1136,20 @@ function App() {
         addNotification('warning', 'Question saved, but failed to save solution.');
       }
     }
+  };
+
+  const handleFinishEditing = async (updatedQuestion: Question | null, updatedSolution?: Solution) => {
+    if (!updatedQuestion) {
+      if (previousStep) {
+        updateCurrentProject({ currentStep: previousStep });
+      }
+      setEditingQuestion(null);
+      setLastEditedQuestionUuid(null);
+      return;
+    }
+
+    // Use shared save logic
+    await handleIntermediateSave(updatedQuestion, updatedSolution);
 
     // Set the last edited question UUID so we can scroll to it
     setLastEditedQuestionUuid(updatedQuestion.uuid);
@@ -1427,6 +1439,7 @@ function App() {
                 question={editingQuestion.question}
                 solution={editingQuestion.solution}
                 onSave={handleFinishEditing}
+                onIntermediateSave={handleIntermediateSave}
                 onCancel={() => handleFinishEditing(null)}
                 subject={sections[currentSectionIndex]?.name}
                 onNext={handleEditorNext}

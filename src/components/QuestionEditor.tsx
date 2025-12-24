@@ -33,6 +33,7 @@ interface QuestionEditorProps {
   question: Question;
   solution?: Solution;
   onSave: (updatedQuestion: Question, updatedSolution?: Solution) => void;
+  onIntermediateSave?: (updatedQuestion: Question, updatedSolution?: Solution) => void;
   onCancel: () => void;
   onNext?: () => void;
   onPrevious?: () => void;
@@ -40,7 +41,7 @@ interface QuestionEditorProps {
   questionNumber?: number;
 }
 
-const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onSave, onCancel, onNext, onPrevious, subject, questionNumber }) => {
+const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onSave, onIntermediateSave, onCancel, onNext, onPrevious, subject, questionNumber }) => {
   const [editedQuestion, setEditedQuestion] = useState<Question>(question);
   const [editedSolution, setEditedSolution] = useState<Solution | undefined>(solution);
 
@@ -197,12 +198,20 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
   };
 
   const handleNext = () => {
-      onSave(editedQuestion, editedSolution);
+      if (onIntermediateSave) {
+          onIntermediateSave(editedQuestion, editedSolution);
+      } else {
+          onSave(editedQuestion, editedSolution);
+      }
       onNext?.();
   };
 
   const handlePrevious = () => {
-      onSave(editedQuestion, editedSolution);
+      if (onIntermediateSave) {
+          onIntermediateSave(editedQuestion, editedSolution);
+      } else {
+          onSave(editedQuestion, editedSolution);
+      }
       onPrevious?.();
   };
 
