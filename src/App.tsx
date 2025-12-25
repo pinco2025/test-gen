@@ -343,6 +343,8 @@ function App() {
         updateCurrentProject({ sections: updatedSections });
         addNotification('success', 'Question switched successfully!');
         setSwitchTargetQuestionUuid(null);
+        // Ensure we focus on the new question in the review list
+        setLastEditedQuestionUuid(newQuestion.uuid);
         setQuestionsRefreshTrigger(prev => prev + 1);
 
     } catch (error) {
@@ -1042,11 +1044,16 @@ function App() {
 
   const handleFinishEditing = async (updatedQuestion: Question | null, updatedSolution?: Solution) => {
     if (!updatedQuestion) {
+      // If cancelling/going back, we still want to preserve the context of which question we were on
+      // so the list view can scroll/jump to it.
+      if (editingQuestion) {
+        setLastEditedQuestionUuid(editingQuestion.question.uuid);
+      }
+
       if (previousStep) {
         updateCurrentProject({ currentStep: previousStep });
       }
       setEditingQuestion(null);
-      setLastEditedQuestionUuid(null);
       return;
     }
 
