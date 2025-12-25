@@ -217,28 +217,28 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
     setEditedSolution(prev => ({ ...(prev || { uuid: editedQuestion.uuid, solution_text: '', solution_image_url: '' }), [field]: value }));
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
       if (onIntermediateSave) {
-          onIntermediateSave(editedQuestion, editedSolution);
+          await onIntermediateSave(editedQuestion, editedSolution);
       } else {
           onSave(editedQuestion, editedSolution);
       }
       onNext?.();
   };
 
-  const handlePrevious = () => {
+  const handlePrevious = async () => {
       if (onIntermediateSave) {
-          onIntermediateSave(editedQuestion, editedSolution);
+          await onIntermediateSave(editedQuestion, editedSolution);
       } else {
           onSave(editedQuestion, editedSolution);
       }
       onPrevious?.();
   };
 
-  const handleBack = () => {
+  const handleBack = async () => {
       // Ensure we save latest state before leaving
       if (onIntermediateSave) {
-          onIntermediateSave(editedQuestion, editedSolution);
+          await onIntermediateSave(editedQuestion, editedSolution);
       }
       onCancel();
   };

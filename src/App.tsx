@@ -343,6 +343,8 @@ function App() {
         updateCurrentProject({ sections: updatedSections });
         addNotification('success', 'Question switched successfully!');
         setSwitchTargetQuestionUuid(null);
+        // Ensure we focus on the new question in the review list
+        setLastEditedQuestionUuid(newQuestion.uuid);
         setQuestionsRefreshTrigger(prev => prev + 1);
 
     } catch (error) {
@@ -834,6 +836,15 @@ function App() {
           tag_2: updatedQuestion.tag_2,
           tag_3: updatedQuestion.tag_3,
           tag_4: updatedQuestion.tag_4,
+          topic_tags: updatedQuestion.topic_tags,
+          importance_level: updatedQuestion.importance_level,
+          verification_level_1: updatedQuestion.verification_level_1,
+          verification_level_2: updatedQuestion.verification_level_2,
+          jee_mains_relevance: updatedQuestion.jee_mains_relevance,
+          is_multi_concept: updatedQuestion.is_multi_concept,
+          related_concepts: updatedQuestion.related_concepts,
+          scary: updatedQuestion.scary,
+          calc: updatedQuestion.calc,
           updated_at: new Date().toISOString()
         }
       );
@@ -1042,11 +1053,16 @@ function App() {
 
   const handleFinishEditing = async (updatedQuestion: Question | null, updatedSolution?: Solution) => {
     if (!updatedQuestion) {
+      // If cancelling/going back, we still want to preserve the context of which question we were on
+      // so the list view can scroll/jump to it.
+      if (editingQuestion) {
+        setLastEditedQuestionUuid(editingQuestion.question.uuid);
+      }
+
       if (previousStep) {
         updateCurrentProject({ currentStep: previousStep });
       }
       setEditingQuestion(null);
-      setLastEditedQuestionUuid(null);
       return;
     }
 
