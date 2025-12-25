@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { SectionConfig, Question, SelectedQuestion } from '../types';
 import { sortQuestionsForSection } from '../utils/sorting';
 import QuestionDisplay from './QuestionDisplay';
+import IPQComparisonModal from './IPQComparisonModal';
 
 interface TestReviewProps {
   sections: SectionConfig[];
@@ -31,6 +32,7 @@ const TestReview: React.FC<TestReviewProps> = ({
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [freshQuestionsMap, setFreshQuestionsMap] = useState<Record<string, Question>>({});
   const [isAcceptModalOpen, setIsAcceptModalOpen] = useState(false);
+  const [isComparisonModalOpen, setIsComparisonModalOpen] = useState(false);
 
   // Checklist for acceptance
   const [checklist, setChecklist] = useState({
@@ -147,6 +149,22 @@ const TestReview: React.FC<TestReviewProps> = ({
   const handleEditClick = () => {
     if (currentQuestion) onStartEditing(currentQuestion);
   };
+
+  const getOriginalQuestionUuid = (q: Question | undefined): string | null => {
+      if (!q || !q.links) return null;
+      try {
+          const links = JSON.parse(q.links);
+          // If it's an IPQ switch, it should have a link to the original
+          if (Array.isArray(links) && links.length > 0) {
+              return links[0];
+          }
+      } catch (e) {
+          return null;
+      }
+      return null;
+  };
+
+  const originalUuid = getOriginalQuestionUuid(currentQuestion);
 
   // Determine exportability (legacy status check)
   const canExport = useMemo(() => {
@@ -305,6 +323,16 @@ const TestReview: React.FC<TestReviewProps> = ({
 
             {/* Center: Actions */}
             <div className="flex items-center gap-3">
+                 {originalUuid && (
+                     <button
+                        onClick={() => setIsComparisonModalOpen(true)}
+                        className="flex items-center gap-2 px-5 py-2 rounded-lg bg-purple-50 dark:bg-purple-900/10 text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/20 font-bold text-sm transition-all border border-purple-200 dark:border-purple-800/30"
+                    >
+                        <span className="material-symbols-outlined text-lg">compare_arrows</span>
+                        Compare Original
+                    </button>
+                 )}
+
                  <button
                     onClick={handleReject}
                     className={`flex items-center gap-2 px-5 py-2 rounded-lg font-bold text-sm transition-all ${
@@ -401,6 +429,19 @@ const TestReview: React.FC<TestReviewProps> = ({
                   </footer>
               </div>
           </div>
+      )}
+
+      {/* Comparison Modal */}
+      {isComparisonModalOpen && currentQuestion && originalUuid && (
+        <IPQComparisonModal
+            currentQuestion={currentQuestion}
+            originalQuestionUuid={originalUuid}
+            onClose={() => setIsComparisonModalOpen(false)}
+            onEditCurrent={() => {
+                setIsComparisonModalOpen(false);
+                handleEditClick();
+            }}
+        />
       )}
     </div>
   );
