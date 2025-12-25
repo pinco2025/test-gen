@@ -4,8 +4,6 @@ import {
   TestMetadata,
   SectionConfig,
   SectionName,
-  AlphaConstraint,
-  BetaConstraint,
   SelectedQuestion,
   Chapter,
   ConstraintConfig,
@@ -125,8 +123,6 @@ function App() {
   const testMetadata = currentProject?.testMetadata || null;
   const sections = currentProject?.sections || [];
   const currentSectionIndex = currentProject?.currentSectionIndex || 0;
-  const constraintConfig = currentProject?.constraintConfig || { minIdx: 1, Sm: 0.1, Sh: 0.1 };
-
   // Helper to update current project data
   const updateCurrentProject = useCallback((updates: Partial<ProjectData> & { lastActiveQuestionUuid?: string | null }) => {
     if (!currentProjectId) return;
@@ -653,15 +649,6 @@ function App() {
     }
   };
 
-  const handleSectionConfiguration = (
-    alpha: AlphaConstraint,
-    beta: BetaConstraint
-  ) => {
-    // This function is kept for type compatibility but might be unused if we strictly follow JSON flow
-    if (!currentProjectId) return;
-    console.warn("handleSectionConfiguration called in JSON-only mode");
-  };
-
   const handleSelectionChange = useCallback((selectedQuestions: SelectedQuestion[]) => {
     if (!currentProjectId) return;
 
@@ -820,10 +807,6 @@ function App() {
     } else {
       throw new Error(result.error || 'Export failed');
     }
-  };
-
-  const handleConstraintConfigChange = (config: ConstraintConfig) => {
-    updateCurrentProject({ constraintConfig: config });
   };
 
   const handleQuestionUpdate = useCallback(async (updatedQuestion: any, silent: boolean = false) => {
