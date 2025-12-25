@@ -447,7 +447,18 @@ export class DatabaseService {
         if (updates[field] !== undefined) {
           setClauses.push(`${field} = ?`);
           // @ts-ignore
-          params.push(updates[field]);
+          let value = updates[field];
+
+          // Convert booleans to 0/1
+          if (typeof value === 'boolean') {
+            value = value ? 1 : 0;
+          }
+          // Stringify objects if needed
+          else if (typeof value === 'object' && value !== null) {
+            value = JSON.stringify(value);
+          }
+
+          params.push(value);
         }
       }
 
@@ -509,7 +520,18 @@ export class DatabaseService {
 
       for (const [key, value] of Object.entries(filteredUpdates)) {
         setClauses.push(`${key} = ?`);
-        params.push(value);
+
+        let val = value;
+        // Convert booleans to 0/1
+        if (typeof val === 'boolean') {
+          val = val ? 1 : 0;
+        }
+        // Stringify objects if needed
+        else if (typeof val === 'object' && val !== null) {
+          val = JSON.stringify(val);
+        }
+
+        params.push(val);
       }
       setClauses.push('updated_at = CURRENT_TIMESTAMP');
 
@@ -562,7 +584,20 @@ export class DatabaseService {
 
       const params = keys.map(key => {
         // @ts-ignore
-        return question[key] !== undefined ? question[key] : null;
+        const value = question[key];
+
+        // Convert booleans to 0/1 for SQLite
+        if (typeof value === 'boolean') {
+          return value ? 1 : 0;
+        }
+
+        // Safety: Stringify objects/arrays (e.g. for JSON fields)
+        if (typeof value === 'object' && value !== null) {
+          // Assuming Buffer is handled correctly by better-sqlite3 or not present here
+          return JSON.stringify(value);
+        }
+
+        return value !== undefined ? value : null;
       });
 
       const stmt = this.db.prepare(query);
