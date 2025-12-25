@@ -836,6 +836,15 @@ function App() {
           tag_2: updatedQuestion.tag_2,
           tag_3: updatedQuestion.tag_3,
           tag_4: updatedQuestion.tag_4,
+          topic_tags: updatedQuestion.topic_tags,
+          importance_level: updatedQuestion.importance_level,
+          verification_level_1: updatedQuestion.verification_level_1,
+          verification_level_2: updatedQuestion.verification_level_2,
+          jee_mains_relevance: updatedQuestion.jee_mains_relevance,
+          is_multi_concept: updatedQuestion.is_multi_concept,
+          related_concepts: updatedQuestion.related_concepts,
+          scary: updatedQuestion.scary,
+          calc: updatedQuestion.calc,
           updated_at: new Date().toISOString()
         }
       );
