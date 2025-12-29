@@ -13,6 +13,29 @@ interface QuestionDisplayProps {
   highlightCorrectAnswer?: boolean;
 }
 
+const CopyButton = ({ text, tooltip, className = "" }: { text: string, tooltip: string, className?: string }) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <button
+      onClick={handleCopy}
+      title={copied ? 'Copied!' : tooltip}
+      className={`p-1 rounded-md transition-colors hover:bg-gray-200 dark:hover:bg-white/10 text-text-secondary ${copied ? 'text-green-500' : ''} ${className}`}
+    >
+      <span className="material-symbols-outlined text-lg">
+        {copied ? 'check' : 'content_copy'}
+      </span>
+    </button>
+  );
+};
+
 export const QuestionDisplay = memo<QuestionDisplayProps>(({
   question,
   showAnswer = false,
@@ -23,12 +46,12 @@ export const QuestionDisplay = memo<QuestionDisplayProps>(({
   questionNumber,
   highlightCorrectAnswer = false
 }) => {
-  const [copied, setCopied] = useState(false);
+  const [copiedUuid, setCopiedUuid] = useState(false);
 
   const handleCopyUuid = () => {
     navigator.clipboard.writeText(question.uuid);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    setCopiedUuid(true);
+    setTimeout(() => setCopiedUuid(false), 2000);
   };
 
   const getDifficultyClass = (diff?: 'E' | 'M' | 'H') => {
@@ -60,8 +83,13 @@ export const QuestionDisplay = memo<QuestionDisplayProps>(({
           />
        )}
 
+      {/* Copy Question Button */}
+      <div className="absolute top-4 right-4 z-10">
+        <CopyButton text={question.question} tooltip="Copy Question Text" />
+      </div>
+
       {/* Header with Metadata */}
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2 pr-8">
          {questionNumber !== undefined && (
           <span className="text-xs font-medium px-2 py-1 rounded bg-gray-100 dark:bg-white/5 text-text-secondary border border-border-light dark:border-border-dark">
             Q. {questionNumber}
@@ -80,7 +108,7 @@ export const QuestionDisplay = memo<QuestionDisplayProps>(({
          </span>
 
          <span onClick={handleCopyUuid} title="Click to copy UUID" className="text-xs font-mono px-2 py-1 rounded bg-gray-100 dark:bg-white/10 text-text-secondary cursor-pointer hover:bg-gray-200 dark:hover:bg-white/20 transition-colors">
-            {copied ? 'Copied!' : `#${question.uuid.substring(0, 8)}`}
+            {copiedUuid ? 'Copied!' : `#${question.uuid.substring(0, 8)}`}
          </span>
       </div>
 
@@ -148,6 +176,9 @@ export const QuestionDisplay = memo<QuestionDisplayProps>(({
             <div className="flex items-center gap-2 text-primary font-semibold mb-2 text-sm uppercase tracking-wide">
                 <span className="material-symbols-outlined text-lg">lightbulb</span>
                 Solution
+                {question.solution.solution_text && (
+                  <CopyButton text={question.solution.solution_text} tooltip="Copy Solution" className="ml-auto" />
+                )}
             </div>
             <div className="text-sm text-text-secondary dark:text-gray-400 leading-relaxed space-y-3">
                {question.solution.solution_text && <LatexRenderer content={question.solution.solution_text} />}
