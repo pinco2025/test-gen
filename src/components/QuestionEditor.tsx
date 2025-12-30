@@ -180,7 +180,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
         }
     }
     fetchSolution();
-  }, [question, solution]);
+  }, [question.uuid]);
 
   // Fetch metadata from database
   useEffect(() => {
