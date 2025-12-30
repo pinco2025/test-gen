@@ -1,5 +1,6 @@
 import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import path from 'path';
+import { Readable } from 'stream';
 // Removed top-level googleapis import
 import mime from 'mime-types';
 import { dbService } from './database';
@@ -326,6 +327,66 @@ ipcMain.handle('upload-image', async (_, filePath: string) => {
     console.error('Failed to upload file to Google Drive:', error);
 
     // More helpful error message for OAuth issues
+    let errorMessage = error.message;
+    if (error.message.includes('OAuth') || error.message.includes('credentials')) {
+      errorMessage = 'Google Drive authentication required. Please ensure oauth-credentials.json is configured correctly.';
+    }
+
+    dialog.showErrorBox(
+      'Image Upload Failed',
+      `Could not upload the image to Google Drive. ${errorMessage}`
+    );
+    return { success: false, error: errorMessage };
+  }
+});
+
+ipcMain.handle('upload-image-buffer', async (_, buffer: ArrayBuffer, fileName: string, mimeType: string) => {
+  try {
+    // Dynamically import googleapis
+    const { google } = await import('googleapis');
+
+    // Get authenticated OAuth client
+    const auth = await oauthService.getAuthClient();
+    const drive = google.drive({ version: 'v3', auth });
+
+    // Create stream from buffer
+    const stream = new Readable();
+    stream.push(Buffer.from(buffer));
+    stream.push(null);
+
+    // Upload file to user's Google Drive root (or you can specify a folder)
+    const response = await drive.files.create({
+      requestBody: {
+        name: fileName,
+        parents: ['1GEuFuE6fpPPeK9Q-1Nhc1X34farFpvq6']
+      },
+      media: {
+        mimeType: mimeType || 'application/octet-stream',
+        body: stream,
+      },
+      fields: 'id, webViewLink, webContentLink',
+    });
+
+    const fileId = response.data.id;
+    if (!fileId) {
+      throw new Error('File ID not returned from Google Drive API.');
+    }
+
+    // Make the file publicly readable
+    await drive.permissions.create({
+      fileId: fileId,
+      requestBody: {
+        role: 'reader',
+        type: 'anyone',
+      },
+    });
+
+    // Use Google Drive's thumbnail URL
+    const thumbnailUrl = `https://lh3.googleusercontent.com/d/${fileId}`;
+    return { success: true, url: thumbnailUrl };
+  } catch (error: any) {
+    console.error('Failed to upload buffer to Google Drive:', error);
+
     let errorMessage = error.message;
     if (error.message.includes('OAuth') || error.message.includes('credentials')) {
       errorMessage = 'Google Drive authentication required. Please ensure oauth-credentials.json is configured correctly.';

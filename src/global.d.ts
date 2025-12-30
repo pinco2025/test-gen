@@ -52,6 +52,7 @@ declare global {
   interface Window {
     electronAPI: {
       uploadImage: (filePath: string) => Promise<{ success: boolean; url?: string; error?: string }>;
+      uploadImageFromBuffer: (buffer: ArrayBuffer, fileName: string, mimeType: string) => Promise<{ success: boolean; url?: string; error?: string }>;
       oauth: {
         authenticate: () => Promise<{ success: boolean; error?: string }>;
         isAuthenticated: () => Promise<boolean>;
