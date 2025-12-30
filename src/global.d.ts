@@ -10,6 +10,7 @@ export interface ExportConfig {
   instructions: string[];
   title: string;
   description: string;
+  testId: string;
 }
 
 export interface GitHubConfig {
@@ -87,6 +88,7 @@ declare global {
         createQuestion: (question: Question) => Promise<boolean>;
         clone: (uuid: string) => Promise<Question | null>;
         getSolution: (uuid: string) => Promise<Solution | null>;
+        getSolutionsByUUIDs: (uuids: string[]) => Promise<Record<string, { uuid: string, solution_text: string, solution_image_url: string }>>;
         saveSolution: (uuid: string, solutionText: string, solutionImageUrl: string) => Promise<boolean>;
       };
       test: {

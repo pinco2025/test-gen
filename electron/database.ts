@@ -1,5 +1,6 @@
 import Database from 'better-sqlite3';
 import path from 'path';
+import crypto from 'crypto';
 import { Question, QuestionFilter } from '../src/types';
 
 export class DatabaseService {
@@ -667,6 +668,7 @@ export class DatabaseService {
   getSolutionsByUUIDs(uuids: string[]): Map<string, { uuid: string, solution_text: string, solution_image_url: string }> {
     if (!this.db) throw new Error('Database not connected');
 
+    // Batch fetch solutions
     const solutionsMap = new Map<string, { uuid: string, solution_text: string, solution_image_url: string }>();
 
     if (uuids.length === 0) {

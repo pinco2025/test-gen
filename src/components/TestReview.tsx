@@ -39,6 +39,7 @@ const TestReview: React.FC<TestReviewProps> = ({
   const [isComparisonModalOpen, setIsComparisonModalOpen] = useState(false);
   const [isSwitchModalOpen, setIsSwitchModalOpen] = useState(false);
   const [isChapterSelectionOpen, setIsChapterSelectionOpen] = useState(false);
+  const [showSolutionsDefault, setShowSolutionsDefault] = useState(false);
 
   // Checklist for acceptance
   const [checklist, setChecklist] = useState({
@@ -59,8 +60,14 @@ const TestReview: React.FC<TestReviewProps> = ({
       if (allUuids.length === 0) return;
       try {
         const freshQuestions = await window.electronAPI.questions.getByUUIDs(allUuids);
+        const solutionsMap = await window.electronAPI.questions.getSolutionsByUUIDs(allUuids);
+
         const map: Record<string, Question> = {};
-        freshQuestions.forEach(q => { map[q.uuid] = q; });
+        freshQuestions.forEach(q => {
+            const solution = solutionsMap[q.uuid];
+            // @ts-ignore - attaching solution to question object for display purposes
+            map[q.uuid] = solution ? { ...q, solution } : q;
+        });
         setFreshQuestionsMap(map);
       } catch (error) {
         console.error('Failed to fetch fresh question data:', error);
@@ -295,18 +302,32 @@ const TestReview: React.FC<TestReviewProps> = ({
              {allQuestions.length} Questions
           </span>
         </div>
-        <button
-            onClick={onExport}
-            disabled={!canExport}
-            className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${
-                canExport
-                ? 'bg-primary text-white shadow-lg shadow-primary/20 hover:bg-primary/90'
-                : 'bg-gray-200 dark:bg-[#252535] text-gray-400 cursor-not-allowed'
-            }`}
-        >
-            <span className="material-symbols-outlined text-lg">ios_share</span>
-            Export Test
-        </button>
+        <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 text-sm font-medium text-text-secondary cursor-pointer hover:text-text-main transition-colors">
+                <div className={`w-10 h-6 rounded-full p-1 transition-colors ${showSolutionsDefault ? 'bg-primary' : 'bg-gray-300 dark:bg-gray-600'}`}>
+                    <div className={`bg-white size-4 rounded-full shadow-md transform transition-transform ${showSolutionsDefault ? 'translate-x-4' : ''}`} />
+                </div>
+                <input
+                    type="checkbox"
+                    className="hidden"
+                    checked={showSolutionsDefault}
+                    onChange={(e) => setShowSolutionsDefault(e.target.checked)}
+                />
+                Show Solutions
+            </label>
+            <button
+                onClick={onExport}
+                disabled={!canExport}
+                className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${
+                    canExport
+                    ? 'bg-primary text-white shadow-lg shadow-primary/20 hover:bg-primary/90'
+                    : 'bg-gray-200 dark:bg-[#252535] text-gray-400 cursor-not-allowed'
+                }`}
+            >
+                <span className="material-symbols-outlined text-lg">ios_share</span>
+                Export Test
+            </button>
+        </div>
       </header>
 
       {/* Main Content Area */}
@@ -373,6 +394,8 @@ const TestReview: React.FC<TestReviewProps> = ({
                                 question={currentQuestion}
                                 questionNumber={currentItem.absoluteIndex}
                                 showAnswer={true}
+                                defaultSolutionExpanded={showSolutionsDefault}
+                                key={`${currentQuestion.uuid}-${showSolutionsDefault}`} // Re-mount when default changes to force update state
                              />
                         </div>
 

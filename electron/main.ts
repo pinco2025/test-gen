@@ -281,6 +281,12 @@ ipcMain.handle('questions:saveSolution', async (_, uuid: string, solutionText: s
   return dbService.saveSolution(uuid, solutionText, solutionImageUrl);
 });
 
+ipcMain.handle('questions:getSolutionsByUUIDs', async (_, uuids: string[]) => {
+  const map = dbService.getSolutionsByUUIDs(uuids);
+  // Convert Map to plain object for IPC serialization
+  return Object.fromEntries(map);
+});
+
 // Image Upload with OAuth 2.0
 ipcMain.handle('upload-image', async (_, filePath: string) => {
   try {
@@ -486,6 +492,17 @@ ipcMain.handle('test:export', async (_, test: Test) => {
   return { success: false, error: 'Export cancelled' };
 });
 
+// Helper to safely parse JSON strings from DB
+function tryParseJson(jsonStr: string | null): any[] | null {
+  if (!jsonStr) return null;
+  try {
+    const parsed = JSON.parse(jsonStr);
+    return Array.isArray(parsed) ? parsed : null;
+  } catch (e) {
+    return null;
+  }
+}
+
 // Helper function to transform Test object to sample-test-001.json format
 function transformTestToExportFormat(test: Test) {
   const marksPerQuestion = 4;
@@ -531,17 +548,18 @@ function transformTestToExportFormat(test: Test) {
         correctAnswer: q.answer.toLowerCase(),
         marks: marksPerQuestion,
         section: sectionNameA,
-        tags: {
-          tag1: q.tag_1 || '',
-          tag2: q.tag_2 || '',
-          tag3: q.tag_3 || '',
-          tag4: q.tag_4 || '',
-          type: q.type || '',
-          year: q.year || ''
-        },
-        chapterCode: sq.chapterCode,
-        chapterName: sq.chapterName,
-        difficulty: sq.difficulty,
+        chapterCode: q.tag_2 || null, // Using actual question metadata
+        topicCode: q.tag_1 || null,
+        difficulty: q.tag_3 || null,
+        jeeMainsRelevance: q.jee_mains_relevance || null,
+        scary: !!q.scary,
+        lengthy: !!q.calc,
+        isMultiConcept: !!q.is_multi_concept,
+        relatedConcepts: tryParseJson(q.related_concepts),
+        topicTags: tryParseJson(q.topic_tags),
+        verificationLevel1: q.verification_level_1 || null,
+        verificationLevel2: q.verification_level_2 || null,
+        importanceLevel: q.importance_level || null,
         division: sq.division
       });
       questionIndex++;
@@ -559,17 +577,18 @@ function transformTestToExportFormat(test: Test) {
         correctAnswer: q.answer,
         marks: marksPerQuestion,
         section: sectionNameB,
-        tags: {
-          tag1: q.tag_1 || '',
-          tag2: q.tag_2 || '',
-          tag3: q.tag_3 || '',
-          tag4: q.tag_4 || '',
-          type: q.type || '',
-          year: q.year || ''
-        },
-        chapterCode: sq.chapterCode,
-        chapterName: sq.chapterName,
-        difficulty: sq.difficulty,
+        chapterCode: q.tag_2 || null, // Using actual question metadata
+        topicCode: q.tag_1 || null,
+        difficulty: q.tag_3 || null,
+        jeeMainsRelevance: q.jee_mains_relevance || null,
+        scary: !!q.scary,
+        lengthy: !!q.calc,
+        isMultiConcept: !!q.is_multi_concept,
+        relatedConcepts: tryParseJson(q.related_concepts),
+        topicTags: tryParseJson(q.topic_tags),
+        verificationLevel1: q.verification_level_1 || null,
+        verificationLevel2: q.verification_level_2 || null,
+        importanceLevel: q.importance_level || null,
         division: sq.division
       });
       questionIndex++;
@@ -719,6 +738,7 @@ ipcMain.handle('test:exportWithConfig', async (_, test: Test, exportConfig: {
   instructions: string[];
   title: string;
   description: string;
+  testId: string;
 }) => {
   try {
     // Transform the test data
@@ -727,6 +747,9 @@ ipcMain.handle('test:exportWithConfig', async (_, test: Test, exportConfig: {
     // Override with export config values
     exportData.duration = exportConfig.duration;
     exportData.title = exportConfig.title;
+    exportData.testId = exportConfig.testId;
+    // @ts-ignore - dynamic assignment for instructions
+    exportData.instructions = exportConfig.instructions;
 
     const exportContent = JSON.stringify(exportData, null, 2);
 
