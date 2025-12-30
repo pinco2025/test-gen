@@ -11,6 +11,7 @@ interface QuestionDisplayProps {
   hideOptions?: boolean;
   questionNumber?: number;
   highlightCorrectAnswer?: boolean;
+  defaultSolutionExpanded?: boolean;
 }
 
 const CopyButton = ({ text, tooltip, className = "" }: { text: string, tooltip: string, className?: string }) => {
@@ -44,9 +45,11 @@ export const QuestionDisplay = memo<QuestionDisplayProps>(({
   showCheckbox = false,
   hideOptions = false,
   questionNumber,
-  highlightCorrectAnswer = false
+  highlightCorrectAnswer = false,
+  defaultSolutionExpanded = false
 }) => {
   const [copiedUuid, setCopiedUuid] = useState(false);
+  const [isSolutionVisible, setIsSolutionVisible] = useState(defaultSolutionExpanded);
 
   const handleCopyUuid = () => {
     navigator.clipboard.writeText(question.uuid);
@@ -170,20 +173,33 @@ export const QuestionDisplay = memo<QuestionDisplayProps>(({
           </div>
        )}
 
-      {/* Solution Section (only in editor preview) */}
+      {/* Solution Toggle Section */}
       {question.solution && (question.solution.solution_text || question.solution.solution_image_url) && (
-        <div className="border-t border-border-light dark:border-border-dark pt-4">
-            <div className="flex items-center gap-2 text-primary font-semibold mb-2 text-sm uppercase tracking-wide">
-                <span className="material-symbols-outlined text-lg">lightbulb</span>
-                Solution
-                {question.solution.solution_text && (
-                  <CopyButton text={question.solution.solution_text} tooltip="Copy Solution" className="ml-auto" />
-                )}
-            </div>
-            <div className="text-sm text-text-secondary dark:text-gray-400 leading-relaxed space-y-3">
-               {question.solution.solution_text && <LatexRenderer content={question.solution.solution_text} />}
-               {question.solution.solution_image_url && <img src={question.solution.solution_image_url} alt="Solution" className="max-w-full mt-2 rounded border border-border-light dark:border-border-dark" />}
-            </div>
+        <div className="border-t border-border-light dark:border-border-dark pt-2 mt-2">
+            <button
+                onClick={() => setIsSolutionVisible(!isSolutionVisible)}
+                className="flex items-center gap-2 text-primary font-semibold text-sm uppercase tracking-wide hover:underline focus:outline-none mb-2"
+            >
+                <span className="material-symbols-outlined text-lg">
+                    {isSolutionVisible ? 'expand_less' : 'expand_more'}
+                </span>
+                {isSolutionVisible ? 'Hide Solution' : 'Show Solution'}
+            </button>
+
+            {isSolutionVisible && (
+                <div className="max-h-96 overflow-y-auto pr-2 custom-scrollbar">
+                    <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-bold text-text-secondary uppercase">Explanation</span>
+                        {question.solution.solution_text && (
+                          <CopyButton text={question.solution.solution_text} tooltip="Copy Solution" />
+                        )}
+                    </div>
+                    <div className="text-sm text-text-secondary dark:text-gray-400 leading-relaxed space-y-3">
+                       {question.solution.solution_text && <LatexRenderer content={question.solution.solution_text} />}
+                       {question.solution.solution_image_url && <img src={question.solution.solution_image_url} alt="Solution" className="max-w-full mt-2 rounded border border-border-light dark:border-border-dark" />}
+                    </div>
+                </div>
+            )}
         </div>
       )}
     </div>
