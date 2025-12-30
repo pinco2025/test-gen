@@ -10,11 +10,15 @@ interface ImageUploadProps {
 const uploadFile = async (file: File): Promise<string> => {
   // In Electron, the File object from a file input includes a 'path' property
   const filePath = (file as any).path;
-  if (!filePath) {
-    throw new Error('File path is not available. This must be run in an Electron environment.');
-  }
+  let result;
 
-  const result = await window.electronAPI.uploadImage(filePath);
+  if (filePath) {
+      result = await window.electronAPI.uploadImage(filePath);
+  } else {
+      // For files from clipboard (paste), they don't have a path, so we send the buffer
+      const buffer = await file.arrayBuffer();
+      result = await window.electronAPI.uploadImageFromBuffer(buffer, file.name, file.type);
+  }
 
   if (result.success && result.url) {
     console.log('Upload complete!');
@@ -206,31 +210,33 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ label, imageUrl, onImageUrlCh
             <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center">
                 <span className="material-symbols-outlined text-3xl text-text-secondary/60">upload_file</span>
                 <p className="mb-2 text-sm text-text-secondary"><span className="font-semibold">Click to upload</span>, drag and drop, or Ctrl+V</p>
-                <p className="text-xs text-text-secondary/70">PNG, JPG, GIF, PDF</p>
-
-                <button
-                    type="button"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        navigator.clipboard.read().then(async items => {
-                            for (const item of items) {
-                                if (item.types.includes('image/png') || item.types.includes('image/jpeg')) {
-                                    const blob = await item.getType(item.types[0]);
-                                    const file = new File([blob], "pasted-image.png", { type: item.types[0] });
-                                    processFile(file);
-                                    break;
+                <div className="flex items-center gap-2 mt-1">
+                    <p className="text-xs text-text-secondary/70">PNG, JPG, GIF, PDF</p>
+                    <span className="text-xs text-text-secondary/30">|</span>
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            navigator.clipboard.read().then(async items => {
+                                for (const item of items) {
+                                    if (item.types.includes('image/png') || item.types.includes('image/jpeg')) {
+                                        const blob = await item.getType(item.types[0]);
+                                        const file = new File([blob], "pasted-image.png", { type: item.types[0] });
+                                        processFile(file);
+                                        break;
+                                    }
                                 }
-                            }
-                        }).catch(err => {
-                            console.error('Failed to read clipboard', err);
-                            alert('Could not read from clipboard. Please use Ctrl+V or click to upload.');
-                        });
-                    }}
-                    className="mt-3 px-3 py-1 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md text-xs font-medium text-text-secondary transition-colors flex items-center gap-2"
-                >
-                    <span className="material-symbols-outlined text-sm">content_paste</span>
-                    Paste from Clipboard
-                </button>
+                            }).catch(err => {
+                                console.error('Failed to read clipboard', err);
+                                alert('Could not read from clipboard. Please use Ctrl+V or click to upload.');
+                            });
+                        }}
+                        className="text-xs font-medium text-primary hover:underline flex items-center gap-1"
+                        title="Paste image from clipboard"
+                    >
+                        Paste from Clipboard
+                    </button>
+                </div>
             </div>
         </div>
       ) : (

@@ -6,6 +6,7 @@ import { Question, QuestionFilter, Test, ProjectState, ProjectInfo, AppConfig } 
 contextBridge.exposeInMainWorld('electronAPI', {
   // Image Upload
   uploadImage: (filePath: string) => ipcRenderer.invoke('upload-image', filePath),
+  uploadImageFromBuffer: (buffer: ArrayBuffer, fileName: string, mimeType: string) => ipcRenderer.invoke('upload-image-buffer', buffer, fileName, mimeType),
 
   // OAuth operations
   oauth: {
