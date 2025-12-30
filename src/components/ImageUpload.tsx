@@ -110,6 +110,19 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ label, imageUrl, onImageUrlCh
     }
   };
 
+  const handlePaste = (event: React.ClipboardEvent | ClipboardEvent) => {
+    // Only process paste if we are not currently displaying an image (or if we want to replace it)
+    // and if the paste event contains files
+    if (event.clipboardData && event.clipboardData.files.length > 0) {
+      const file = event.clipboardData.files[0];
+      if (file.type.startsWith('image/')) {
+        event.preventDefault();
+        processFile(file);
+      }
+    }
+  };
+
+
   const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     event.stopPropagation();
@@ -178,8 +191,10 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ label, imageUrl, onImageUrlCh
             onDrop={handleDrop}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
-            className={`relative flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer transition-colors
-                ${dragOver ? 'border-primary bg-primary/10' : 'border-border-light dark:border-border-dark hover:border-primary/50 hover:bg-black/5 dark:hover:bg-white/5'}`}
+            onPaste={handlePaste}
+            tabIndex={0}
+            className={`relative flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer transition-colors outline-none
+                ${dragOver ? 'border-primary bg-primary/10' : 'border-border-light dark:border-border-dark hover:border-primary/50 hover:bg-black/5 dark:hover:bg-white/5 focus:border-primary focus:bg-primary/5'}`}
         >
             <input
                 ref={fileInputRef}
@@ -190,8 +205,32 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ label, imageUrl, onImageUrlCh
             />
             <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center">
                 <span className="material-symbols-outlined text-3xl text-text-secondary/60">upload_file</span>
-                <p className="mb-2 text-sm text-text-secondary"><span className="font-semibold">Click to upload</span> or drag and drop</p>
+                <p className="mb-2 text-sm text-text-secondary"><span className="font-semibold">Click to upload</span>, drag and drop, or Ctrl+V</p>
                 <p className="text-xs text-text-secondary/70">PNG, JPG, GIF, PDF</p>
+
+                <button
+                    type="button"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        navigator.clipboard.read().then(async items => {
+                            for (const item of items) {
+                                if (item.types.includes('image/png') || item.types.includes('image/jpeg')) {
+                                    const blob = await item.getType(item.types[0]);
+                                    const file = new File([blob], "pasted-image.png", { type: item.types[0] });
+                                    processFile(file);
+                                    break;
+                                }
+                            }
+                        }).catch(err => {
+                            console.error('Failed to read clipboard', err);
+                            alert('Could not read from clipboard. Please use Ctrl+V or click to upload.');
+                        });
+                    }}
+                    className="mt-3 px-3 py-1 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md text-xs font-medium text-text-secondary transition-colors flex items-center gap-2"
+                >
+                    <span className="material-symbols-outlined text-sm">content_paste</span>
+                    Paste from Clipboard
+                </button>
             </div>
         </div>
       ) : (

@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { SectionConfig, Question, SelectedQuestion } from '../types';
+import { SectionConfig, Question, SelectedQuestion, Chapter } from '../types';
 import { sortQuestionsForSection } from '../utils/sorting';
 import QuestionDisplay from './QuestionDisplay';
 import IPQComparisonModal from './IPQComparisonModal';
+import SwitchQuestionModal from './SwitchQuestionModal';
+import QuestionSelection from './QuestionSelection';
 
 interface TestReviewProps {
   sections: SectionConfig[];
@@ -12,6 +14,7 @@ interface TestReviewProps {
   onRemoveQuestion: (questionUuid: string) => void;
   onUpdateQuestionStatus: (questionUuid: string, status: 'accepted' | 'review' | 'pending') => void; // Keeping for compatibility, but we might rely on DB updates
   onVerifyQuestion?: (questionUuid: string, status: 'approved' | 'rejected' | 'pending') => void; // New prop for verification
+  onReplaceQuestion: (oldUuid: string, newQuestion: Question) => void;
   initialQuestionUuid?: string | null;
   onNavigationComplete?: () => void;
   onSwitchQuestion?: (questionUuid: string) => void;
@@ -25,6 +28,7 @@ const TestReview: React.FC<TestReviewProps> = ({
   // onRemoveQuestion is unused but kept in interface for potential future use or compatibility
   onUpdateQuestionStatus,
   onVerifyQuestion,
+  onReplaceQuestion,
   initialQuestionUuid,
   onNavigationComplete,
   onSwitchQuestion
@@ -33,6 +37,8 @@ const TestReview: React.FC<TestReviewProps> = ({
   const [freshQuestionsMap, setFreshQuestionsMap] = useState<Record<string, Question>>({});
   const [isAcceptModalOpen, setIsAcceptModalOpen] = useState(false);
   const [isComparisonModalOpen, setIsComparisonModalOpen] = useState(false);
+  const [isSwitchModalOpen, setIsSwitchModalOpen] = useState(false);
+  const [isChapterSelectionOpen, setIsChapterSelectionOpen] = useState(false);
 
   // Checklist for acceptance
   const [checklist, setChecklist] = useState({
@@ -150,6 +156,43 @@ const TestReview: React.FC<TestReviewProps> = ({
     if (currentQuestion) onStartEditing(currentQuestion);
   };
 
+  const handleCloneAndEdit = async () => {
+    if (!currentQuestion) return;
+    setIsSwitchModalOpen(false);
+
+    if (!window.electronAPI) return;
+
+    try {
+        const clonedQuestion = await window.electronAPI.questions.clone(currentQuestion.uuid);
+        if (clonedQuestion) {
+            // Replace in list
+            onReplaceQuestion(currentQuestion.uuid, clonedQuestion);
+            // Wait a tick for updates then edit
+            setTimeout(() => {
+                onStartEditing(clonedQuestion);
+            }, 100);
+        } else {
+            alert('Failed to clone question.');
+        }
+    } catch (error) {
+        console.error('Clone failed:', error);
+        alert('An error occurred while cloning.');
+    }
+  };
+
+  const handleSelectFromChapter = () => {
+      setIsSwitchModalOpen(false);
+      setIsChapterSelectionOpen(true);
+  };
+
+  const handleChapterSelectionReplace = (newQuestion: Question) => {
+      if (!currentQuestion) return;
+      if (confirm(`Replace current question with selected question (UUID: ${newQuestion.uuid.substring(0,8)}...)?`)) {
+          onReplaceQuestion(currentQuestion.uuid, newQuestion);
+          setIsChapterSelectionOpen(false);
+      }
+  };
+
   const getOriginalQuestionUuid = (q: Question | undefined): string | null => {
       if (!q || !q.links) return null;
       try {
@@ -185,6 +228,58 @@ const TestReview: React.FC<TestReviewProps> = ({
       }
       return `${base} hover:bg-gray-200 dark:hover:bg-white/10 border border-transparent`;
   };
+
+  const getCurrentSectionName = (): string => {
+      const sectionIndex = currentItem?.sectionIndex;
+      if (sectionIndex !== undefined && sections[sectionIndex]) {
+          return sections[sectionIndex].name;
+      }
+      return 'Physics'; // Default fallback
+  };
+
+  const getCurrentChapters = (): Chapter[] => {
+      const sectionIndex = currentItem?.sectionIndex;
+      if (sectionIndex !== undefined && sections[sectionIndex]) {
+          return sections[sectionIndex].chapters;
+      }
+      return [];
+  };
+
+  // If in chapter selection mode, overlay the QuestionSelection component
+  if (isChapterSelectionOpen && currentQuestion) {
+      return (
+        <div className="fixed inset-0 z-50 bg-white dark:bg-[#121121] flex flex-col animate-in slide-in-from-right duration-300">
+             <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-[#2d2d3b]">
+                 <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                     <span className="material-symbols-outlined">library_books</span>
+                     Select Replacement for Q.{currentItem.absoluteIndex}
+                 </h2>
+                 <button
+                    onClick={() => setIsChapterSelectionOpen(false)}
+                    className="px-4 py-2 bg-gray-100 dark:bg-[#252535] text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-200 dark:hover:bg-[#2d2d3b] transition-colors"
+                 >
+                     Cancel
+                 </button>
+             </div>
+             <div className="flex-1 overflow-hidden relative">
+                 <QuestionSelection
+                    sectionName={getCurrentSectionName() as any}
+                    chapters={getCurrentChapters()}
+                    alphaConstraint={{ chapters: [] }} // Dummy constraint
+                    betaConstraint={{}}
+                    onComplete={() => {}} // Not used in this mode
+                    onBack={() => setIsChapterSelectionOpen(false)} // Should not be hit typically due to overlay
+                    onStartEditing={() => {}} // Disabled
+                    onClone={() => {}} // Disabled
+                    lockedChapterCode={currentQuestion.tag_2 || undefined}
+                    limitCount={1}
+                    selectionMode="single-replace"
+                    onSelectReplacement={handleChapterSelectionReplace}
+                 />
+             </div>
+        </div>
+      );
+  }
 
   return (
     <div className="flex flex-col h-full bg-background-light dark:bg-[#121121] overflow-hidden">
@@ -346,11 +441,11 @@ const TestReview: React.FC<TestReviewProps> = ({
                 </button>
 
                 <button
-                    onClick={() => currentQuestion && onSwitchQuestion?.(currentQuestion.uuid)}
+                    onClick={() => setIsSwitchModalOpen(true)}
                     className="flex items-center gap-2 px-5 py-2 rounded-lg bg-blue-50 dark:bg-blue-900/10 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/20 font-bold text-sm transition-all"
                 >
                     <span className="material-symbols-outlined text-lg">swap_calls</span>
-                    Switch IPQ
+                    Switch Question
                 </button>
 
                 <button
@@ -442,6 +537,22 @@ const TestReview: React.FC<TestReviewProps> = ({
                 handleEditClick();
             }}
         />
+      )}
+
+      {/* Switch Question Modal */}
+      {isSwitchModalOpen && currentQuestion && (
+          <SwitchQuestionModal
+            question={currentQuestion}
+            onClose={() => setIsSwitchModalOpen(false)}
+            onSwitchWithIPQ={() => {
+                setIsSwitchModalOpen(false);
+                if (currentQuestion && onSwitchQuestion) {
+                    onSwitchQuestion(currentQuestion.uuid);
+                }
+            }}
+            onCloneAndEdit={handleCloneAndEdit}
+            onSelectFromChapter={handleSelectFromChapter}
+          />
       )}
     </div>
   );

@@ -677,7 +677,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
                     </div>
                     <div className="relative border border-border-light dark:border-border-dark rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-all group">
                         <textarea
-                            className="w-full p-4 min-h-[100px] bg-transparent border-none focus:ring-0 text-text-main dark:text-gray-200 text-sm leading-relaxed resize-y"
+                            className="w-full p-4 min-h-[300px] bg-transparent border-none focus:ring-0 text-text-main dark:text-gray-200 text-sm leading-relaxed resize-y"
                             placeholder="Explain the logic behind the correct answer..."
                             value={solutionText.value}
                             onChange={(e) => solutionText.setValue(e.target.value)}
