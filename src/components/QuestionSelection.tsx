@@ -33,6 +33,10 @@ interface QuestionSelectionProps {
   limitCount?: number;
   lockedDivision?: 1 | 2;
   onNextChapter?: (selectedQuestions: SelectedQuestion[]) => void; // Added for Full Test Flow
+
+  // New props for "Switch Question" > "Select from Chapter" flow
+  selectionMode?: 'default' | 'single-replace';
+  onSelectReplacement?: (question: Question) => void;
 }
 
 interface ItemData {
@@ -43,6 +47,7 @@ interface ItemData {
   onClone: (e: React.MouseEvent, question: Question) => void;
   setSize: (index: number, size: number) => void;
   zoomLevel: number;
+  selectionMode?: 'default' | 'single-replace'; // Pass down to Row if needed (currently not used in Row logic directly but good to have)
 }
 
 const isNumericalAnswer = (question: Question): boolean => !['A', 'B', 'C', 'D'].includes(question.answer.toUpperCase().trim());
@@ -95,7 +100,9 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
   lockedChapterCode,
   limitCount,
   lockedDivision,
-  onNextChapter
+  onNextChapter,
+  selectionMode = 'default',
+  onSelectReplacement
 }) => {
   const [selectedQuestions, setSelectedQuestions] = useState<SelectedQuestion[]>(initialSelectedQuestions);
   const [zoomLevel, setZoomLevel] = useState(1);
@@ -270,6 +277,11 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
   }, [selectedQuestions, alphaConstraint]);
 
   const toggleQuestion = useCallback(async (question: Question) => {
+    if (selectionMode === 'single-replace') {
+        onSelectReplacement?.(question);
+        return;
+    }
+
     const isSelected = selectedUuids.has(question.uuid);
 
     // Check Full Test Constraint
@@ -296,7 +308,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
       const chapter = chapters.find(ch => ch.code === question.tag_2);
       setSelectedQuestions(prev => [...prev, { question, chapterCode: question.tag_2 || '', chapterName: chapter?.name || '', difficulty: (question.tag_3 as Difficulty) || 'M', division: isDiv2 ? 2 : 1, status: 'pending' }]);
     }
-  }, [selectedUuids, summary, chapters, limitCount, lockedChapterCode, selectedQuestions]);
+  }, [selectedUuids, summary, chapters, limitCount, lockedChapterCode, selectedQuestions, selectionMode, onSelectReplacement]);
 
   const isSelectionValid = useMemo(() => {
       // Full Test Validation
@@ -315,8 +327,9 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
     onEdit: handleEdit,
     onClone: handleClone,
     setSize,
-    zoomLevel
-  }), [filteredQuestions, selectedUuids, toggleQuestion, handleEdit, handleClone, setSize, zoomLevel]);
+    zoomLevel,
+    selectionMode
+  }), [filteredQuestions, selectedUuids, toggleQuestion, handleEdit, handleClone, setSize, zoomLevel, selectionMode]);
 
   const handleZoom = (direction: 'in' | 'out') => {
     setZoomLevel(prev => {
@@ -418,6 +431,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
       <div className="flex-1 px-4 pb-4" style={{ minHeight: '1000px' }}>
       <div className="grid grid-cols-12 gap-4" style={{ minHeight: '1000px' }}>
         {/* Left Sidebar: Constraints or Status Panel */}
+        {selectionMode !== 'single-replace' && (
         <div className="col-span-3 h-full overflow-hidden flex flex-col">
           {limitCount !== undefined && lockedChapterCode ? (
                // Full Test Status Panel
@@ -529,9 +543,10 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
             </div>
           )}
         </div>
+        )}
 
         {/* Right Panel: Questions */}
-        <div className="col-span-9 h-full flex flex-col">
+        <div className={`${selectionMode === 'single-replace' ? 'col-span-12' : 'col-span-9'} h-full flex flex-col`}>
           <div className="bg-white dark:bg-[#1e1e2d] p-4 rounded-xl border border-gray-200 dark:border-[#2d2d3b] shadow-sm flex flex-col h-full overflow-hidden">
             {/* Search and Filters */}
             <div className="flex-shrink-0 flex gap-4 mb-4">
@@ -596,6 +611,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
       </div>
 
       {/* Footer - Always visible at bottom */}
+      {selectionMode !== 'single-replace' && (
       <div className="flex-shrink-0 p-4 pt-4 border-t border-gray-200 dark:border-[#2d2d3b] flex justify-between bg-gray-50 dark:bg-[#121121] sticky bottom-0 z-10">
         <button onClick={onBack} className="px-6 py-2.5 rounded-lg border border-gray-200 dark:border-[#2d2d3b] text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#252535] font-semibold transition-all">Back</button>
         {onNextChapter && lockedChapterCode ? (
@@ -621,6 +637,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
             </button>
         )}
       </div>
+      )}
     </div>
   );
 };

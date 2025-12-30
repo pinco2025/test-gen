@@ -93,6 +93,7 @@ const SuperAdminDashboard: React.FC<SuperAdminDashboardProps> = ({ onClose }) =>
                   onUpdateQuestionStatus={(id, status) => console.log('Mock Status Update', id, status)}
                   onVerifyQuestion={(id, status) => console.log('Mock Verify', id, status)}
                   onSwitchQuestion={(id) => console.log('Mock Switch', id)}
+                  onReplaceQuestion={(oldId, newQ) => console.log('Mock Replace', oldId, newQ)}
               />
           </div>
       );

@@ -84,6 +84,7 @@ declare global {
         updateQuestion: (uuid: string, updates: Partial<Question>) => Promise<boolean>;
         bulkUpdateQuestions: (uuids: string[], updates: Partial<Question>) => Promise<{ success: boolean, updatedCount: number }>;
         createQuestion: (question: Question) => Promise<boolean>;
+        clone: (uuid: string) => Promise<Question | null>;
         getSolution: (uuid: string) => Promise<Solution | null>;
         saveSolution: (uuid: string, solutionText: string, solutionImageUrl: string) => Promise<boolean>;
       };

@@ -268,6 +268,10 @@ ipcMain.handle('questions:createQuestion', async (_, question: Question): Promis
   return dbService.createQuestion(question);
 });
 
+ipcMain.handle('questions:clone', async (_, uuid: string) => {
+    return dbService.cloneQuestion(uuid);
+});
+
 ipcMain.handle('questions:getSolution', async (_, uuid: string) => {
   return dbService.getSolution(uuid);
 });

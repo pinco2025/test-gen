@@ -155,6 +155,21 @@ export const FloatingTextMenu: React.FC = () => {
           <button onClick={cleanAndWrap} className="px-2 py-1 hover:bg-gray-700 rounded text-sm font-mono font-bold flex items-center" title="Clean & Wrap in $...$">
             <span className="material-symbols-outlined text-[16px]">cleaning_services</span>$
           </button>
+          <button onClick={() => {
+              if (!targetInput) return;
+              const start = targetInput.selectionStart || 0;
+              const end = targetInput.selectionEnd || 0;
+              const text = targetInput.value;
+              const selectedText = text.substring(start, end);
+
+              const cleanedText = selectedText.replace(/\$/g, '');
+              const newText = text.substring(0, start) + cleanedText + text.substring(end);
+
+              triggerChange(targetInput, newText);
+              setPosition(null);
+          }} className="px-2 py-1 hover:bg-gray-700 rounded text-sm font-mono font-bold flex items-center text-red-400" title="Remove all $">
+            <span className="material-symbols-outlined text-[16px]">backspace</span>$
+          </button>
           <div className="w-[1px] h-4 bg-gray-600"></div>
           <button onClick={() => wrapBold(false)} className="px-2 py-1 hover:bg-gray-700 rounded text-sm font-mono font-bold" title="Bold \textbf{}">B</button>
           <button onClick={() => wrapBold(true)} className="px-2 py-1 hover:bg-gray-700 rounded text-sm font-mono font-bold" title="Bold $\textbf{}$">$B$</button>

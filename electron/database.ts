@@ -393,6 +393,48 @@ export class DatabaseService {
   }
 
   /**
+   * Clone a question: duplicates it with a new UUID and links to the original
+   */
+  cloneQuestion(originalUuid: string): Question | null {
+      if (!this.db) throw new Error('Database not connected');
+
+      try {
+          const original = this.getQuestionByUUID(originalUuid);
+          if (!original) return null;
+
+          // Generate new UUID (simple random string for now, preferably use crypto or uuid lib in main)
+          const newUuid = crypto.randomUUID();
+
+          // Prepare new question object
+          const newQuestion: Question = {
+              ...original,
+              uuid: newUuid,
+              links: JSON.stringify([originalUuid]), // Link to original
+              frequency: 0,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              verification_level_1: 'pending',
+              verification_level_2: 'pending'
+          };
+
+          // Insert into DB
+          const success = this.createQuestion(newQuestion);
+          if (!success) return null;
+
+          // Also clone the solution if it exists
+          const solution = this.getSolution(originalUuid);
+          if (solution) {
+              this.saveSolution(newUuid, solution.solution_text, solution.solution_image_url);
+          }
+
+          return newQuestion;
+      } catch (error) {
+          console.error(`[DB] Error cloning question ${originalUuid}:`, error);
+          return null;
+      }
+  }
+
+  /**
    * Decrement the frequency of a question by 1
    * Ensures frequency doesn't go below 0
    */

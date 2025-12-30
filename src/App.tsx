@@ -963,6 +963,23 @@ function App() {
     });
   };
 
+  const handleReplaceQuestion = (oldUuid: string, newQuestion: Question) => {
+      if (!currentProject) return;
+
+      const newSections = currentProject.sections.map(section => ({
+          ...section,
+          selectedQuestions: section.selectedQuestions.map(sq => {
+              if (sq.question.uuid === oldUuid) {
+                  return { ...sq, question: newQuestion };
+              }
+              return sq;
+          })
+      }));
+
+      updateCurrentProject({ sections: newSections });
+      addNotification('success', 'Question replaced successfully.');
+  };
+
   // Next/Previous functionality for Editor
   const handleEditorNext = () => {
     if (!currentProjectId || !editingQuestion) return;
@@ -1322,6 +1339,7 @@ function App() {
             onNavigationComplete={() => setLastEditedQuestionUuid(null)}
             onSwitchQuestion={initiateSwitchQuestion} // Use the new initiator
             onVerifyQuestion={handleVerifyQuestion} // Pass handler
+            onReplaceQuestion={handleReplaceQuestion}
           />
         );
 
