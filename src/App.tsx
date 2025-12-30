@@ -1046,7 +1046,7 @@ function App() {
     handleStartEditing(clonedQuestion);
   };
 
-  const handleIntermediateSave = async (updatedQuestion: Question, updatedSolution?: Solution) => {
+  const handleIntermediateSave = useCallback(async (updatedQuestion: Question, updatedSolution?: Solution) => {
     if (!updatedQuestion) return;
 
     // Update question in database and in-memory state
@@ -1066,7 +1066,7 @@ function App() {
         addNotification('warning', 'Question saved, but failed to save solution.');
       }
     }
-  };
+  }, [handleQuestionUpdate, addNotification]);
 
   const handleFinishEditing = async (updatedQuestion: Question | null, updatedSolution?: Solution) => {
     if (!updatedQuestion) {
