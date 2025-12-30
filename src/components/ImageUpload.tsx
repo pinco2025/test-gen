@@ -62,12 +62,13 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ label, imageUrl, onImageUrlCh
       }
     } else {
         // If the external URL is cleared, also clear the local preview
-        if (localPreview) {
+        // Only do this if we are not currently uploading (which sets localPreview)
+        if (localPreview && !isUploading) {
             URL.revokeObjectURL(localPreview);
             setLocalPreview(null);
         }
     }
-  }, [imageUrl, localPreview]);
+  }, [imageUrl]);
 
   const handleUrlChange = (newUrl: string | null) => {
     setInternalImageUrl(newUrl);
