@@ -18,6 +18,7 @@ const AddQuestionModal: React.FC<AddQuestionModalProps> = ({ onClose, onSave, in
   const [error, setError] = useState<string | null>(null);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [previewData, setPreviewData] = useState<{ question: Question; solution?: Partial<Solution> } | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Initialize with initialData if provided (IPQ Mode)
   useEffect(() => {
@@ -179,10 +180,19 @@ const AddQuestionModal: React.FC<AddQuestionModalProps> = ({ onClose, onSave, in
   };
 
   const handleSave = async () => {
+    if (isSaving) return;
     const dataToSave = previewData || parseInput();
     if (dataToSave) {
-      await onSave(dataToSave.question, dataToSave.solution);
-      onClose();
+      setIsSaving(true);
+      try {
+        await onSave(dataToSave.question, dataToSave.solution);
+        onClose();
+      } catch (err) {
+        // onSave failed, do not close or suppress error
+        console.error("Save failed in AddQuestionModal", err);
+        setError("Failed to save question: " + (err instanceof Error ? err.message : String(err)));
+        setIsSaving(false);
+      }
     }
   };
 
@@ -342,11 +352,20 @@ const AddQuestionModal: React.FC<AddQuestionModalProps> = ({ onClose, onSave, in
 
           <button
             onClick={handleSave}
-            disabled={!!error || !jsonInput.trim()}
+            disabled={!!error || !jsonInput.trim() || isSaving}
             className="px-6 py-2.5 rounded-lg bg-primary text-white shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/30 hover:bg-primary/90 text-sm font-bold transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed transform active:scale-95 duration-100"
           >
-            <span className="material-symbols-outlined text-lg">save</span>
-            {isIPQMode ? 'Save IPQ' : 'Add Question'}
+            {isSaving ? (
+              <>
+                <span className="material-symbols-outlined text-lg animate-spin">sync</span>
+                Saving...
+              </>
+            ) : (
+              <>
+                <span className="material-symbols-outlined text-lg">save</span>
+                {isIPQMode ? 'Save IPQ' : 'Add Question'}
+              </>
+            )}
           </button>
         </footer>
       </div>

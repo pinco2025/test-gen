@@ -738,6 +738,7 @@ ipcMain.handle('test:exportWithConfig', async (_, test: Test, exportConfig: {
   instructions: string[];
   title: string;
   description: string;
+  testId: string;
 }) => {
   try {
     // Transform the test data
@@ -746,6 +747,9 @@ ipcMain.handle('test:exportWithConfig', async (_, test: Test, exportConfig: {
     // Override with export config values
     exportData.duration = exportConfig.duration;
     exportData.title = exportConfig.title;
+    exportData.testId = exportConfig.testId;
+    // @ts-ignore - dynamic assignment for instructions
+    exportData.instructions = exportConfig.instructions;
 
     const exportContent = JSON.stringify(exportData, null, 2);
 

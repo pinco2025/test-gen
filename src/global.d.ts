@@ -10,6 +10,7 @@ export interface ExportConfig {
   instructions: string[];
   title: string;
   description: string;
+  testId: string;
 }
 
 export interface GitHubConfig {

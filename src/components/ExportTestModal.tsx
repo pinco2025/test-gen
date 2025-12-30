@@ -18,6 +18,7 @@ export interface ExportConfig {
   instructions: string[];
   title: string;
   description: string;
+  testId: string;
 }
 
 const ExportTestModal: React.FC<ExportTestModalProps> = ({
@@ -41,7 +42,8 @@ const ExportTestModal: React.FC<ExportTestModalProps> = ({
     markingScheme: '+4/-1',
     instructions: ['Read all questions carefully before answering.'],
     title: test.metadata.description || '',
-    description: test.metadata.description || ''
+    description: test.metadata.description || '',
+    testId: test.metadata.code || ''
   });
 
   const [isExporting, setIsExporting] = useState(false);
@@ -52,8 +54,22 @@ const ExportTestModal: React.FC<ExportTestModalProps> = ({
     setConfig(prev => ({ ...prev, totalQuestions }));
   }, [totalQuestions]);
 
+  const generateTestId = (title: string) => {
+    return title
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  };
+
   const handleInputChange = (field: keyof ExportConfig, value: any) => {
-    setConfig(prev => ({ ...prev, [field]: value }));
+    setConfig(prev => {
+        const updates: any = { [field]: value };
+        if (field === 'title') {
+            updates.testId = generateTestId(value as string);
+        }
+        return { ...prev, ...updates };
+    });
     setError(null);
   };
 
@@ -144,14 +160,23 @@ const ExportTestModal: React.FC<ExportTestModalProps> = ({
               />
             </div>
             <div className="input-group">
-              <label>Description</label>
+              <label>Test ID</label>
               <input
                 type="text"
-                value={config.description}
-                onChange={(e) => handleInputChange('description', e.target.value)}
-                placeholder="Enter description"
+                value={config.testId}
+                readOnly
+                className="bg-gray-50 dark:bg-gray-800 text-text-secondary cursor-not-allowed font-mono text-sm"
               />
             </div>
+          </div>
+          <div className="input-group">
+            <label>Description</label>
+            <input
+              type="text"
+              value={config.description}
+              onChange={(e) => handleInputChange('description', e.target.value)}
+              placeholder="Enter description"
+            />
           </div>
 
           {/* Duration & Exam Type */}
