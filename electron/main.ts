@@ -551,6 +551,8 @@ function transformTestToExportFormat(test: Test) {
         chapterCode: q.tag_2 || null, // Using actual question metadata
         topicCode: q.tag_1 || null,
         difficulty: q.tag_3 || null,
+        year: q.year || null,
+        tag4: q.tag_4 || null,
         jeeMainsRelevance: q.jee_mains_relevance || null,
         scary: !!q.scary,
         lengthy: !!q.calc,
@@ -580,6 +582,8 @@ function transformTestToExportFormat(test: Test) {
         chapterCode: q.tag_2 || null, // Using actual question metadata
         topicCode: q.tag_1 || null,
         difficulty: q.tag_3 || null,
+        year: q.year || null,
+        tag4: q.tag_4 || null,
         jeeMainsRelevance: q.jee_mains_relevance || null,
         scary: !!q.scary,
         lengthy: !!q.calc,
@@ -810,20 +814,32 @@ ipcMain.handle('test:exportWithConfig', async (_, test: Test, exportConfig: {
 
     // Step 3: Insert into Supabase if configured
     let supabaseResult = { success: false, error: 'Supabase not configured' };
+    let supabaseSkipped = false;
+
     if (supabaseService.isConfigured() && githubTestUrl) {
-      supabaseResult = await supabaseService.insertTest({
-        testID: test.metadata.code,
-        url: githubTestUrl,
-        exam: exportConfig.exam,
-        type: exportConfig.type,
-        tier: exportConfig.tier,
-        duration: exportConfig.duration,
-        title: exportConfig.title,
-        description: exportConfig.description,
-        totalQuestions: exportConfig.totalQuestions,
-        markingScheme: exportConfig.markingScheme,
-        instructions: exportConfig.instructions.map(text => ({ text }))
-      });
+      // Check if test already exists in Supabase
+      const existingTest = await supabaseService.getTest(test.metadata.code);
+
+      if (existingTest.success && existingTest.data) {
+        console.log(`Test ${test.metadata.code} already exists in Supabase. Skipping insert.`);
+        supabaseResult = { success: true };
+        supabaseSkipped = true;
+      } else {
+        supabaseResult = await supabaseService.insertTest({
+          testID: test.metadata.code,
+          url: githubTestUrl,
+          solution_url: githubSolutionsUrl,
+          exam: exportConfig.exam,
+          type: exportConfig.type,
+          tier: exportConfig.tier,
+          duration: exportConfig.duration,
+          title: exportConfig.title,
+          description: exportConfig.description,
+          totalQuestions: exportConfig.totalQuestions,
+          markingScheme: exportConfig.markingScheme,
+          instructions: exportConfig.instructions.map(text => ({ text }))
+        });
+      }
     }
 
     return {
@@ -832,7 +848,8 @@ ipcMain.handle('test:exportWithConfig', async (_, test: Test, exportConfig: {
       solutionsPath,
       githubTestUrl,
       githubSolutionsUrl,
-      supabaseInserted: supabaseResult.success
+      supabaseInserted: supabaseResult.success,
+      supabaseSkipped
     };
   } catch (error: any) {
     console.error('Export with config failed:', error);

@@ -13,6 +13,7 @@ interface SupabaseConfig {
 interface TestRecord {
   testID: string;
   url: string;
+  solution_url?: string;
   exam: string;
   type: string;
   tier: string;
@@ -171,6 +172,7 @@ class SupabaseService {
         .upsert({
           testID: record.testID,
           url: record.url,
+          solution_url: record.solution_url,
           exam: record.exam,
           type: record.type,
           tier: record.tier,
