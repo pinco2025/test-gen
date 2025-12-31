@@ -189,7 +189,7 @@ export const QuestionDisplay = memo<QuestionDisplayProps>(({
        )}
 
       {/* Solution Toggle Section */}
-      {showSolutionToggle && ((question.solution && (question.solution.solution_text || question.solution.solution_image_url)) || question.legacy_solution) && (
+      {showSolutionToggle && (question.solution && (question.solution.solution_text || question.solution.solution_image_url)) && (
         <div className="border-t border-border-light dark:border-border-dark pt-2 mt-2">
             <button
                 onClick={toggleVisibility}
@@ -202,7 +202,7 @@ export const QuestionDisplay = memo<QuestionDisplayProps>(({
             </button>
 
             {isVisible && (
-                <div className="max-h-96 overflow-y-auto pr-2 custom-scrollbar">
+                <div className="pr-2">
                     <div className="flex items-center justify-between mb-2">
                         <span className="text-xs font-bold text-text-secondary uppercase">Explanation</span>
                         {question.solution?.solution_text && (
@@ -212,12 +212,6 @@ export const QuestionDisplay = memo<QuestionDisplayProps>(({
                     <div className="text-sm text-text-secondary dark:text-gray-400 leading-relaxed space-y-3">
                        {question.solution?.solution_text && <LatexRenderer content={question.solution.solution_text} />}
                        {question.solution?.solution_image_url && <img src={question.solution.solution_image_url} alt="Solution" className="max-w-full mt-2 rounded border border-border-light dark:border-border-dark" />}
-                       {question.legacy_solution && (
-                           <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                               <div className="text-xs font-semibold text-text-secondary mb-2">Legacy Solution Image</div>
-                               <img src={question.legacy_solution} alt="Legacy Solution" className="max-w-full rounded border border-border-light dark:border-border-dark" />
-                           </div>
-                       )}
                     </div>
                 </div>
             )}
