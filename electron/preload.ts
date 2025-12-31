@@ -49,6 +49,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     createQuestion: (question: Question) => ipcRenderer.invoke('questions:createQuestion', question),
     clone: (uuid: string) => ipcRenderer.invoke('questions:clone', uuid),
     getSolution: (uuid: string) => ipcRenderer.invoke('questions:getSolution', uuid),
+    getSolutionsByUUIDs: (uuids: string[]) => ipcRenderer.invoke('questions:getSolutionsByUUIDs', uuids),
     saveSolution: (uuid: string, solutionText: string, solutionImageUrl: string) => ipcRenderer.invoke('questions:saveSolution', uuid, solutionText, solutionImageUrl)
   },
 
