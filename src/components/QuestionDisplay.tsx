@@ -12,6 +12,7 @@ interface QuestionDisplayProps {
   questionNumber?: number;
   highlightCorrectAnswer?: boolean;
   defaultSolutionExpanded?: boolean;
+  showSolutionToggle?: boolean;
 }
 
 const CopyButton = ({ text, tooltip, className = "" }: { text: string, tooltip: string, className?: string }) => {
@@ -46,7 +47,8 @@ export const QuestionDisplay = memo<QuestionDisplayProps>(({
   hideOptions = false,
   questionNumber,
   highlightCorrectAnswer = false,
-  defaultSolutionExpanded = false
+  defaultSolutionExpanded = false,
+  showSolutionToggle = false
 }) => {
   const [copiedUuid, setCopiedUuid] = useState(false);
   const [isSolutionVisible, setIsSolutionVisible] = useState(defaultSolutionExpanded);
@@ -174,7 +176,7 @@ export const QuestionDisplay = memo<QuestionDisplayProps>(({
        )}
 
       {/* Solution Toggle Section */}
-      {question.solution && (question.solution.solution_text || question.solution.solution_image_url) && (
+      {showSolutionToggle && question.solution && (question.solution.solution_text || question.solution.solution_image_url) && (
         <div className="border-t border-border-light dark:border-border-dark pt-2 mt-2">
             <button
                 onClick={() => setIsSolutionVisible(!isSolutionVisible)}

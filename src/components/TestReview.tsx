@@ -163,6 +163,10 @@ const TestReview: React.FC<TestReviewProps> = ({
     if (currentQuestion) onStartEditing(currentQuestion);
   };
 
+  const handleEditOriginal = (originalQuestion: Question) => {
+      onStartEditing(originalQuestion);
+  };
+
   const handleCloneAndEdit = async () => {
     if (!currentQuestion) return;
     setIsSwitchModalOpen(false);
@@ -395,6 +399,7 @@ const TestReview: React.FC<TestReviewProps> = ({
                                 questionNumber={currentItem.absoluteIndex}
                                 showAnswer={true}
                                 defaultSolutionExpanded={showSolutionsDefault}
+                                showSolutionToggle={true}
                                 key={`${currentQuestion.uuid}-${showSolutionsDefault}`} // Re-mount when default changes to force update state
                              />
                         </div>
@@ -559,6 +564,7 @@ const TestReview: React.FC<TestReviewProps> = ({
                 setIsComparisonModalOpen(false);
                 handleEditClick();
             }}
+            onEditOriginal={handleEditOriginal}
         />
       )}
 
