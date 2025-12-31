@@ -40,6 +40,8 @@ const TestReview: React.FC<TestReviewProps> = ({
   const [isSwitchModalOpen, setIsSwitchModalOpen] = useState(false);
   const [isChapterSelectionOpen, setIsChapterSelectionOpen] = useState(false);
   const [showSolutionsDefault, setShowSolutionsDefault] = useState(false);
+  const [isCurrentSolutionVisible, setIsCurrentSolutionVisible] = useState(false);
+  const [prevQuestionUuid, setPrevQuestionUuid] = useState<string | undefined>(undefined);
 
   // Checklist for acceptance
   const [checklist, setChecklist] = useState({
@@ -99,6 +101,11 @@ const TestReview: React.FC<TestReviewProps> = ({
     }
   }, [allQuestions.length, currentQuestionIndex]);
 
+  // Reset solution visibility when default changes
+  useEffect(() => {
+    setIsCurrentSolutionVisible(showSolutionsDefault);
+  }, [showSolutionsDefault]);
+
   // Jump to initial question if provided
   useEffect(() => {
     if (initialQuestionUuid && allQuestions.length > 0) {
@@ -112,6 +119,11 @@ const TestReview: React.FC<TestReviewProps> = ({
 
   const currentItem = allQuestions[currentQuestionIndex];
   const currentQuestion = currentItem?.sq.question;
+
+  if (currentQuestion?.uuid !== prevQuestionUuid) {
+      setPrevQuestionUuid(currentQuestion?.uuid);
+      setIsCurrentSolutionVisible(showSolutionsDefault);
+  }
 
   const handleNext = () => setCurrentQuestionIndex(prev => Math.min(prev + 1, allQuestions.length - 1));
   const handlePrev = () => setCurrentQuestionIndex(prev => Math.max(prev - 1, 0));
@@ -400,11 +412,22 @@ const TestReview: React.FC<TestReviewProps> = ({
                                 showAnswer={true}
                                 defaultSolutionExpanded={showSolutionsDefault}
                                 showSolutionToggle={true}
+                                isSolutionExpanded={isCurrentSolutionVisible}
+                                onToggleSolution={() => setIsCurrentSolutionVisible(!isCurrentSolutionVisible)}
                                 key={`${currentQuestion.uuid}-${showSolutionsDefault}`} // Re-mount when default changes to force update state
                              />
                         </div>
 
-                        <div className="flex justify-end">
+                        <div className="flex justify-end gap-3">
+                             <button
+                                onClick={() => setIsCurrentSolutionVisible(!isCurrentSolutionVisible)}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-lg border font-medium text-sm transition-colors ${isCurrentSolutionVisible ? 'bg-primary/10 text-primary border-primary/20' : 'bg-white dark:bg-[#1e1e2d] text-text-secondary border-gray-200 dark:border-[#2d2d3b] hover:bg-gray-50 dark:hover:bg-[#252535]'}`}
+                            >
+                                <span className="material-symbols-outlined text-lg">
+                                    {isCurrentSolutionVisible ? 'visibility_off' : 'visibility'}
+                                </span>
+                                {isCurrentSolutionVisible ? 'Hide Solution' : 'View Solution'}
+                            </button>
                             <button
                                 onClick={handleEditClick}
                                 className="flex items-center gap-2 px-4 py-2 rounded-lg text-primary hover:bg-primary/10 transition-colors font-medium text-sm"
