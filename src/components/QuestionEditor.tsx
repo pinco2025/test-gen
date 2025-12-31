@@ -518,7 +518,13 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
             </div>
             <div className="flex-1 overflow-y-auto pr-2">
                 <div className="bg-surface-light dark:bg-surface-dark border border-border-light dark:border-border-dark rounded-xl shadow-sm p-6 lg:p-8 flex flex-col gap-6 relative">
-                   <QuestionDisplay question={previewQuestion} showAnswer={true} highlightCorrectAnswer={true} />
+                   <QuestionDisplay
+                        question={previewQuestion}
+                        showAnswer={true}
+                        highlightCorrectAnswer={true}
+                        showSolutionToggle={true}
+                        defaultSolutionExpanded={true}
+                   />
                 </div>
                  <div className="mt-4 p-4 rounded-lg bg-blue-50 dark:bg-primary/10 border border-blue-100 dark:border-primary/20 flex items-start gap-3">
                     <span className="material-symbols-outlined text-primary mt-0.5">info</span>
