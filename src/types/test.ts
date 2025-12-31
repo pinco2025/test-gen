@@ -16,6 +16,8 @@ export type WorkflowStep =
   | 'question-select-chemistry'
   | 'question-select-math'
   | 'test-review'
+  | 'ui-test-interface'
+  | 'ui-review-interface'
   | 'edit-question'
   | 'complete'
   | 'full-test-creation'

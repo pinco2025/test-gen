@@ -20,6 +20,7 @@ import TestOverview from './components/TestOverview';
 import QuestionSelection from './components/QuestionSelection';
 import ProjectTabs from './components/ProjectTabs';
 import TestReview from './components/TestReview';
+import UITestSection from './components/UITestSection';
 import QuestionEditor from './components/QuestionEditor';
 import TestNavigation from './components/TestNavigation';
 import AddQuestionModal from './components/AddQuestionModal';
@@ -1166,7 +1167,10 @@ function App() {
       'question-select-physics',
       'question-select-chemistry',
       'question-select-math',
-      'test-review'
+      'test-review',
+      // We explicitly exclude UI test steps from the main wizard navigation as they are preview steps
+      // 'ui-test-interface',
+      // 'ui-review-interface'
     ].includes(step);
 
     const stepContent = (() => {
@@ -1332,7 +1336,7 @@ function App() {
             sections={sections}
             onStartEditing={handleStartEditing}
             onBack={handleBackFromSelection}
-            onExport={handleExportTest}
+            onExport={() => updateCurrentProject({ currentStep: 'ui-test-interface' })}
             onRemoveQuestion={handleRemoveQuestion}
             onUpdateQuestionStatus={handleQuestionStatusUpdate}
             initialQuestionUuid={lastEditedQuestionUuid}
@@ -1340,6 +1344,26 @@ function App() {
             onSwitchQuestion={initiateSwitchQuestion} // Use the new initiator
             onVerifyQuestion={handleVerifyQuestion} // Pass handler
             onReplaceQuestion={handleReplaceQuestion}
+          />
+        );
+
+      case 'ui-test-interface':
+        return (
+          <UITestSection
+            sections={sections}
+            onStartEditing={handleStartEditing}
+            onNext={() => updateCurrentProject({ currentStep: 'ui-review-interface' })}
+            mode="test"
+          />
+        );
+
+      case 'ui-review-interface':
+        return (
+          <UITestSection
+            sections={sections}
+            onStartEditing={handleStartEditing}
+            onNext={handleExportTest} // This opens the export modal
+            mode="review"
           />
         );
 
