@@ -221,18 +221,7 @@ export const QuestionDisplay = memo<QuestionDisplayProps>(({
             ) : (
                 isVisible && (
                     <div className="pr-2">
-                        {question.legacy_solution ? (
-                            <>
-                                <div className="flex items-center justify-between mb-2">
-                                    <span className="text-xs font-bold text-text-secondary uppercase">Explanation (Legacy)</span>
-                                </div>
-                                <div className="text-sm text-text-secondary dark:text-gray-400 leading-relaxed space-y-3">
-                                    <img src={question.legacy_solution} alt="Solution" className="max-w-full mt-2 rounded border border-border-light dark:border-border-dark" />
-                                </div>
-                            </>
-                        ) : (
-                             <div className="p-4 text-center text-gray-500 italic">No solution available for this question.</div>
-                        )}
+                         <div className="p-4 text-center text-gray-500 italic">No solution available for this question.</div>
                     </div>
                 )
             )}
