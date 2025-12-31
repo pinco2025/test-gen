@@ -10,10 +10,10 @@ interface TestReviewProps {
   sections: SectionConfig[];
   onStartEditing: (question: Question) => void;
   onBack: () => void;
-  onExport: () => void;
+  onExport: () => void; // This will now effectively "Proceed to Next Step"
   onRemoveQuestion: (questionUuid: string) => void;
-  onUpdateQuestionStatus: (questionUuid: string, status: 'accepted' | 'review' | 'pending') => void; // Keeping for compatibility, but we might rely on DB updates
-  onVerifyQuestion?: (questionUuid: string, status: 'approved' | 'rejected' | 'pending') => void; // New prop for verification
+  onUpdateQuestionStatus: (questionUuid: string, status: 'accepted' | 'review' | 'pending') => void;
+  onVerifyQuestion?: (questionUuid: string, status: 'approved' | 'rejected' | 'pending') => void;
   onReplaceQuestion: (oldUuid: string, newQuestion: Question) => void;
   initialQuestionUuid?: string | null;
   onNavigationComplete?: () => void;
@@ -25,7 +25,6 @@ const TestReview: React.FC<TestReviewProps> = ({
   onStartEditing,
   onBack,
   onExport,
-  // onRemoveQuestion is unused but kept in interface for potential future use or compatibility
   onUpdateQuestionStatus,
   onVerifyQuestion,
   onReplaceQuestion,
@@ -39,11 +38,11 @@ const TestReview: React.FC<TestReviewProps> = ({
   const [isComparisonModalOpen, setIsComparisonModalOpen] = useState(false);
   const [isSwitchModalOpen, setIsSwitchModalOpen] = useState(false);
   const [isChapterSelectionOpen, setIsChapterSelectionOpen] = useState(false);
-  const [showSolutionsDefault, setShowSolutionsDefault] = useState(false);
-  const [isCurrentSolutionVisible, setIsCurrentSolutionVisible] = useState(false);
-  const [prevQuestionUuid, setPrevQuestionUuid] = useState<string | undefined>(undefined);
 
-  // Checklist for acceptance
+  // Removed Solution Visibility State
+  // const [showSolutionsDefault, setShowSolutionsDefault] = useState(false);
+  // const [isCurrentSolutionVisible, setIsCurrentSolutionVisible] = useState(false);
+
   const [checklist, setChecklist] = useState({
     questionContent: false,
     optionContent: false,
@@ -62,13 +61,11 @@ const TestReview: React.FC<TestReviewProps> = ({
       if (allUuids.length === 0) return;
       try {
         const freshQuestions = await window.electronAPI.questions.getByUUIDs(allUuids);
-        const solutionsMap = await window.electronAPI.questions.getSolutionsByUUIDs(allUuids);
 
+        // We do NOT need solutions for this view anymore, but we fetch questions
         const map: Record<string, Question> = {};
         freshQuestions.forEach(q => {
-            const solution = solutionsMap[q.uuid];
-            // @ts-ignore - attaching solution to question object for display purposes
-            map[q.uuid] = solution ? { ...q, solution } : q;
+            map[q.uuid] = q;
         });
         setFreshQuestionsMap(map);
       } catch (error) {
@@ -101,11 +98,6 @@ const TestReview: React.FC<TestReviewProps> = ({
     }
   }, [allQuestions.length, currentQuestionIndex]);
 
-  // Reset solution visibility when default changes
-  useEffect(() => {
-    setIsCurrentSolutionVisible(showSolutionsDefault);
-  }, [showSolutionsDefault]);
-
   // Jump to initial question if provided
   useEffect(() => {
     if (initialQuestionUuid && allQuestions.length > 0) {
@@ -119,11 +111,6 @@ const TestReview: React.FC<TestReviewProps> = ({
 
   const currentItem = allQuestions[currentQuestionIndex];
   const currentQuestion = currentItem?.sq.question;
-
-  if (currentQuestion?.uuid !== prevQuestionUuid) {
-      setPrevQuestionUuid(currentQuestion?.uuid);
-      setIsCurrentSolutionVisible(showSolutionsDefault);
-  }
 
   const handleNext = () => setCurrentQuestionIndex(prev => Math.min(prev + 1, allQuestions.length - 1));
   const handlePrev = () => setCurrentQuestionIndex(prev => Math.max(prev - 1, 0));
@@ -141,16 +128,14 @@ const TestReview: React.FC<TestReviewProps> = ({
 
   const confirmAccept = () => {
     if (!currentQuestion) return;
-    // Map to Verification Level 1
     if (onVerifyQuestion) {
         onVerifyQuestion(currentQuestion.uuid, 'approved');
-        // Update local fresh map immediately for UI responsiveness
         setFreshQuestionsMap(prev => ({
             ...prev,
             [currentQuestion.uuid]: { ...currentQuestion, verification_level_1: 'approved' }
         }));
     }
-    onUpdateQuestionStatus(currentQuestion.uuid, 'accepted'); // Keep legacy status for export check
+    onUpdateQuestionStatus(currentQuestion.uuid, 'accepted');
     setIsAcceptModalOpen(false);
     handleNext();
   };
@@ -164,11 +149,6 @@ const TestReview: React.FC<TestReviewProps> = ({
             [currentQuestion.uuid]: { ...currentQuestion, verification_level_1: 'rejected' }
         }));
     }
-    // Also remove from test? User said "display on palette", so maybe keep it?
-    // "if any question is already verified/rejected then it should be displayed on the palette"
-    // So we DON'T remove it automatically anymore via onRemoveQuestion, unless user explicitly wants to remove.
-    // However, usually Reject in review means "get this out". But let's stick to the prompt:
-    // "map accept/reject button correspond to the verification level 1 now"
   };
 
   const handleEditClick = () => {
@@ -188,9 +168,7 @@ const TestReview: React.FC<TestReviewProps> = ({
     try {
         const clonedQuestion = await window.electronAPI.questions.clone(currentQuestion.uuid);
         if (clonedQuestion) {
-            // Replace in list
             onReplaceQuestion(currentQuestion.uuid, clonedQuestion);
-            // Wait a tick for updates then edit
             setTimeout(() => {
                 onStartEditing(clonedQuestion);
             }, 100);
@@ -220,7 +198,6 @@ const TestReview: React.FC<TestReviewProps> = ({
       if (!q || !q.links) return null;
       try {
           const links = JSON.parse(q.links);
-          // If it's an IPQ switch, it should have a link to the original
           if (Array.isArray(links) && links.length > 0) {
               return links[0];
           }
@@ -232,15 +209,11 @@ const TestReview: React.FC<TestReviewProps> = ({
 
   const originalUuid = getOriginalQuestionUuid(currentQuestion);
 
-  // Determine exportability (legacy status check)
   const canExport = useMemo(() => {
     if (allQuestions.length === 0) return false;
-    // We can rely on verification_level_1 OR the local 'accepted' status.
-    // The previous code used 'status' field in SelectedQuestion.
     return allQuestions.every(item => item.sq.question.verification_level_1 === 'approved');
   }, [allQuestions]);
 
-  // UI Helper for Palette Colors
   const getPaletteClass = (q: Question, isActive: boolean) => {
       let base = 'bg-gray-100 dark:bg-white/5 text-text-secondary';
       if (q.verification_level_1 === 'approved') base = 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800';
@@ -257,7 +230,7 @@ const TestReview: React.FC<TestReviewProps> = ({
       if (sectionIndex !== undefined && sections[sectionIndex]) {
           return sections[sectionIndex].name;
       }
-      return 'Physics'; // Default fallback
+      return 'Physics';
   };
 
   const getCurrentChapters = (): Chapter[] => {
@@ -268,7 +241,6 @@ const TestReview: React.FC<TestReviewProps> = ({
       return [];
   };
 
-  // If in chapter selection mode, overlay the QuestionSelection component
   if (isChapterSelectionOpen && currentQuestion) {
       return (
         <div className="fixed inset-0 z-50 bg-white dark:bg-[#121121] flex flex-col animate-in slide-in-from-right duration-300">
@@ -288,12 +260,12 @@ const TestReview: React.FC<TestReviewProps> = ({
                  <QuestionSelection
                     sectionName={getCurrentSectionName() as any}
                     chapters={getCurrentChapters()}
-                    alphaConstraint={{ chapters: [] }} // Dummy constraint
+                    alphaConstraint={{ chapters: [] }}
                     betaConstraint={{}}
-                    onComplete={() => {}} // Not used in this mode
-                    onBack={() => setIsChapterSelectionOpen(false)} // Should not be hit typically due to overlay
-                    onStartEditing={() => {}} // Disabled
-                    onClone={() => {}} // Disabled
+                    onComplete={() => {}}
+                    onBack={() => setIsChapterSelectionOpen(false)}
+                    onStartEditing={() => {}}
+                    onClone={() => {}}
                     lockedChapterCode={currentQuestion.tag_2 || undefined}
                     limitCount={1}
                     selectionMode="single-replace"
@@ -319,18 +291,7 @@ const TestReview: React.FC<TestReviewProps> = ({
           </span>
         </div>
         <div className="flex items-center gap-3">
-            <label className="flex items-center gap-2 text-sm font-medium text-text-secondary cursor-pointer hover:text-text-main transition-colors">
-                <div className={`w-10 h-6 rounded-full p-1 transition-colors ${showSolutionsDefault ? 'bg-primary' : 'bg-gray-300 dark:bg-gray-600'}`}>
-                    <div className={`bg-white size-4 rounded-full shadow-md transform transition-transform ${showSolutionsDefault ? 'translate-x-4' : ''}`} />
-                </div>
-                <input
-                    type="checkbox"
-                    className="hidden"
-                    checked={showSolutionsDefault}
-                    onChange={(e) => setShowSolutionsDefault(e.target.checked)}
-                />
-                Show Solutions
-            </label>
+             {/* Solution Toggle Removed */}
             <button
                 onClick={onExport}
                 disabled={!canExport}
@@ -340,8 +301,8 @@ const TestReview: React.FC<TestReviewProps> = ({
                     : 'bg-gray-200 dark:bg-[#252535] text-gray-400 cursor-not-allowed'
                 }`}
             >
-                <span className="material-symbols-outlined text-lg">ios_share</span>
-                Export Test
+                Proceed to UI Test
+                <span className="material-symbols-outlined text-lg">arrow_forward</span>
             </button>
         </div>
       </header>
@@ -410,24 +371,15 @@ const TestReview: React.FC<TestReviewProps> = ({
                                 question={currentQuestion}
                                 questionNumber={currentItem.absoluteIndex}
                                 showAnswer={true}
-                                defaultSolutionExpanded={showSolutionsDefault}
-                                showSolutionToggle={true}
-                                isSolutionExpanded={isCurrentSolutionVisible}
-                                onToggleSolution={() => setIsCurrentSolutionVisible(!isCurrentSolutionVisible)}
-                                key={`${currentQuestion.uuid}-${showSolutionsDefault}`} // Re-mount when default changes to force update state
+                                defaultSolutionExpanded={false}
+                                showSolutionToggle={false} // Force hidden
+                                isSolutionExpanded={false} // Force hidden
+                                onToggleSolution={undefined} // No toggle
                              />
                         </div>
 
                         <div className="flex justify-end gap-3">
-                             <button
-                                onClick={() => setIsCurrentSolutionVisible(!isCurrentSolutionVisible)}
-                                className={`flex items-center gap-2 px-4 py-2 rounded-lg border font-medium text-sm transition-colors ${isCurrentSolutionVisible ? 'bg-primary/10 text-primary border-primary/20' : 'bg-white dark:bg-[#1e1e2d] text-text-secondary border-gray-200 dark:border-[#2d2d3b] hover:bg-gray-50 dark:hover:bg-[#252535]'}`}
-                            >
-                                <span className="material-symbols-outlined text-lg">
-                                    {isCurrentSolutionVisible ? 'visibility_off' : 'visibility'}
-                                </span>
-                                {isCurrentSolutionVisible ? 'Hide Solution' : 'View Solution'}
-                            </button>
+                             {/* Solution Toggle Button Removed */}
                             <button
                                 onClick={handleEditClick}
                                 className="flex items-center gap-2 px-4 py-2 rounded-lg text-primary hover:bg-primary/10 transition-colors font-medium text-sm"
