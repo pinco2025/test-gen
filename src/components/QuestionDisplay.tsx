@@ -13,6 +13,8 @@ interface QuestionDisplayProps {
   highlightCorrectAnswer?: boolean;
   defaultSolutionExpanded?: boolean;
   showSolutionToggle?: boolean;
+  isSolutionExpanded?: boolean;
+  onToggleSolution?: () => void;
 }
 
 const CopyButton = ({ text, tooltip, className = "" }: { text: string, tooltip: string, className?: string }) => {
@@ -48,10 +50,21 @@ export const QuestionDisplay = memo<QuestionDisplayProps>(({
   questionNumber,
   highlightCorrectAnswer = false,
   defaultSolutionExpanded = false,
-  showSolutionToggle = false
+  showSolutionToggle = false,
+  isSolutionExpanded,
+  onToggleSolution
 }) => {
   const [copiedUuid, setCopiedUuid] = useState(false);
-  const [isSolutionVisible, setIsSolutionVisible] = useState(defaultSolutionExpanded);
+  const [internalIsSolutionVisible, setInternalIsSolutionVisible] = useState(defaultSolutionExpanded);
+
+  const isVisible = isSolutionExpanded !== undefined ? isSolutionExpanded : internalIsSolutionVisible;
+  const toggleVisibility = () => {
+    if (onToggleSolution) {
+      onToggleSolution();
+    } else {
+      setInternalIsSolutionVisible(!internalIsSolutionVisible);
+    }
+  };
 
   const handleCopyUuid = () => {
     navigator.clipboard.writeText(question.uuid);
@@ -179,16 +192,16 @@ export const QuestionDisplay = memo<QuestionDisplayProps>(({
       {showSolutionToggle && ((question.solution && (question.solution.solution_text || question.solution.solution_image_url)) || question.legacy_solution) && (
         <div className="border-t border-border-light dark:border-border-dark pt-2 mt-2">
             <button
-                onClick={() => setIsSolutionVisible(!isSolutionVisible)}
+                onClick={toggleVisibility}
                 className="flex items-center gap-2 text-primary font-semibold text-sm uppercase tracking-wide hover:underline focus:outline-none mb-2"
             >
                 <span className="material-symbols-outlined text-lg">
-                    {isSolutionVisible ? 'expand_less' : 'expand_more'}
+                    {isVisible ? 'expand_less' : 'expand_more'}
                 </span>
-                {isSolutionVisible ? 'Hide Solution' : 'Show Solution'}
+                {isVisible ? 'Hide Solution' : 'Show Solution'}
             </button>
 
-            {isSolutionVisible && (
+            {isVisible && (
                 <div className="max-h-96 overflow-y-auto pr-2 custom-scrollbar">
                     <div className="flex items-center justify-between mb-2">
                         <span className="text-xs font-bold text-text-secondary uppercase">Explanation</span>
