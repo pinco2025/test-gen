@@ -7,6 +7,7 @@ interface UITestSectionProps {
   sections: SectionConfig[];
   onStartEditing: (question: Question) => void;
   onNext: () => void;
+  onBack?: () => void;
   mode: 'test' | 'review';
 }
 
@@ -14,6 +15,7 @@ const UITestSection: React.FC<UITestSectionProps> = ({
   sections,
   onStartEditing,
   onNext,
+  onBack,
   mode
 }) => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -116,9 +118,16 @@ const UITestSection: React.FC<UITestSectionProps> = ({
     <div className="flex flex-col h-full bg-white dark:bg-[#121121] overflow-hidden">
         {/* Header */}
         <header className="flex-shrink-0 h-16 flex items-center justify-between px-6 bg-white dark:bg-[#1e1e2d] border-b border-gray-200 dark:border-[#2d2d3b] shadow-sm z-20">
-            <h1 className="text-lg font-bold text-text-main dark:text-white">
-                {mode === 'test' ? 'Test Interface Preview' : 'Review Interface Preview'}
-            </h1>
+            <div className="flex items-center gap-4">
+                {onBack && (
+                    <button onClick={onBack} className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-[#252535] text-text-secondary transition-colors">
+                        <span className="material-symbols-outlined text-xl">arrow_back</span>
+                    </button>
+                )}
+                <h1 className="text-lg font-bold text-text-main dark:text-white">
+                    {mode === 'test' ? 'Test Interface Preview' : 'Review Interface Preview'}
+                </h1>
+            </div>
 
             {mode === 'test' && (
                 <div className="font-mono text-xl font-bold text-text-main dark:text-white bg-gray-100 dark:bg-black/20 px-4 py-1 rounded-lg">

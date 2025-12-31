@@ -1353,6 +1353,7 @@ function App() {
             sections={sections}
             onStartEditing={handleStartEditing}
             onNext={() => updateCurrentProject({ currentStep: 'ui-review-interface' })}
+            onBack={() => updateCurrentProject({ currentStep: 'test-review' })}
             mode="test"
           />
         );
@@ -1363,6 +1364,7 @@ function App() {
             sections={sections}
             onStartEditing={handleStartEditing}
             onNext={handleExportTest} // This opens the export modal
+            onBack={() => updateCurrentProject({ currentStep: 'ui-test-interface' })}
             mode="review"
           />
         );
