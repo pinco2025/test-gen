@@ -90,6 +90,11 @@ export const QuestionDisplay = memo<QuestionDisplayProps>(({
     }
   };
 
+  // Determine if solution content is available
+  const hasSolutionText = question.solution?.solution_text && question.solution.solution_text.trim().length > 0;
+  const hasSolutionImage = question.solution?.solution_image_url && question.solution.solution_image_url.trim().length > 0;
+  const hasSolution = !!(hasSolutionText || hasSolutionImage);
+
   return (
     <div className={`flex flex-col gap-6 relative p-4 rounded-xl transition-colors ${getVerificationTint()} ${isSelected ? 'ring-2 ring-primary' : ''}`}>
        {showCheckbox && (
@@ -189,9 +194,9 @@ export const QuestionDisplay = memo<QuestionDisplayProps>(({
        )}
 
       {/* Solution Toggle Section */}
-      {showSolutionToggle && ((question.solution && (question.solution.solution_text || question.solution.solution_image_url)) || isVisible) && (
+      {showSolutionToggle && (hasSolution || isVisible) && (
         <div className="border-t border-border-light dark:border-border-dark pt-2 mt-2">
-            {(question.solution && (question.solution.solution_text || question.solution.solution_image_url)) ? (
+            {hasSolution ? (
                 <>
                     <button
                         onClick={toggleVisibility}
@@ -207,13 +212,13 @@ export const QuestionDisplay = memo<QuestionDisplayProps>(({
                         <div className="pr-2">
                             <div className="flex items-center justify-between mb-2">
                                 <span className="text-xs font-bold text-text-secondary uppercase">Explanation</span>
-                                {question.solution?.solution_text && (
-                                <CopyButton text={question.solution.solution_text} tooltip="Copy Solution" />
+                                {hasSolutionText && (
+                                <CopyButton text={question.solution!.solution_text} tooltip="Copy Solution" />
                                 )}
                             </div>
                             <div className="text-sm text-text-secondary dark:text-gray-400 leading-relaxed space-y-3">
-                            {question.solution?.solution_text && <LatexRenderer content={question.solution.solution_text} />}
-                            {question.solution?.solution_image_url && <img src={question.solution.solution_image_url} alt="Solution" className="max-w-full mt-2 rounded border border-border-light dark:border-border-dark" />}
+                            {hasSolutionText && <LatexRenderer content={question.solution!.solution_text} />}
+                            {hasSolutionImage && <img src={question.solution!.solution_image_url} alt="Solution" className="max-w-full mt-2 rounded border border-border-light dark:border-border-dark" />}
                             </div>
                         </div>
                     )}
