@@ -189,7 +189,7 @@ export const QuestionDisplay = memo<QuestionDisplayProps>(({
        )}
 
       {/* Solution Toggle Section */}
-      {showSolutionToggle && (question.solution && (question.solution.solution_text || question.solution.solution_image_url)) && (
+      {(showSolutionToggle && (isVisible || (question.solution && (question.solution.solution_text || question.solution.solution_image_url)))) && (
         <div className="border-t border-border-light dark:border-border-dark pt-2 mt-2">
             <button
                 onClick={toggleVisibility}
@@ -210,8 +210,15 @@ export const QuestionDisplay = memo<QuestionDisplayProps>(({
                         )}
                     </div>
                     <div className="text-sm text-text-secondary dark:text-gray-400 leading-relaxed space-y-3">
-                       {question.solution?.solution_text && <LatexRenderer content={question.solution.solution_text} />}
-                       {question.solution?.solution_image_url && <img src={question.solution.solution_image_url} alt="Solution" className="max-w-full mt-2 rounded border border-border-light dark:border-border-dark" />}
+                       {question.solution?.solution_text ? (
+                           <LatexRenderer content={question.solution.solution_text} />
+                       ) : null}
+                       {question.solution?.solution_image_url ? (
+                           <img src={question.solution.solution_image_url} alt="Solution" className="max-w-full mt-2 rounded border border-border-light dark:border-border-dark" />
+                       ) : null}
+                       {(!question.solution?.solution_text && !question.solution?.solution_image_url) && (
+                           <div className="text-gray-400 italic">No solution content available.</div>
+                       )}
                     </div>
                 </div>
             )}
