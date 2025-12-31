@@ -189,31 +189,52 @@ export const QuestionDisplay = memo<QuestionDisplayProps>(({
        )}
 
       {/* Solution Toggle Section */}
-      {showSolutionToggle && (question.solution && (question.solution.solution_text || question.solution.solution_image_url)) && (
+      {showSolutionToggle && ((question.solution && (question.solution.solution_text || question.solution.solution_image_url)) || isVisible) && (
         <div className="border-t border-border-light dark:border-border-dark pt-2 mt-2">
-            <button
-                onClick={toggleVisibility}
-                className="flex items-center gap-2 text-primary font-semibold text-sm uppercase tracking-wide hover:underline focus:outline-none mb-2"
-            >
-                <span className="material-symbols-outlined text-lg">
-                    {isVisible ? 'expand_less' : 'expand_more'}
-                </span>
-                {isVisible ? 'Hide Solution' : 'Show Solution'}
-            </button>
+            {(question.solution && (question.solution.solution_text || question.solution.solution_image_url)) ? (
+                <>
+                    <button
+                        onClick={toggleVisibility}
+                        className="flex items-center gap-2 text-primary font-semibold text-sm uppercase tracking-wide hover:underline focus:outline-none mb-2"
+                    >
+                        <span className="material-symbols-outlined text-lg">
+                            {isVisible ? 'expand_less' : 'expand_more'}
+                        </span>
+                        {isVisible ? 'Hide Solution' : 'Show Solution'}
+                    </button>
 
-            {isVisible && (
-                <div className="pr-2">
-                    <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-bold text-text-secondary uppercase">Explanation</span>
-                        {question.solution?.solution_text && (
-                          <CopyButton text={question.solution.solution_text} tooltip="Copy Solution" />
+                    {isVisible && (
+                        <div className="pr-2">
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-xs font-bold text-text-secondary uppercase">Explanation</span>
+                                {question.solution?.solution_text && (
+                                <CopyButton text={question.solution.solution_text} tooltip="Copy Solution" />
+                                )}
+                            </div>
+                            <div className="text-sm text-text-secondary dark:text-gray-400 leading-relaxed space-y-3">
+                            {question.solution?.solution_text && <LatexRenderer content={question.solution.solution_text} />}
+                            {question.solution?.solution_image_url && <img src={question.solution.solution_image_url} alt="Solution" className="max-w-full mt-2 rounded border border-border-light dark:border-border-dark" />}
+                            </div>
+                        </div>
+                    )}
+                </>
+            ) : (
+                isVisible && (
+                    <div className="pr-2">
+                        {question.legacy_solution ? (
+                            <>
+                                <div className="flex items-center justify-between mb-2">
+                                    <span className="text-xs font-bold text-text-secondary uppercase">Explanation (Legacy)</span>
+                                </div>
+                                <div className="text-sm text-text-secondary dark:text-gray-400 leading-relaxed space-y-3">
+                                    <img src={question.legacy_solution} alt="Solution" className="max-w-full mt-2 rounded border border-border-light dark:border-border-dark" />
+                                </div>
+                            </>
+                        ) : (
+                             <div className="p-4 text-center text-gray-500 italic">No solution available for this question.</div>
                         )}
                     </div>
-                    <div className="text-sm text-text-secondary dark:text-gray-400 leading-relaxed space-y-3">
-                       {question.solution?.solution_text && <LatexRenderer content={question.solution.solution_text} />}
-                       {question.solution?.solution_image_url && <img src={question.solution.solution_image_url} alt="Solution" className="max-w-full mt-2 rounded border border-border-light dark:border-border-dark" />}
-                    </div>
-                </div>
+                )
             )}
         </div>
       )}
