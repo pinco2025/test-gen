@@ -56,9 +56,9 @@ const ExportTestModal: React.FC<ExportTestModalProps> = ({
 
   const generateTestId = (title: string) => {
     return title
-      .toLowerCase()
+      .toUpperCase()
       .trim()
-      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/[^A-Z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '');
   };
 
