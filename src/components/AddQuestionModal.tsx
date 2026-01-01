@@ -246,6 +246,8 @@ const AddQuestionModal: React.FC<AddQuestionModalProps> = ({ onClose, onSave, in
                         solution: previewData.solution as Solution
                     }}
                     showAnswer={true}
+                    showSolutionToggle={true}
+                    defaultSolutionExpanded={true}
                     />
                 </div>
               </div>
