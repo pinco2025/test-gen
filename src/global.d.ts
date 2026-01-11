@@ -39,6 +39,17 @@ export interface TestRecord {
   instructions: object[];
 }
 
+// Exam type for multi-table support
+export type ExamType = 'JEE' | 'NEET' | 'BITS' | 'IPQ';
+
+// Exam table status for multi-exam support
+export interface ExamTableStatus {
+  exam: ExamType | 'IPQ';
+  hasQuestionsTable: boolean;
+  hasSolutionsTable: boolean;
+  isComplete: boolean;
+}
+
 export interface ExportResult {
   success: boolean;
   localPath?: string;
@@ -63,10 +74,11 @@ declare global {
         connect: (dbPath?: string) => Promise<{ success: boolean; error?: string }>;
         selectFile: () => Promise<{ success: boolean; path?: string; error?: string }>;
         isConnected: () => Promise<boolean>;
+        getExamTablesStatus: () => Promise<ExamTableStatus[]>;
         getTypes: () => Promise<string[]>;
         getYears: () => Promise<string[]>;
         getTags: () => Promise<string[]>;
-        getChaptersByType: () => Promise<{ [type: string]: string[] }>;
+        getChaptersByType: (exam?: ExamType) => Promise<{ [type: string]: string[] }>;
       };
       chapters: {
         load: () => Promise<any>;
@@ -74,22 +86,31 @@ declare global {
         addTopic: (subject: string, chapterCode: string, topicName: string) => Promise<{ success: boolean; topicId?: string; topicName?: string; error?: string }>;
       };
       questions: {
-        getAll: (filter?: QuestionFilter) => Promise<Question[]>;
-        getByUUID: (uuid: string) => Promise<Question | null>;
-        getByUUIDs: (uuids: string[]) => Promise<Question[]>;
-        search: (criteria: any) => Promise<Question[]>;
-        getCount: (filter?: QuestionFilter) => Promise<number>;
-        getByChapterCodes: (type: string, chapterCodes: string[]) => Promise<Question[]>;
-        getAllForSubject: (chapterCodes: string[]) => Promise<Question[]>;
-        incrementFrequency: (uuid: string) => Promise<boolean>;
-        decrementFrequency: (uuid: string) => Promise<boolean>;
-        updateQuestion: (uuid: string, updates: Partial<Question>) => Promise<boolean>;
-        bulkUpdateQuestions: (uuids: string[], updates: Partial<Question>) => Promise<{ success: boolean, updatedCount: number }>;
-        createQuestion: (question: Question) => Promise<boolean>;
-        clone: (uuid: string) => Promise<Question | null>;
-        getSolution: (uuid: string) => Promise<Solution | null>;
-        getSolutionsByUUIDs: (uuids: string[]) => Promise<Record<string, { uuid: string, solution_text: string, solution_image_url: string }>>;
-        saveSolution: (uuid: string, solutionText: string, solutionImageUrl: string) => Promise<boolean>;
+        getAll: (filter?: QuestionFilter, exam?: ExamType) => Promise<Question[]>;
+        getByUUID: (uuid: string, exam?: ExamType) => Promise<Question | null>;
+        getByUUIDs: (uuids: string[], exam?: ExamType) => Promise<Question[]>;
+        search: (criteria: any, exam?: ExamType) => Promise<Question[]>;
+        getCount: (filter?: QuestionFilter, exam?: ExamType) => Promise<number>;
+        getAllExamCounts: () => Promise<{ total: number; breakdown: { exam: string; count: number }[] }>;
+        getByChapterCodes: (type: string, chapterCodes: string[], exam?: ExamType) => Promise<Question[]>;
+        getAllForSubject: (chapterCodes: string[], exam?: ExamType) => Promise<Question[]>;
+        incrementFrequency: (uuid: string, exam?: ExamType) => Promise<boolean>;
+        decrementFrequency: (uuid: string, exam?: ExamType) => Promise<boolean>;
+        updateQuestion: (uuid: string, updates: Partial<Question>, exam?: ExamType) => Promise<boolean>;
+        bulkUpdateQuestions: (uuids: string[], updates: Partial<Question>, exam?: ExamType) => Promise<{ success: boolean, updatedCount: number }>;
+        createQuestion: (question: Question, exam?: ExamType) => Promise<boolean>;
+        clone: (uuid: string, exam?: ExamType) => Promise<Question | null>;
+        getSolution: (uuid: string, exam?: ExamType) => Promise<Solution | null>;
+        getSolutionsByUUIDs: (uuids: string[], exam?: ExamType) => Promise<Record<string, { uuid: string, solution_text: string, solution_image_url: string }>>;
+        saveSolution: (uuid: string, solutionText: string, solutionImageUrl: string, exam?: ExamType) => Promise<boolean>;
+      };
+      ipq: {
+        createQuestion: (question: Question, parentExam: ExamType) => Promise<boolean>;
+        saveSolution: (uuid: string, solutionText: string, solutionImageUrl: string, parentExam: ExamType) => Promise<boolean>;
+        getQuestions: (parentExam?: ExamType) => Promise<Question[]>;
+        getSolution: (uuid: string) => Promise<{ uuid: string; solution_text: string; solution_image_url: string; parent_exam: ExamType } | null>;
+        getCount: (parentExam?: ExamType) => Promise<number>;
+        getTablesStatus: () => Promise<{ hasQuestionsTable: boolean; hasSolutionsTable: boolean; isComplete: boolean }>;
       };
       test: {
         export: (test: Test) => Promise<{ success: boolean; path?: string; error?: string }>;
@@ -133,4 +154,4 @@ declare global {
   }
 }
 
-export {};
+export { };

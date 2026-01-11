@@ -9,10 +9,14 @@ import {
   SectionName,
   Difficulty,
   SelectionSummary,
-  Chapter
+  Chapter,
+  ExamType,
+  SUPPORTED_EXAMS
 } from '../types';
 import FilterMenu, { FilterState } from './FilterMenu';
 import QuestionRow from './QuestionRow';
+import AddQuestionModal from './AddQuestionModal';
+import { useNotification } from './Notification';
 
 interface QuestionSelectionProps {
   sectionName: SectionName;
@@ -22,7 +26,6 @@ interface QuestionSelectionProps {
   onComplete: (selectedQuestions: SelectedQuestion[]) => void;
   onBack: () => void;
   onStartEditing: (question: Question) => void;
-  onClone: (question: Question) => void;
   initialSelectedQuestions?: SelectedQuestion[];
   onChange?: (selectedQuestions: SelectedQuestion[]) => void;
   scrollToQuestionUuid?: string | null;
@@ -44,16 +47,16 @@ interface ItemData {
   selectedUuids: Set<string>;
   onToggle: (question: Question) => void;
   onEdit: (e: React.MouseEvent, question: Question) => void;
-  onClone: (e: React.MouseEvent, question: Question) => void;
+  onCreateIPQ: (e: React.MouseEvent, question: Question) => void;
   setSize: (index: number, size: number) => void;
   zoomLevel: number;
-  selectionMode?: 'default' | 'single-replace'; // Pass down to Row if needed (currently not used in Row logic directly but good to have)
+  selectionMode?: 'default' | 'single-replace';
 }
 
 const isNumericalAnswer = (question: Question): boolean => !['A', 'B', 'C', 'D'].includes(question.answer.toUpperCase().trim());
 
 const Row = ({ index, style, data }: ListChildComponentProps<ItemData>) => {
-  const { questions, selectedUuids, onToggle, onEdit, onClone, setSize, zoomLevel } = data;
+  const { questions, selectedUuids, onToggle, onEdit, onCreateIPQ, setSize, zoomLevel } = data;
   const question = questions[index];
   const rowRef = useRef<HTMLDivElement>(null);
 
@@ -75,7 +78,7 @@ const Row = ({ index, style, data }: ListChildComponentProps<ItemData>) => {
           isDivision2Question={isNumericalAnswer(question)}
           onToggle={onToggle}
           onEdit={onEdit}
-          onClone={onClone}
+          onCreateIPQ={onCreateIPQ}
           highlightCorrectAnswer={true}
           zoomLevel={zoomLevel}
         />
@@ -91,7 +94,6 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
   onComplete,
   onBack,
   onStartEditing,
-  onClone,
   initialSelectedQuestions = [],
   onChange,
   scrollToQuestionUuid,
@@ -107,12 +109,31 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
   const [selectedQuestions, setSelectedQuestions] = useState<SelectedQuestion[]>(initialSelectedQuestions);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [availableQuestions, setAvailableQuestions] = useState<Question[]>([]);
+  const [examType, setExamType] = useState<ExamType>(() => {
+    const stored = localStorage.getItem('questionSelection_examType');
+    return (stored && SUPPORTED_EXAMS.includes(stored as ExamType)) ? stored as ExamType : 'JEE';
+  });
+
+  // Persist examType to localStorage when changed
+  useEffect(() => {
+    localStorage.setItem('questionSelection_examType', examType);
+    // Reset filters when switching to IPQ to show all IPQ questions
+    if (examType === 'IPQ') {
+      setFilters(prev => ({
+        ...prev,
+        type: 'all',
+        chapter: 'all',
+        year: 'all'
+      }));
+    }
+  }, [examType]);
+
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState('');
   const [searchUuid, setSearchUuid] = useState('');
   const [filters, setFilters] = useState<FilterState>({
-      chapter: 'all', difficulty: 'all', division: 'all', type: 'all', year: 'all', tag1: '', tag4: '', sort: 'default', selectedOnly: false,
-      verificationLevel1: 'all', verificationLevel2: 'all'
+    chapter: 'all', difficulty: 'all', division: 'all', type: 'all', year: 'all', tag1: '', tag4: '', sort: 'default', selectedOnly: false,
+    verificationLevel1: 'all', verificationLevel2: 'all'
   });
 
   const handleFilterChange = (newFilters: Partial<FilterState>) => {
@@ -124,9 +145,57 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
     onStartEditing(question);
   };
 
-  const handleClone = (e: React.MouseEvent, question: Question) => {
+  // IPQ Creation Modal State
+  const [showIPQModal, setShowIPQModal] = useState(false);
+  const [ipqTargetQuestion, setIpqTargetQuestion] = useState<Question | null>(null);
+  const { addNotification } = useNotification();
+
+  const handleCreateIPQ = (e: React.MouseEvent, question: Question) => {
     e.stopPropagation();
-    onClone(question);
+    setIpqTargetQuestion(question);
+    setShowIPQModal(true);
+  };
+
+  const handleIPQSave = async (newQuestion: Question) => {
+    if (!window.electronAPI || !ipqTargetQuestion) return;
+
+    try {
+      // Determine parent exam from current examType (or from question's examSource if available)
+      const parentExam = (ipqTargetQuestion as any).examSource || (examType !== 'IPQ' ? examType : 'JEE');
+
+      // Link to original question
+      const questionWithLink = {
+        ...newQuestion,
+        links: JSON.stringify([ipqTargetQuestion.uuid]),
+        type: 'IPQ'
+      };
+
+      const success = await window.electronAPI.ipq.createQuestion(questionWithLink, parentExam as ExamType);
+      if (!success) {
+        addNotification('error', 'Failed to create IPQ question.');
+        return;
+      }
+
+      // Update original question links
+      const originalLinks = ipqTargetQuestion.links ? JSON.parse(ipqTargetQuestion.links) : [];
+      if (!originalLinks.includes(newQuestion.uuid)) {
+        originalLinks.push(newQuestion.uuid);
+        await window.electronAPI.questions.updateQuestion(ipqTargetQuestion.uuid, {
+          links: JSON.stringify(originalLinks)
+        }, parentExam as ExamType);
+      }
+
+      addNotification('success', `IPQ created successfully! Switching to IPQ view...`);
+      setShowIPQModal(false);
+      setIpqTargetQuestion(null);
+
+      // Redirect to IPQ view and search for the new question
+      setExamType('IPQ');
+      setSearchUuid(newQuestion.uuid.substring(0, 8));
+    } catch (error) {
+      console.error('Error creating IPQ:', error);
+      addNotification('error', 'An error occurred while creating IPQ.');
+    }
   };
 
   useEffect(() => {
@@ -166,11 +235,23 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
   useEffect(() => {
     const loadQuestions = async () => {
       setLoading(true);
+      console.log('[QuestionSelection] Loading questions, examType:', examType, 'SUPPORTED_EXAMS:', SUPPORTED_EXAMS);
       try {
-        // If locked to a single chapter, only fetch that one (optimization)
-        const chapterCodes = lockedChapterCode ? [lockedChapterCode] : chapters.map(ch => ch.code);
-        const typeMap = { 'Physics': 'physics', 'Chemistry': 'chemistry', 'Mathematics': 'mathematics' };
-        const questions = await window.electronAPI.questions.getByChapterCodes(typeMap[sectionName] as any, chapterCodes);
+        let questions: Question[];
+
+        if (examType === 'IPQ') {
+          // Load ALL IPQ questions - they span all subjects/chapters
+          // Users can filter by chapter using the filter dropdown if needed
+          console.log('[QuestionSelection] Fetching IPQ questions...');
+          questions = await window.electronAPI.ipq.getQuestions();
+          console.log('[QuestionSelection] IPQ questions loaded:', questions.length);
+        } else {
+          // Load from regular exam tables
+          const chapterCodes = lockedChapterCode ? [lockedChapterCode] : chapters.map(ch => ch.code);
+          const typeMap = { 'Physics': 'physics', 'Chemistry': 'chemistry', 'Mathematics': 'mathematics' };
+          questions = await window.electronAPI.questions.getByChapterCodes(typeMap[sectionName] as any, chapterCodes, examType);
+        }
+
         setAvailableQuestions(questions);
       } catch (error) {
         console.error('Failed to load questions:', error);
@@ -179,21 +260,23 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
       }
     };
     loadQuestions();
-  }, [sectionName, chapters, refreshTrigger, lockedChapterCode]);
+  }, [sectionName, chapters, refreshTrigger, lockedChapterCode, examType]);
+
+
+
 
   // Apply locked filters & presets
   useEffect(() => {
     if (lockedChapterCode) {
-        // Full Test Preset: PYQ type, Year Descending Sort
-        setFilters(prev => ({
-             ...prev,
-             chapter: lockedChapterCode,
-             type: 'PYQ',
-             sort: 'year_desc'
-        }));
+      // Full Test Preset: Year Descending Sort (no auto PYQ filter)
+      setFilters(prev => ({
+        ...prev,
+        chapter: lockedChapterCode,
+        sort: 'year_desc'
+      }));
     }
     if (lockedDivision) {
-        setFilters(prev => ({ ...prev, division: lockedDivision.toString() as '1' | '2' }));
+      setFilters(prev => ({ ...prev, division: lockedDivision.toString() as '1' | '2' }));
     }
   }, [lockedChapterCode, lockedDivision]);
 
@@ -205,8 +288,8 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
         if (filters.chapter !== 'all' && q.tag_2 !== filters.chapter) return false;
         if (filters.difficulty !== 'all' && q.tag_3 !== filters.difficulty) return false;
         if (filters.division !== 'all') {
-            if (filters.division === '1' && isNumericalAnswer(q)) return false;
-            if (filters.division === '2' && !isNumericalAnswer(q)) return false;
+          if (filters.division === '1' && isNumericalAnswer(q)) return false;
+          if (filters.division === '2' && !isNumericalAnswer(q)) return false;
         }
         if (filters.type !== 'all' && q.type !== filters.type) return false;
         if (filters.year !== 'all' && q.year !== filters.year) return false;
@@ -278,26 +361,26 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
 
   const toggleQuestion = useCallback(async (question: Question) => {
     if (selectionMode === 'single-replace') {
-        onSelectReplacement?.(question);
-        return;
+      onSelectReplacement?.(question);
+      return;
     }
 
     const isSelected = selectedUuids.has(question.uuid);
 
     // Check Full Test Constraint
     if (!isSelected && limitCount !== undefined && lockedChapterCode) {
-        // Count currently selected for this chapter
-        const currentCount = selectedQuestions.filter(sq => sq.chapterCode === lockedChapterCode).length;
-        if (currentCount >= limitCount) {
-             alert(`You have already selected ${currentCount}/${limitCount} questions for this chapter.`);
-             return;
-        }
+      // Count currently selected for this chapter
+      const currentCount = selectedQuestions.filter(sq => sq.chapterCode === lockedChapterCode).length;
+      if (currentCount >= limitCount) {
+        alert(`You have already selected ${currentCount}/${limitCount} questions for this chapter.`);
+        return;
+      }
     }
 
     // Check Part Test Division Limits (Legacy logic)
     const isDiv2 = isNumericalAnswer(question);
     if (limitCount === undefined) { // Only enforce Part Test limits if not in Full Test mode (where limitCount is set)
-        if (!isSelected && ((isDiv2 && summary.division2 >= 5) || (!isDiv2 && summary.division1 >= 20))) return;
+      if (!isSelected && ((isDiv2 && summary.division2 >= 5) || (!isDiv2 && summary.division1 >= 20))) return;
     }
 
     if (isSelected) {
@@ -311,13 +394,13 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
   }, [selectedUuids, summary, chapters, limitCount, lockedChapterCode, selectedQuestions, selectionMode, onSelectReplacement]);
 
   const isSelectionValid = useMemo(() => {
-      // Full Test Validation
-      if (limitCount !== undefined && lockedChapterCode) {
-           const currentCount = selectedQuestions.filter(sq => sq.chapterCode === lockedChapterCode).length;
-           return currentCount === limitCount;
-      }
-      // Part Test Validation
-      return summary.division1 === 20 && summary.division2 === 5;
+    // Full Test Validation
+    if (limitCount !== undefined && lockedChapterCode) {
+      const currentCount = selectedQuestions.filter(sq => sq.chapterCode === lockedChapterCode).length;
+      return currentCount === limitCount;
+    }
+    // Part Test Validation
+    return summary.division1 === 20 && summary.division2 === 5;
   }, [summary, limitCount, lockedChapterCode, selectedQuestions]);
 
   const itemData = useMemo(() => ({
@@ -325,11 +408,11 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
     selectedUuids,
     onToggle: toggleQuestion,
     onEdit: handleEdit,
-    onClone: handleClone,
+    onCreateIPQ: handleCreateIPQ,
     setSize,
     zoomLevel,
     selectionMode
-  }), [filteredQuestions, selectedUuids, toggleQuestion, handleEdit, handleClone, setSize, zoomLevel, selectionMode]);
+  }), [filteredQuestions, selectedUuids, toggleQuestion, handleEdit, handleCreateIPQ, setSize, zoomLevel, selectionMode]);
 
   const handleZoom = (direction: 'in' | 'out') => {
     setZoomLevel(prev => {
@@ -384,20 +467,20 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
 
   // Determine hidden filters based on locking
   const hiddenFilters = useMemo(() => {
-      const hidden: string[] = [];
-      if (lockedChapterCode) hidden.push('chapter');
-      if (lockedDivision) hidden.push('division');
-      return hidden;
+    const hidden: string[] = [];
+    if (lockedChapterCode) hidden.push('chapter');
+    if (lockedDivision) hidden.push('division');
+    return hidden;
   }, [lockedChapterCode, lockedDivision]);
 
   // Default filters for preset (used for Reset button)
   const defaultFilters = useMemo(() => {
-      if (lockedChapterCode) {
-          const defaults: Partial<FilterState> = { type: 'PYQ', sort: 'year_desc', chapter: lockedChapterCode };
-          if (lockedDivision) defaults.division = lockedDivision.toString();
-          return defaults;
-      }
-      return {};
+    if (lockedChapterCode) {
+      const defaults: Partial<FilterState> = { sort: 'year_desc', chapter: lockedChapterCode };
+      if (lockedDivision) defaults.division = lockedDivision.toString();
+      return defaults;
+    }
+    return {};
   }, [lockedChapterCode, lockedDivision]);
 
   return (
@@ -405,238 +488,272 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
       {/* Header */}
       <div className="flex-shrink-0 p-4 pb-0">
         <div className="bg-white dark:bg-[#1e1e2d] p-4 rounded-xl mb-4 border border-gray-200 dark:border-[#2d2d3b] shadow-sm flex justify-between items-center">
-        <h2 className="text-xl font-bold flex items-center gap-2 text-gray-900 dark:text-white">
-          <span className="material-symbols-outlined">{sectionName === 'Physics' ? 'science' : sectionName === 'Chemistry' ? 'biotech' : 'calculate'}</span>
-          {sectionName} - Question Selection
-        </h2>
-        <div className="flex gap-2 text-sm font-semibold">
-          {limitCount !== undefined && lockedChapterCode ? (
-             // Full Test Header
-             <span className={`px-3 py-1 rounded-full ${selectedQuestions.filter(sq => sq.chapterCode === lockedChapterCode).length === limitCount ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'}`}>
+          <h2 className="text-xl font-bold flex items-center gap-2 text-gray-900 dark:text-white">
+            <span className="material-symbols-outlined">{sectionName === 'Physics' ? 'science' : sectionName === 'Chemistry' ? 'biotech' : 'calculate'}</span>
+            {sectionName} - Question Selection
+          </h2>
+
+          {/* Exam Type Selector */}
+          <div className="flex items-center gap-2 mr-auto ml-6">
+            <span className="text-sm font-semibold text-gray-500 dark:text-gray-400">Exam:</span>
+            <div className="flex bg-gray-100 dark:bg-[#252535] rounded-lg p-1 border border-gray-200 dark:border-[#2d2d3b]">
+              {SUPPORTED_EXAMS.map(exam => (
+                <button
+                  key={exam}
+                  onClick={() => setExamType(exam)}
+                  className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${examType === exam
+                    ? 'bg-white dark:bg-[#1e1e2d] text-primary shadow-sm border border-gray-200 dark:border-gray-700'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+                    }`}
+                >
+                  {exam}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex gap-2 text-sm font-semibold">
+            {limitCount !== undefined && lockedChapterCode ? (
+              // Full Test Header
+              <span className={`px-3 py-1 rounded-full ${selectedQuestions.filter(sq => sq.chapterCode === lockedChapterCode).length === limitCount ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'}`}>
                 Selected: {selectedQuestions.filter(sq => sq.chapterCode === lockedChapterCode).length} / {limitCount}
-             </span>
-          ) : (
-            // Part Test Header
-            <>
-              <span className={`px-3 py-1 rounded-full ${summary.division1 === 20 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>Div 1: {summary.division1}/20</span>
-              <span className={`px-3 py-1 rounded-full ${summary.division2 === 5 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>Div 2: {summary.division2}/5</span>
-              <span className="px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white">Total: {summary.total}/25</span>
-            </>
-          )}
+              </span>
+            ) : (
+              // Part Test Header
+              <>
+                <span className={`px-3 py-1 rounded-full ${summary.division1 === 20 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>Div 1: {summary.division1}/20</span>
+                <span className={`px-3 py-1 rounded-full ${summary.division2 === 5 ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>Div 2: {summary.division2}/5</span>
+                <span className="px-3 py-1 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white">Total: {summary.total}/25</span>
+              </>
+            )}
+          </div>
         </div>
-      </div>
       </div>
 
       {/* Main Content Area - INCREASED HEIGHT WITH SCROLLBAR */}
       <div className="flex-1 px-4 pb-4" style={{ minHeight: '1000px' }}>
-      <div className="grid grid-cols-12 gap-4" style={{ minHeight: '1000px' }}>
-        {/* Left Sidebar: Constraints or Status Panel */}
-        {selectionMode !== 'single-replace' && (
-        <div className="col-span-3 h-full overflow-hidden flex flex-col">
-          {limitCount !== undefined && lockedChapterCode ? (
-               // Full Test Status Panel
-               <div className="bg-white dark:bg-[#1e1e2d] p-4 rounded-xl border-2 border-gray-300 dark:border-[#2d2d3b] shadow-md h-full overflow-hidden flex flex-col">
-                    <h3 className="flex-shrink-0 font-semibold mb-4 flex items-center gap-2 text-gray-900 dark:text-white">
-                        <span className="material-symbols-outlined text-lg">fact_check</span>Status
-                    </h3>
-                    <div className="flex-1 overflow-y-auto">
-                        <div className="mb-6">
-                            <h4 className="text-xs font-bold uppercase text-gray-500 dark:text-gray-400 mb-1">Target Chapter</h4>
-                            <p className="text-xl font-bold text-primary">{lockedChapterCode}</p>
-                             <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-                                Required Questions: <span className="font-bold">{limitCount}</span>
-                            </div>
-                        </div>
-
-                        <div className="mb-6">
-                             <h4 className="text-xs font-bold uppercase text-gray-500 dark:text-gray-400 mb-2">Selection Progress</h4>
-                             <div className="flex items-end gap-2 mb-1">
-                                <span className="text-3xl font-bold text-gray-900 dark:text-white">
-                                    {selectedQuestions.filter(sq => sq.chapterCode === lockedChapterCode).length}
-                                </span>
-                                <span className="text-gray-500 mb-1">/ {limitCount}</span>
-                             </div>
-                             <div className="w-full h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
-                                <div
-                                    className={`h-full transition-all duration-500 ease-out ${selectedQuestions.filter(sq => sq.chapterCode === lockedChapterCode).length === limitCount ? 'bg-green-500' : 'bg-primary'}`}
-                                    style={{ width: `${(selectedQuestions.filter(sq => sq.chapterCode === lockedChapterCode).length / limitCount) * 100}%` }}
-                                />
-                             </div>
-                        </div>
-
-                        <div>
-                            <h4 className="text-xs font-bold uppercase text-gray-500 dark:text-gray-400 mb-2">Topic Breakdown</h4>
-                            <div className="space-y-2">
-                                {Array.from(new Set(filteredQuestions.filter(q => selectedUuids.has(q.uuid)).flatMap(q => {
-                                    if (!q.topic_tags) return ['Unspecified'];
-                                    try {
-                                        const tags = JSON.parse(q.topic_tags);
-                                        return Array.isArray(tags) && tags.length > 0 ? tags : ['Unspecified'];
-                                    } catch {
-                                        // If it's a plain string, use it. If malformed JSON, treat as Unspecified.
-                                        return typeof q.topic_tags === 'string' && q.topic_tags.trim() !== '' ? [q.topic_tags] : ['Unspecified'];
-                                    }
-                                }))).map(topicIdOrName => {
-                                    // Resolve Topic Name from ID if possible
-                                    const currentChapter = chapters.find(c => c.code === lockedChapterCode);
-                                    const topicName = currentChapter?.topics?.[topicIdOrName] || topicIdOrName;
-
-                                    const count = filteredQuestions.filter(q => {
-                                        if (!selectedUuids.has(q.uuid)) return false;
-                                        if (!q.topic_tags) return topicIdOrName === 'Unspecified';
-
-                                        let tags: string[] = [];
-                                        try {
-                                            const parsed = JSON.parse(q.topic_tags);
-                                            tags = Array.isArray(parsed) && parsed.length > 0 ? parsed : ['Unspecified'];
-                                        } catch {
-                                            tags = typeof q.topic_tags === 'string' && q.topic_tags.trim() !== '' ? [q.topic_tags] : ['Unspecified'];
-                                        }
-                                        return tags.includes(topicIdOrName);
-                                    }).length;
-
-                                    return (
-                                        <div key={topicIdOrName} className="flex justify-between items-center text-sm p-2 bg-gray-50 dark:bg-[#252535] rounded-lg">
-                                            <span className="truncate max-w-[150px]" title={topicName}>{topicName}</span>
-                                            <span className="font-bold bg-white dark:bg-[#1e1e2d] px-2 py-0.5 rounded border border-gray-200 dark:border-gray-700">{count}</span>
-                                        </div>
-                                    )
-                                })}
-                                {selectedQuestions.filter(sq => sq.chapterCode === lockedChapterCode).length === 0 && (
-                                    <p className="text-sm text-gray-400 italic">No questions selected yet.</p>
-                                )}
-                            </div>
-                        </div>
+        <div className="grid grid-cols-12 gap-4" style={{ minHeight: '1000px' }}>
+          {/* Left Sidebar: Constraints or Status Panel */}
+          {selectionMode !== 'single-replace' && (
+            <div className="col-span-3 h-full overflow-hidden flex flex-col">
+              {limitCount !== undefined && lockedChapterCode ? (
+                // Full Test Status Panel
+                <div className="bg-white dark:bg-[#1e1e2d] p-4 rounded-xl border-2 border-gray-300 dark:border-[#2d2d3b] shadow-md h-full overflow-hidden flex flex-col">
+                  <h3 className="flex-shrink-0 font-semibold mb-4 flex items-center gap-2 text-gray-900 dark:text-white">
+                    <span className="material-symbols-outlined text-lg">fact_check</span>Status
+                  </h3>
+                  <div className="flex-1 overflow-y-auto">
+                    <div className="mb-6">
+                      <h4 className="text-xs font-bold uppercase text-gray-500 dark:text-gray-400 mb-1">Target Chapter</h4>
+                      <p className="text-xl font-bold text-primary">{lockedChapterCode}</p>
+                      <div className="mt-2 text-sm text-gray-600 dark:text-gray-300">
+                        Required Questions: <span className="font-bold">{limitCount}</span>
+                      </div>
                     </div>
-               </div>
-          ) : (
-            // Existing Part Test Constraints
-            <div className="bg-white dark:bg-[#1e1e2d] p-4 rounded-xl border-2 border-gray-300 dark:border-[#2d2d3b] shadow-md h-full overflow-hidden flex flex-col">
-                <h3 className="flex-shrink-0 font-semibold mb-4 flex items-center gap-2 text-gray-900 dark:text-white"><span className="material-symbols-outlined text-lg">tune</span>Constraints</h3>
-                <div className="flex-1 overflow-y-auto text-xs">
-                <h4 className="font-bold uppercase text-gray-600 dark:text-gray-400 mb-2">By Chapter</h4>
-                <table className="w-full text-gray-900 dark:text-white border-collapse">
-                    <thead className="sticky top-0 bg-white dark:bg-[#1e1e2d] z-10">
-                    <tr className="border-b-2 border-gray-300 dark:border-[#2d2d3b]">
-                        <th className="text-left py-2 pr-2 font-bold">Chapter</th>
-                        <th className="text-center py-2 px-1 font-bold">A</th>
-                        <th className="text-center py-2 px-1 font-bold">B</th>
-                        <th className="text-center py-2 px-1 font-bold bg-blue-50 dark:bg-blue-900/20 text-blue-900 dark:text-blue-300">E</th>
-                        <th className="text-center py-2 px-1 font-bold bg-blue-50 dark:bg-blue-900/20 text-blue-900 dark:text-blue-300">M</th>
-                        <th className="text-center py-2 px-1 font-bold bg-blue-50 dark:bg-blue-900/20 text-blue-900 dark:text-blue-300">H</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    {Object.entries(summary.byChapter).map(([code, counts]) => (
-                        <tr key={code} className="border-t border-gray-200 dark:border-[#2d2d3b] hover:bg-gray-50 dark:hover:bg-[#252535] transition-colors">
-                        <td className="py-2 pr-2 font-medium truncate max-w-[80px]" title={counts.chapterName}>{code}</td>
-                        <td className={`text-center py-2 px-1 font-semibold ${counts.a === counts.required_a ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{counts.a}/{counts.required_a}</td>
-                        <td className={`text-center py-2 px-1 font-semibold ${counts.b === counts.required_b ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{counts.b}/{counts.required_b}</td>
-                        <td className={`text-center py-2 px-1 font-bold bg-blue-50/30 dark:bg-blue-900/10 ${counts.e === counts.required_e ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{counts.e}/{counts.required_e}</td>
-                        <td className={`text-center py-2 px-1 font-bold bg-blue-50/30 dark:bg-blue-900/10 ${counts.m === counts.required_m ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{counts.m}/{counts.required_m}</td>
-                        <td className={`text-center py-2 px-1 font-bold bg-blue-50/30 dark:bg-blue-900/10 ${counts.h === counts.required_h ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{counts.h}/{counts.required_h}</td>
-                        </tr>
-                    ))}
-                    </tbody>
-                </table>
+
+                    <div className="mb-6">
+                      <h4 className="text-xs font-bold uppercase text-gray-500 dark:text-gray-400 mb-2">Selection Progress</h4>
+                      <div className="flex items-end gap-2 mb-1">
+                        <span className="text-3xl font-bold text-gray-900 dark:text-white">
+                          {selectedQuestions.filter(sq => sq.chapterCode === lockedChapterCode).length}
+                        </span>
+                        <span className="text-gray-500 mb-1">/ {limitCount}</span>
+                      </div>
+                      <div className="w-full h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full transition-all duration-500 ease-out ${selectedQuestions.filter(sq => sq.chapterCode === lockedChapterCode).length === limitCount ? 'bg-green-500' : 'bg-primary'}`}
+                          style={{ width: `${(selectedQuestions.filter(sq => sq.chapterCode === lockedChapterCode).length / limitCount) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 className="text-xs font-bold uppercase text-gray-500 dark:text-gray-400 mb-2">Topic Breakdown</h4>
+                      <div className="space-y-2">
+                        {Array.from(new Set(filteredQuestions.filter(q => selectedUuids.has(q.uuid)).flatMap(q => {
+                          if (!q.topic_tags) return ['Unspecified'];
+                          try {
+                            const tags = JSON.parse(q.topic_tags);
+                            return Array.isArray(tags) && tags.length > 0 ? tags : ['Unspecified'];
+                          } catch {
+                            // If it's a plain string, use it. If malformed JSON, treat as Unspecified.
+                            return typeof q.topic_tags === 'string' && q.topic_tags.trim() !== '' ? [q.topic_tags] : ['Unspecified'];
+                          }
+                        }))).map(topicIdOrName => {
+                          // Resolve Topic Name from ID if possible
+                          const currentChapter = chapters.find(c => c.code === lockedChapterCode);
+                          const topicName = currentChapter?.topics?.[topicIdOrName] || topicIdOrName;
+
+                          const count = filteredQuestions.filter(q => {
+                            if (!selectedUuids.has(q.uuid)) return false;
+                            if (!q.topic_tags) return topicIdOrName === 'Unspecified';
+
+                            let tags: string[] = [];
+                            try {
+                              const parsed = JSON.parse(q.topic_tags);
+                              tags = Array.isArray(parsed) && parsed.length > 0 ? parsed : ['Unspecified'];
+                            } catch {
+                              tags = typeof q.topic_tags === 'string' && q.topic_tags.trim() !== '' ? [q.topic_tags] : ['Unspecified'];
+                            }
+                            return tags.includes(topicIdOrName);
+                          }).length;
+
+                          return (
+                            <div key={topicIdOrName} className="flex justify-between items-center text-sm p-2 bg-gray-50 dark:bg-[#252535] rounded-lg">
+                              <span className="truncate max-w-[150px]" title={topicName}>{topicName}</span>
+                              <span className="font-bold bg-white dark:bg-[#1e1e2d] px-2 py-0.5 rounded border border-gray-200 dark:border-gray-700">{count}</span>
+                            </div>
+                          )
+                        })}
+                        {selectedQuestions.filter(sq => sq.chapterCode === lockedChapterCode).length === 0 && (
+                          <p className="text-sm text-gray-400 italic">No questions selected yet.</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 </div>
+              ) : (
+                // Existing Part Test Constraints
+                <div className="bg-white dark:bg-[#1e1e2d] p-4 rounded-xl border-2 border-gray-300 dark:border-[#2d2d3b] shadow-md h-full overflow-hidden flex flex-col">
+                  <h3 className="flex-shrink-0 font-semibold mb-4 flex items-center gap-2 text-gray-900 dark:text-white"><span className="material-symbols-outlined text-lg">tune</span>Constraints</h3>
+                  <div className="flex-1 overflow-y-auto text-xs">
+                    <h4 className="font-bold uppercase text-gray-600 dark:text-gray-400 mb-2">By Chapter</h4>
+                    <table className="w-full text-gray-900 dark:text-white border-collapse">
+                      <thead className="sticky top-0 bg-white dark:bg-[#1e1e2d] z-10">
+                        <tr className="border-b-2 border-gray-300 dark:border-[#2d2d3b]">
+                          <th className="text-left py-2 pr-2 font-bold">Chapter</th>
+                          <th className="text-center py-2 px-1 font-bold">A</th>
+                          <th className="text-center py-2 px-1 font-bold">B</th>
+                          <th className="text-center py-2 px-1 font-bold bg-blue-50 dark:bg-blue-900/20 text-blue-900 dark:text-blue-300">E</th>
+                          <th className="text-center py-2 px-1 font-bold bg-blue-50 dark:bg-blue-900/20 text-blue-900 dark:text-blue-300">M</th>
+                          <th className="text-center py-2 px-1 font-bold bg-blue-50 dark:bg-blue-900/20 text-blue-900 dark:text-blue-300">H</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Object.entries(summary.byChapter).map(([code, counts]) => (
+                          <tr key={code} className="border-t border-gray-200 dark:border-[#2d2d3b] hover:bg-gray-50 dark:hover:bg-[#252535] transition-colors">
+                            <td className="py-2 pr-2 font-medium truncate max-w-[80px]" title={counts.chapterName}>{code}</td>
+                            <td className={`text-center py-2 px-1 font-semibold ${counts.a === counts.required_a ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{counts.a}/{counts.required_a}</td>
+                            <td className={`text-center py-2 px-1 font-semibold ${counts.b === counts.required_b ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{counts.b}/{counts.required_b}</td>
+                            <td className={`text-center py-2 px-1 font-bold bg-blue-50/30 dark:bg-blue-900/10 ${counts.e === counts.required_e ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{counts.e}/{counts.required_e}</td>
+                            <td className={`text-center py-2 px-1 font-bold bg-blue-50/30 dark:bg-blue-900/10 ${counts.m === counts.required_m ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{counts.m}/{counts.required_m}</td>
+                            <td className={`text-center py-2 px-1 font-bold bg-blue-50/30 dark:bg-blue-900/10 ${counts.h === counts.required_h ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{counts.h}/{counts.required_h}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
           )}
-        </div>
-        )}
 
-        {/* Right Panel: Questions */}
-        <div className={`${selectionMode === 'single-replace' ? 'col-span-12' : 'col-span-9'} h-full flex flex-col`}>
-          <div className="bg-white dark:bg-[#1e1e2d] p-4 rounded-xl border border-gray-200 dark:border-[#2d2d3b] shadow-sm flex flex-col h-full overflow-hidden">
-            {/* Search and Filters */}
-            <div className="flex-shrink-0 flex gap-4 mb-4">
-              <div className="relative flex-grow">
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 pointer-events-none">search</span>
-                <input type="text" placeholder="Search questions..." value={searchText} onChange={(e) => setSearchText(e.target.value)} className="w-full pl-11 pr-4 py-2 border border-gray-200 dark:border-[#2d2d3b] rounded-full bg-gray-50 dark:bg-[#252535] text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-transparent transition-all" />
+          {/* Right Panel: Questions */}
+          <div className={`${selectionMode === 'single-replace' ? 'col-span-12' : 'col-span-9'} h-full flex flex-col`}>
+            <div className="bg-white dark:bg-[#1e1e2d] p-4 rounded-xl border border-gray-200 dark:border-[#2d2d3b] shadow-sm flex flex-col h-full overflow-hidden">
+              {/* Search and Filters */}
+              <div className="flex-shrink-0 flex gap-4 mb-4">
+                <div className="relative flex-grow">
+                  <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 pointer-events-none text-xl">search</span>
+                  <input type="text" placeholder="" value={searchText} onChange={(e) => setSearchText(e.target.value)} className="w-full pl-20 pr-4 py-2 border border-gray-200 dark:border-[#2d2d3b] rounded-full bg-gray-50 dark:bg-[#252535] text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-transparent transition-all text-sm" />
+                </div>
+                <div className="relative w-44">
+                  <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 pointer-events-none text-lg">fingerprint</span>
+                  <input type="text" placeholder="" value={searchUuid} onChange={(e) => setSearchUuid(e.target.value)} className="w-full pl-10 pr-4 py-2 border border-gray-200 dark:border-[#2d2d3b] rounded-full bg-gray-50 dark:bg-[#252535] text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-transparent transition-all text-sm" />
+                </div>
+                <FilterMenu
+                  chapters={chapters}
+                  availableTypes={availableTypes}
+                  availableYears={availableYears}
+                  currentFilters={filters}
+                  onFilterChange={handleFilterChange}
+                  hiddenFilters={hiddenFilters}
+                  defaultFilters={defaultFilters}
+                />
               </div>
-              <div className="relative w-48">
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 pointer-events-none">fingerprint</span>
-                <input type="text" placeholder="UUID" value={searchUuid} onChange={(e) => setSearchUuid(e.target.value)} className="w-full pl-12 pr-4 py-2 border border-gray-200 dark:border-[#2d2d3b] rounded-full bg-gray-50 dark:bg-[#252535] text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-transparent transition-all" />
-              </div>
-              <FilterMenu
-                chapters={chapters}
-                availableTypes={availableTypes}
-                availableYears={availableYears}
-                currentFilters={filters}
-                onFilterChange={handleFilterChange}
-                hiddenFilters={hiddenFilters}
-                defaultFilters={defaultFilters}
-              />
-            </div>
 
-            {/* Questions List */}
-            <div className="flex-1 relative questions-panel border-t border-gray-100 dark:border-[#2d2d3b] mt-1 pt-4">
-              <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
+              {/* Questions List */}
+              <div className="flex-1 relative questions-panel border-t border-gray-100 dark:border-[#2d2d3b] mt-1 pt-4">
+                <div className="absolute top-4 right-4 z-10 flex flex-col gap-2">
                   <button onClick={() => handleZoom('in')} className="bg-white dark:bg-[#1e1e2d] border border-gray-200 dark:border-[#2d2d3b] rounded-full size-8 flex items-center justify-center shadow-md hover:bg-gray-100 dark:hover:bg-[#252535] text-gray-900 dark:text-white transition-all">
-                      <span className="material-symbols-outlined">add</span>
+                    <span className="material-symbols-outlined">add</span>
                   </button>
                   <button onClick={() => handleZoom('out')} className="bg-white dark:bg-[#1e1e2d] border border-gray-200 dark:border-[#2d2d3b] rounded-full size-8 flex items-center justify-center shadow-md hover:bg-gray-100 dark:hover:bg-[#252535] text-gray-900 dark:text-white transition-all">
-                      <span className="material-symbols-outlined">remove</span>
+                    <span className="material-symbols-outlined">remove</span>
                   </button>
-                   <div className="h-px bg-gray-200 dark:bg-[#2d2d3b] my-1"></div>
+                  <div className="h-px bg-gray-200 dark:bg-[#2d2d3b] my-1"></div>
                   <button onClick={scrollToTop} className="bg-white dark:bg-[#1e1e2d] border border-gray-200 dark:border-[#2d2d3b] rounded-full size-8 flex items-center justify-center shadow-md hover:bg-gray-100 dark:hover:bg-[#252535] text-gray-900 dark:text-white transition-all">
-                      <span className="material-symbols-outlined">vertical_align_top</span>
+                    <span className="material-symbols-outlined">vertical_align_top</span>
                   </button>
                   <button onClick={scrollToBottom} className="bg-white dark:bg-[#1e1e2d] border border-gray-200 dark:border-[#2d2d3b] rounded-full size-8 flex items-center justify-center shadow-md hover:bg-gray-100 dark:hover:bg-[#252535] text-gray-900 dark:text-white transition-all">
-                      <span className="material-symbols-outlined">vertical_align_bottom</span>
+                    <span className="material-symbols-outlined">vertical_align_bottom</span>
                   </button>
-                   <div className="h-px bg-gray-200 dark:bg-[#2d2d3b] my-1"></div>
+                  <div className="h-px bg-gray-200 dark:bg-[#2d2d3b] my-1"></div>
                   <button onClick={handleScrollToPrevSelected} title="Previous Selected" className="bg-white dark:bg-[#1e1e2d] border border-gray-200 dark:border-[#2d2d3b] rounded-full size-8 flex items-center justify-center shadow-md hover:bg-gray-100 dark:hover:bg-[#252535] text-gray-900 dark:text-white transition-all">
-                      <span className="material-symbols-outlined">keyboard_arrow_up</span>
+                    <span className="material-symbols-outlined">keyboard_arrow_up</span>
                   </button>
                   <button onClick={handleScrollToNextSelected} title="Next Selected" className="bg-white dark:bg-[#1e1e2d] border border-gray-200 dark:border-[#2d2d3b] rounded-full size-8 flex items-center justify-center shadow-md hover:bg-gray-100 dark:hover:bg-[#252535] text-gray-900 dark:text-white transition-all">
-                      <span className="material-symbols-outlined">keyboard_arrow_down</span>
+                    <span className="material-symbols-outlined">keyboard_arrow_down</span>
                   </button>
-              </div>
+                </div>
 
-              {loading ? <div className="text-center p-8">Loading...</div> :
-                !loading && filteredQuestions.length === 0 ? <div className="text-center p-8">No questions found.</div> :
-                <AutoSizer>
-                  {({ height, width }) => (
-                    <List ref={listRef} height={height} width={width} itemCount={filteredQuestions.length} itemSize={getSize} itemData={itemData}>
-                      {Row}
-                    </List>
-                  )}
-                </AutoSizer>
-              }
+                {loading ? <div className="text-center p-8">Loading...</div> :
+                  !loading && filteredQuestions.length === 0 ? <div className="text-center p-8">No questions found.</div> :
+                    <AutoSizer>
+                      {({ height, width }) => (
+                        <List ref={listRef} height={height} width={width} itemCount={filteredQuestions.length} itemSize={getSize} itemData={itemData}>
+                          {Row}
+                        </List>
+                      )}
+                    </AutoSizer>
+                }
+              </div>
             </div>
           </div>
         </div>
       </div>
-      </div>
 
       {/* Footer - Always visible at bottom */}
       {selectionMode !== 'single-replace' && (
-      <div className="flex-shrink-0 p-4 pt-4 border-t border-gray-200 dark:border-[#2d2d3b] flex justify-between bg-gray-50 dark:bg-[#121121] sticky bottom-0 z-10">
-        <button onClick={onBack} className="px-6 py-2.5 rounded-lg border border-gray-200 dark:border-[#2d2d3b] text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#252535] font-semibold transition-all">Back</button>
-        {onNextChapter && lockedChapterCode ? (
+        <div className="flex-shrink-0 p-4 pt-4 border-t border-gray-200 dark:border-[#2d2d3b] flex justify-between bg-gray-50 dark:bg-[#121121] sticky bottom-0 z-10">
+          <button onClick={onBack} className="px-6 py-2.5 rounded-lg border border-gray-200 dark:border-[#2d2d3b] text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#252535] font-semibold transition-all">Back</button>
+          {onNextChapter && lockedChapterCode ? (
             // Full Test Next Chapter Button
             <button
-                onClick={() => onNextChapter(selectedQuestions)}
-                disabled={!isSelectionValid}
-                className="px-6 py-2.5 rounded-lg bg-primary text-white disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:cursor-not-allowed font-semibold hover:bg-primary/90 transition-all shadow-md disabled:shadow-none flex items-center gap-2"
+              onClick={() => onNextChapter(selectedQuestions)}
+              disabled={!isSelectionValid}
+              className="px-6 py-2.5 rounded-lg bg-primary text-white disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:cursor-not-allowed font-semibold hover:bg-primary/90 transition-all shadow-md disabled:shadow-none flex items-center gap-2"
             >
-                {isSelectionValid ? (
-                     <>
-                        Next Chapter
-                        <span className="material-symbols-outlined text-sm">arrow_forward</span>
-                     </>
-                ) : (
-                    `Need ${limitCount} questions`
-                )}
+              {isSelectionValid ? (
+                <>
+                  Next Chapter
+                  <span className="material-symbols-outlined text-sm">arrow_forward</span>
+                </>
+              ) : (
+                `Need ${limitCount} questions`
+              )}
             </button>
-        ) : (
+          ) : (
             // Existing Continue Button
             <button onClick={() => onComplete(selectedQuestions)} disabled={!isSelectionValid} className="px-6 py-2.5 rounded-lg bg-primary text-white disabled:bg-gray-400 dark:disabled:bg-gray-600 disabled:cursor-not-allowed font-semibold hover:bg-primary/90 transition-all shadow-md disabled:shadow-none">
-                {isSelectionValid ? 'Continue' : (limitCount ? `Need ${limitCount} questions` : `Need ${20 - summary.division1} for Div1, ${5 - summary.division2} for Div2`)}
+              {isSelectionValid ? 'Continue' : (limitCount ? `Need ${limitCount} questions` : `Need ${20 - summary.division1} for Div1, ${5 - summary.division2} for Div2`)}
             </button>
-        )}
-      </div>
+          )}
+        </div>
+      )}
+
+      {/* IPQ Creation Modal */}
+      {showIPQModal && ipqTargetQuestion && (
+        <AddQuestionModal
+          onClose={() => {
+            setShowIPQModal(false);
+            setIpqTargetQuestion(null);
+          }}
+          onSave={handleIPQSave}
+          initialData={ipqTargetQuestion}
+          isIPQMode={true}
+          parentExam={(ipqTargetQuestion as any).examSource || (examType !== 'IPQ' ? examType : 'JEE')}
+        />
       )}
     </div>
   );

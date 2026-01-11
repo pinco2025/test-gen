@@ -3,7 +3,7 @@ import path from 'path';
 import { Readable } from 'stream';
 // Removed top-level googleapis import
 import mime from 'mime-types';
-import { dbService } from './database';
+import { dbService, ExamType } from './database';
 import { projectService } from './projectService';
 import { oauthService } from './oauthService';
 import { githubService } from './githubService';
@@ -95,52 +95,52 @@ function getChaptersPath(): string | null {
   // Check configured path first
   const config = projectService.getConfig();
   if (config.chaptersPath && fs.existsSync(config.chaptersPath)) {
-      return config.chaptersPath;
+    return config.chaptersPath;
   }
   return null;
 }
 
 ipcMain.handle('chapters:selectFile', async () => {
-    const result = await dialog.showOpenDialog({
-        properties: ['openFile'],
-        filters: [
-            { name: 'JSON Files', extensions: ['json'] }
-        ]
-    });
+  const result = await dialog.showOpenDialog({
+    properties: ['openFile'],
+    filters: [
+      { name: 'JSON Files', extensions: ['json'] }
+    ]
+  });
 
-    if (!result.canceled && result.filePaths.length > 0) {
-        const chaptersPath = result.filePaths[0];
-        try {
-             // Validate it's a valid JSON and looks like chapters file
-             const content = fs.readFileSync(chaptersPath, 'utf-8');
-             const json = JSON.parse(content);
-             if (!json.Physics || !json.Chemistry || !json.Mathematics) {
-                 return { success: false, error: "Invalid chapters file format. Must contain Physics, Chemistry, and Mathematics keys." };
-             }
+  if (!result.canceled && result.filePaths.length > 0) {
+    const chaptersPath = result.filePaths[0];
+    try {
+      // Validate it's a valid JSON and looks like chapters file
+      const content = fs.readFileSync(chaptersPath, 'utf-8');
+      const json = JSON.parse(content);
+      if (!json.Physics || !json.Chemistry || !json.Mathematics) {
+        return { success: false, error: "Invalid chapters file format. Must contain Physics, Chemistry, and Mathematics keys." };
+      }
 
-             projectService.updateConfig({ chaptersPath });
-             return { success: true, path: chaptersPath };
-        } catch (error: any) {
-            return { success: false, error: "Failed to read or parse file: " + error.message };
-        }
+      projectService.updateConfig({ chaptersPath });
+      return { success: true, path: chaptersPath };
+    } catch (error: any) {
+      return { success: false, error: "Failed to read or parse file: " + error.message };
     }
-    return { success: false, error: 'No file selected' };
+  }
+  return { success: false, error: 'No file selected' };
 });
 
 ipcMain.handle('chapters:load', async () => {
-    try {
-        let chaptersPath = getChaptersPath();
+  try {
+    let chaptersPath = getChaptersPath();
 
-        if (chaptersPath && fs.existsSync(chaptersPath)) {
-            const content = fs.readFileSync(chaptersPath, 'utf-8');
-            return JSON.parse(content);
-        } else {
-             return null;
-        }
-    } catch (error: any) {
-        console.error("Failed to load chapters:", error);
-        return null;
+    if (chaptersPath && fs.existsSync(chaptersPath)) {
+      const content = fs.readFileSync(chaptersPath, 'utf-8');
+      return JSON.parse(content);
+    } else {
+      return null;
     }
+  } catch (error: any) {
+    console.error("Failed to load chapters:", error);
+    return null;
+  }
 });
 
 // Chapter operations
@@ -219,72 +219,106 @@ ipcMain.handle('db:isConnected', () => {
   return dbService.isConnected();
 });
 
+ipcMain.handle('db:getExamTablesStatus', () => {
+  return dbService.getExamTablesStatus();
+});
+
 // Question queries
-ipcMain.handle('questions:getAll', async (_, filter?: QuestionFilter): Promise<Question[]> => {
-  return dbService.getQuestions(filter);
+ipcMain.handle('questions:getAll', async (_, filter?: QuestionFilter, exam?: ExamType): Promise<Question[]> => {
+  return dbService.getQuestions(filter, exam);
 });
 
-ipcMain.handle('questions:getByUUID', async (_, uuid: string): Promise<Question | null> => {
-  return dbService.getQuestionByUUID(uuid);
+ipcMain.handle('questions:getByUUID', async (_, uuid: string, exam?: ExamType): Promise<Question | null> => {
+  return dbService.getQuestionByUUID(uuid, exam);
 });
 
-ipcMain.handle('questions:getByUUIDs', async (_, uuids: string[]): Promise<Question[]> => {
-  return dbService.getQuestionsByUUIDs(uuids);
+ipcMain.handle('questions:getByUUIDs', async (_, uuids: string[], exam?: ExamType): Promise<Question[]> => {
+  return dbService.getQuestionsByUUIDs(uuids, exam);
 });
 
-ipcMain.handle('questions:search', async (_, criteria: any): Promise<Question[]> => {
-  return dbService.searchQuestions(criteria);
+ipcMain.handle('questions:search', async (_, criteria: any, exam?: ExamType): Promise<Question[]> => {
+  return dbService.searchQuestions(criteria, exam);
 });
 
-ipcMain.handle('questions:getCount', async (_, filter?: QuestionFilter): Promise<number> => {
-  return dbService.getQuestionCount(filter);
+ipcMain.handle('questions:getCount', async (_, filter?: QuestionFilter, exam?: ExamType): Promise<number> => {
+  return dbService.getQuestionCount(filter, exam);
 });
 
-ipcMain.handle('questions:getByChapterCodes', async (_, type: string, chapterCodes: string[]): Promise<Question[]> => {
-  return dbService.getQuestionsByChapterCodes(type, chapterCodes);
+ipcMain.handle('questions:getAllExamCounts', async (): Promise<{ total: number; breakdown: { exam: string; count: number }[] }> => {
+  return dbService.getAllExamCounts();
 });
 
-ipcMain.handle('questions:getAllForSubject', async (_, chapterCodes: string[]): Promise<Question[]> => {
-  return dbService.getAllQuestionsForSubject(chapterCodes);
+ipcMain.handle('questions:getByChapterCodes', async (_, type: string, chapterCodes: string[], exam?: ExamType): Promise<Question[]> => {
+  return dbService.getQuestionsByChapterCodes(type, chapterCodes, 2000, exam);
+});
+
+ipcMain.handle('questions:getAllForSubject', async (_, chapterCodes: string[], exam?: ExamType): Promise<Question[]> => {
+  return dbService.getAllQuestionsForSubject(chapterCodes, exam);
 });
 
 // Frequency operations
-ipcMain.handle('questions:incrementFrequency', async (_, uuid: string): Promise<boolean> => {
-  return dbService.incrementFrequency(uuid);
+ipcMain.handle('questions:incrementFrequency', async (_, uuid: string, exam?: ExamType): Promise<boolean> => {
+  return dbService.incrementFrequency(uuid, exam);
 });
 
-ipcMain.handle('questions:decrementFrequency', async (_, uuid: string): Promise<boolean> => {
-  return dbService.decrementFrequency(uuid);
+ipcMain.handle('questions:decrementFrequency', async (_, uuid: string, exam?: ExamType): Promise<boolean> => {
+  return dbService.decrementFrequency(uuid, exam);
 });
 
-ipcMain.handle('questions:updateQuestion', async (_, uuid: string, updates: Partial<Question>): Promise<boolean> => {
-  return dbService.updateQuestion(uuid, updates);
+ipcMain.handle('questions:updateQuestion', async (_, uuid: string, updates: Partial<Question>, exam?: ExamType): Promise<boolean> => {
+  return dbService.updateQuestion(uuid, updates, exam);
 });
 
-ipcMain.handle('questions:bulkUpdate', async (_, uuids: string[], updates: Partial<Question>): Promise<{ success: boolean, updatedCount: number }> => {
-  return dbService.bulkUpdateQuestions(uuids, updates);
+ipcMain.handle('questions:bulkUpdate', async (_, uuids: string[], updates: Partial<Question>, exam?: ExamType): Promise<{ success: boolean, updatedCount: number }> => {
+  return dbService.bulkUpdateQuestions(uuids, updates, exam);
 });
 
-ipcMain.handle('questions:createQuestion', async (_, question: Question): Promise<boolean> => {
-  return dbService.createQuestion(question);
+ipcMain.handle('questions:createQuestion', async (_, question: Question, exam?: ExamType): Promise<boolean> => {
+  return dbService.createQuestion(question, exam);
 });
 
-ipcMain.handle('questions:clone', async (_, uuid: string) => {
-    return dbService.cloneQuestion(uuid);
+ipcMain.handle('questions:clone', async (_, uuid: string, exam?: ExamType) => {
+  return dbService.cloneQuestion(uuid, exam);
 });
 
-ipcMain.handle('questions:getSolution', async (_, uuid: string) => {
-  return dbService.getSolution(uuid);
+ipcMain.handle('questions:getSolution', async (_, uuid: string, exam?: ExamType) => {
+  return dbService.getSolution(uuid, exam);
 });
 
-ipcMain.handle('questions:saveSolution', async (_, uuid: string, solutionText: string, solutionImageUrl: string) => {
-  return dbService.saveSolution(uuid, solutionText, solutionImageUrl);
+ipcMain.handle('questions:saveSolution', async (_, uuid: string, solutionText: string, solutionImageUrl: string, exam?: ExamType) => {
+  return dbService.saveSolution(uuid, solutionText, solutionImageUrl, exam);
 });
 
-ipcMain.handle('questions:getSolutionsByUUIDs', async (_, uuids: string[]) => {
-  const map = dbService.getSolutionsByUUIDs(uuids);
+ipcMain.handle('questions:getSolutionsByUUIDs', async (_, uuids: string[], exam?: ExamType) => {
+  const map = dbService.getSolutionsByUUIDs(uuids, exam);
   // Convert Map to plain object for IPC serialization
   return Object.fromEntries(map);
+});
+
+// ============ IPQ (Independent Parent Questions) IPC Handlers ============
+
+ipcMain.handle('ipq:createQuestion', async (_, question: Question, parentExam: ExamType): Promise<boolean> => {
+  return dbService.createIPQQuestion(question, parentExam);
+});
+
+ipcMain.handle('ipq:saveSolution', async (_, uuid: string, solutionText: string, solutionImageUrl: string, parentExam: ExamType): Promise<boolean> => {
+  return dbService.saveIPQSolution(uuid, solutionText, solutionImageUrl, parentExam);
+});
+
+ipcMain.handle('ipq:getQuestions', async (_, parentExam?: ExamType): Promise<Question[]> => {
+  return dbService.getIPQQuestions(parentExam);
+});
+
+ipcMain.handle('ipq:getSolution', async (_, uuid: string) => {
+  return dbService.getIPQSolution(uuid);
+});
+
+ipcMain.handle('ipq:getCount', async (_, parentExam?: ExamType): Promise<number> => {
+  return dbService.getIPQCount(parentExam);
+});
+
+ipcMain.handle('ipq:getTablesStatus', async () => {
+  return dbService.getIPQTablesStatus();
 });
 
 // Image Upload with OAuth 2.0
@@ -439,8 +473,8 @@ ipcMain.handle('db:getTags', async (): Promise<string[]> => {
   return dbService.getTags();
 });
 
-ipcMain.handle('db:getChaptersByType', async (): Promise<{ [type: string]: string[] }> => {
-  return dbService.getChaptersByType();
+ipcMain.handle('db:getChaptersByType', async (_, exam?: ExamType): Promise<{ [type: string]: string[] }> => {
+  return dbService.getChaptersByType(exam);
 });
 
 // Test export - Transform to match sample-test-001.json format

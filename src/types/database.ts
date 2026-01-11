@@ -1,5 +1,9 @@
 // Database schema types matching schema.txt
 
+// Supported exam types
+export const SUPPORTED_EXAMS = ['JEE', 'NEET', 'BITS', 'IPQ'] as const;
+export type ExamType = typeof SUPPORTED_EXAMS[number];
+
 export interface Question {
   // Primary identifier
   uuid: string;
@@ -66,6 +70,9 @@ export interface Question {
 
   // Question Links
   links: string | null; // JSON array of linked question UUIDs
+
+  // Multi-table support: tracks which exam table this question came from
+  examSource?: 'JEE' | 'NEET' | 'BITS' | 'IPQ';
 }
 
 export interface QuestionFilter {
@@ -79,7 +86,7 @@ export interface QuestionFilter {
 }
 
 export interface Solution {
-    uuid: string;
-    solution_text: string;
-    solution_image_url: string;
+  uuid: string;
+  solution_text: string;
+  solution_image_url: string;
 }
