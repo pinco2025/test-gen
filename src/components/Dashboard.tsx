@@ -10,6 +10,7 @@ interface DashboardProps {
 
 interface DashboardStats {
   totalQuestions: number;
+  questionBreakdown: { exam: string; count: number }[];
   sourceFilesImported: number;
   testsGenerated: number;
 }
@@ -22,12 +23,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
 }) => {
   const [stats, setStats] = useState<DashboardStats>({
     totalQuestions: 0,
+    questionBreakdown: [],
     sourceFilesImported: 0,
     testsGenerated: projects.length
   });
 
   const [isMounted, setIsMounted] = useState(false);
   const [view, setView] = useState<'home' | 'full' | 'part'>('home');
+  const [showBreakdown, setShowBreakdown] = useState(false);
 
   // Filter and sort projects based on view
   const filteredProjects = projects.filter(p => {
@@ -50,9 +53,10 @@ export const Dashboard: React.FC<DashboardProps> = ({
     if (!window.electronAPI) return;
 
     try {
-      const totalQuestions = await window.electronAPI.questions.getCount();
+      const examCounts = await window.electronAPI.questions.getAllExamCounts();
       setStats({
-        totalQuestions: totalQuestions || 0,
+        totalQuestions: examCounts.total || 0,
+        questionBreakdown: examCounts.breakdown || [],
         sourceFilesImported: 128,
         testsGenerated: projects.length
       });
@@ -142,11 +146,40 @@ export const Dashboard: React.FC<DashboardProps> = ({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 p-4 mb-6">
-              <div className="flex flex-col gap-2 rounded-xl p-6 border border-border-light dark:border-gray-700 bg-white/80 dark:bg-background-dark/80 backdrop-blur-sm hover:border-primary/40 hover:shadow-lg transition-all duration-300 group">
-                <p className="text-text-main dark:text-gray-300 text-base font-medium leading-normal group-hover:text-primary transition-colors">Total Questions in DB</p>
+              <div
+                className={`relative flex flex-col gap-2 rounded-xl p-6 border border-border-light dark:border-gray-700 bg-white/80 dark:bg-background-dark/80 backdrop-blur-sm hover:border-primary/40 hover:shadow-lg transition-all duration-300 group cursor-pointer ${showBreakdown ? 'z-[100]' : ''}`}
+                onMouseEnter={() => setShowBreakdown(true)}
+                onMouseLeave={() => setShowBreakdown(false)}
+                onClick={() => setShowBreakdown(!showBreakdown)}
+              >
+                <div className="flex items-center justify-between">
+                  <p className="text-text-main dark:text-gray-300 text-base font-medium leading-normal group-hover:text-primary transition-colors">Total Questions in DB</p>
+                  <span className="material-symbols-outlined text-gray-400 text-sm">info</span>
+                </div>
                 <p className="text-text-main dark:text-white tracking-light text-4xl font-bold leading-tight tabular-nums text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-400 dark:from-white dark:to-gray-200">
                   <span className="count-up-q"></span>
                 </p>
+
+                {/* Breakdown Tooltip */}
+                {showBreakdown && stats.questionBreakdown.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-2 z-[100] animate-fade-in">
+                    <div className="bg-white dark:bg-[#1e1e2d] rounded-xl border border-gray-200 dark:border-gray-700 shadow-xl p-4">
+                      <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Breakdown by Exam</p>
+                      <div className="space-y-2">
+                        {stats.questionBreakdown.map((item) => (
+                          <div key={item.exam} className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{item.exam}</span>
+                            <span className="text-sm font-bold text-primary tabular-nums">{item.count.toLocaleString()}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 flex justify-between items-center">
+                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Total</span>
+                        <span className="text-sm font-bold text-gray-900 dark:text-white tabular-nums">{stats.totalQuestions.toLocaleString()}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="flex flex-col gap-2 rounded-xl p-6 border border-border-light dark:border-gray-700 bg-white/80 dark:bg-background-dark/80 backdrop-blur-sm hover:border-primary/40 hover:shadow-lg transition-all duration-300 group">
                 <p className="text-text-main dark:text-gray-300 text-base font-medium leading-normal group-hover:text-primary transition-colors">Source Files Imported</p>
@@ -170,7 +203,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 >
                   <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-20 transition-opacity" />
                   <div className="p-4 rounded-full bg-white/20 mb-4 backdrop-blur-sm group-hover:scale-110 transition-transform duration-300">
-                     <span className="material-symbols-outlined text-5xl text-white">description</span>
+                    <span className="material-symbols-outlined text-5xl text-white">description</span>
                   </div>
                   <h3 className="text-2xl font-black text-white tracking-tight">
                     Full Tests
@@ -186,7 +219,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 >
                   <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-20 transition-opacity" />
                   <div className="p-4 rounded-full bg-white/20 mb-4 backdrop-blur-sm group-hover:scale-110 transition-transform duration-300">
-                     <span className="material-symbols-outlined text-5xl text-white">library_books</span>
+                    <span className="material-symbols-outlined text-5xl text-white">library_books</span>
                   </div>
                   <h3 className="text-2xl font-black text-white tracking-tight">
                     Part Tests
@@ -207,20 +240,20 @@ export const Dashboard: React.FC<DashboardProps> = ({
                       <span className="material-symbols-outlined text-gray-600 dark:text-gray-400">arrow_back</span>
                     </button>
                     <div>
-                        <h2 className="text-text-main dark:text-white text-[22px] font-bold leading-tight tracking-[-0.015em]">
-                            {view === 'full' ? 'Full Tests' : 'Part Tests'}
-                        </h2>
-                        <span className="text-text-secondary dark:text-gray-400 text-sm">
-                            {sortedProjects.length} project{sortedProjects.length !== 1 ? 's' : ''}
-                        </span>
+                      <h2 className="text-text-main dark:text-white text-[22px] font-bold leading-tight tracking-[-0.015em]">
+                        {view === 'full' ? 'Full Tests' : 'Part Tests'}
+                      </h2>
+                      <span className="text-text-secondary dark:text-gray-400 text-sm">
+                        {sortedProjects.length} project{sortedProjects.length !== 1 ? 's' : ''}
+                      </span>
                     </div>
                   </div>
-                   <button
-                      onClick={() => onCreateNew(view === 'full' ? 'Full' : 'Part')}
-                      className="flex items-center justify-center gap-2 rounded-lg h-10 px-5 bg-primary text-white text-sm font-bold hover:bg-primary/90 transition-all shadow-md">
-                      <span className="material-symbols-outlined text-lg">add</span>
-                      Create New {view === 'full' ? 'Full' : 'Part'} Test
-                   </button>
+                  <button
+                    onClick={() => onCreateNew(view === 'full' ? 'Full' : 'Part')}
+                    className="flex items-center justify-center gap-2 rounded-lg h-10 px-5 bg-primary text-white text-sm font-bold hover:bg-primary/90 transition-all shadow-md">
+                    <span className="material-symbols-outlined text-lg">add</span>
+                    Create New {view === 'full' ? 'Full' : 'Part'} Test
+                  </button>
                 </div>
                 <div className="flex flex-col p-4 pb-8">
                   {sortedProjects.length === 0 ? (

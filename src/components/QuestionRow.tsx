@@ -10,7 +10,7 @@ interface QuestionRowProps {
   isDivision2Question: boolean;
   onToggle: (question: Question) => void;
   onEdit: (e: React.MouseEvent, question: Question) => void;
-  onClone?: (e: React.MouseEvent, question: Question) => void;
+  onCreateIPQ?: (e: React.MouseEvent, question: Question) => void;
   highlightCorrectAnswer?: boolean;
   zoomLevel?: number;
 }
@@ -23,7 +23,7 @@ const QuestionRow: React.FC<QuestionRowProps> = React.memo(({
   isDivision2Question,
   onToggle,
   onEdit,
-  onClone,
+  onCreateIPQ,
   highlightCorrectAnswer,
   zoomLevel = 1
 }) => {
@@ -46,66 +46,65 @@ const QuestionRow: React.FC<QuestionRowProps> = React.memo(({
     <div id={`question-row-${question.uuid}`} className="pb-6 pr-2 question-row" style={{ zoom: zoomLevel }}>
       <div
         onClick={handleClick}
-        className={`cursor-pointer rounded-lg p-4 transition-all duration-150 ${
-          selected
+        className={`cursor-pointer rounded-lg p-4 transition-all duration-150 ${selected
             ? 'border-2 border-primary bg-primary/5 shadow-md'
             : 'border border-gray-200 dark:border-[#2d2d3b] bg-white dark:bg-[#1e1e2d] hover:border-primary/50 hover:shadow-sm'
-        }`}
+          }`}
       >
         <div className="flex justify-between items-start mb-2">
           <div className="flex items-center gap-3 flex-1">
-             {isSelectionMode && (
-                <div className="flex items-center justify-center p-1">
-                     <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${selected ? 'bg-primary border-primary' : 'bg-transparent border-gray-400 dark:border-gray-500'}`}>
-                         {selected && <span className="material-symbols-outlined text-white text-sm font-bold">check</span>}
-                     </div>
+            {isSelectionMode && (
+              <div className="flex items-center justify-center p-1">
+                <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${selected ? 'bg-primary border-primary' : 'bg-transparent border-gray-400 dark:border-gray-500'}`}>
+                  {selected && <span className="material-symbols-outlined text-white text-sm font-bold">check</span>}
                 </div>
-             )}
+              </div>
+            )}
             <div className="flex-1">
-                {isDivision2Question && (
+              {isDivision2Question && (
                 <div className="inline-flex items-center gap-1.5 bg-yellow-500 text-white text-xs font-semibold px-2 py-1 rounded">
-                    <span className="material-symbols-outlined text-sm">edit_note</span>
-                    NUMERICAL ({question.answer}) - Division 2 Only
+                  <span className="material-symbols-outlined text-sm">edit_note</span>
+                  NUMERICAL ({question.answer}) - Division 2 Only
                 </div>
-                )}
+              )}
             </div>
           </div>
 
           {!isSelectionMode && (
-          <div className="relative" ref={menuRef}>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowMenu(!showMenu);
-              }}
-              title="Actions"
-              className="flex items-center gap-1 px-2 py-1 bg-gray-50 dark:bg-[#252535] border border-gray-200 dark:border-[#2d2d3b] rounded text-xs text-gray-700 dark:text-gray-300 hover:border-primary hover:text-primary transition-all"
-            >
-              <span className="material-symbols-outlined text-base">more_vert</span>
-              Actions
-            </button>
+            <div className="relative" ref={menuRef}>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowMenu(!showMenu);
+                }}
+                title="Actions"
+                className="flex items-center gap-1 px-2 py-1 bg-gray-50 dark:bg-[#252535] border border-gray-200 dark:border-[#2d2d3b] rounded text-xs text-gray-700 dark:text-gray-300 hover:border-primary hover:text-primary transition-all"
+              >
+                <span className="material-symbols-outlined text-base">more_vert</span>
+                Actions
+              </button>
 
-            {showMenu && (
-              <div className="absolute top-full right-0 mt-1 w-48 bg-white dark:bg-[#1e1e2d] shadow-lg rounded-md z-10 border border-gray-200 dark:border-[#2d2d3b] overflow-hidden animate-fade-in">
-                <button
-                  onClick={(e) => { e.stopPropagation(); setShowMenu(false); onEdit(e, question); }}
-                  className="flex items-center gap-2 w-full px-3 py-2 text-sm text-left text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#252535] transition-colors"
-                >
-                  <span className="material-symbols-outlined text-base">edit</span>
-                  Edit Properties
-                </button>
-                {onClone && (
+              {showMenu && (
+                <div className="absolute top-full right-0 mt-1 w-48 bg-white dark:bg-[#1e1e2d] shadow-lg rounded-md z-10 border border-gray-200 dark:border-[#2d2d3b] overflow-hidden animate-fade-in">
                   <button
-                    onClick={(e) => { e.stopPropagation(); setShowMenu(false); onClone(e, question); }}
+                    onClick={(e) => { e.stopPropagation(); setShowMenu(false); onEdit(e, question); }}
                     className="flex items-center gap-2 w-full px-3 py-2 text-sm text-left text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#252535] transition-colors"
                   >
-                    <span className="material-symbols-outlined text-base">content_copy</span>
-                    Clone & Edit
+                    <span className="material-symbols-outlined text-base">edit</span>
+                    Edit Properties
                   </button>
-                )}
-              </div>
-            )}
-          </div>
+                  {onCreateIPQ && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setShowMenu(false); onCreateIPQ(e, question); }}
+                      className="flex items-center gap-2 w-full px-3 py-2 text-sm text-left text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+                    >
+                      <span className="material-symbols-outlined text-base">add_notes</span>
+                      Create IPQ
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           )}
         </div>
         <QuestionDisplay

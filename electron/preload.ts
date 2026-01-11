@@ -1,6 +1,9 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import { Question, QuestionFilter, Test, ProjectState, ProjectInfo, AppConfig } from '../src/types';
 
+// ExamType for multi-table support
+type ExamType = 'JEE' | 'NEET' | 'BITS';
+
 // Expose protected methods that allow the renderer process to use
 // ipcRenderer without exposing the entire object
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -20,10 +23,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
     connect: (dbPath?: string) => ipcRenderer.invoke('db:connect', dbPath),
     selectFile: () => ipcRenderer.invoke('db:selectFile'),
     isConnected: () => ipcRenderer.invoke('db:isConnected'),
+    getExamTablesStatus: () => ipcRenderer.invoke('db:getExamTablesStatus'),
     getTypes: () => ipcRenderer.invoke('db:getTypes'),
     getYears: () => ipcRenderer.invoke('db:getYears'),
     getTags: () => ipcRenderer.invoke('db:getTags'),
-    getChaptersByType: () => ipcRenderer.invoke('db:getChaptersByType')
+    getChaptersByType: (exam?: ExamType) => ipcRenderer.invoke('db:getChaptersByType', exam)
   },
 
   // Chapter operations
@@ -35,23 +39,35 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Question operations
   questions: {
-    getAll: (filter?: QuestionFilter) => ipcRenderer.invoke('questions:getAll', filter),
-    getByUUID: (uuid: string) => ipcRenderer.invoke('questions:getByUUID', uuid),
-    getByUUIDs: (uuids: string[]) => ipcRenderer.invoke('questions:getByUUIDs', uuids),
-    search: (criteria: any) => ipcRenderer.invoke('questions:search', criteria),
-    getCount: (filter?: QuestionFilter) => ipcRenderer.invoke('questions:getCount', filter),
-    getByChapterCodes: (type: string, chapterCodes: string[]) => ipcRenderer.invoke('questions:getByChapterCodes', type, chapterCodes),
-    getAllForSubject: (chapterCodes: string[]) => ipcRenderer.invoke('questions:getAllForSubject', chapterCodes),
-    incrementFrequency: (uuid: string) => ipcRenderer.invoke('questions:incrementFrequency', uuid),
-    decrementFrequency: (uuid: string) => ipcRenderer.invoke('questions:decrementFrequency', uuid),
-    updateQuestion: (uuid: string, updates: Partial<Question>) => ipcRenderer.invoke('questions:updateQuestion', uuid, updates),
-    bulkUpdateQuestions: (uuids: string[], updates: Partial<Question>) => ipcRenderer.invoke('questions:bulkUpdate', uuids, updates),
-    createQuestion: (question: Question) => ipcRenderer.invoke('questions:createQuestion', question),
-    clone: (uuid: string) => ipcRenderer.invoke('questions:clone', uuid),
-    getSolution: (uuid: string) => ipcRenderer.invoke('questions:getSolution', uuid),
-    getSolutionsByUUIDs: (uuids: string[]) => ipcRenderer.invoke('questions:getSolutionsByUUIDs', uuids),
-    saveSolution: (uuid: string, solutionText: string, solutionImageUrl: string) => ipcRenderer.invoke('questions:saveSolution', uuid, solutionText, solutionImageUrl)
+    getAll: (filter?: QuestionFilter, exam?: ExamType) => ipcRenderer.invoke('questions:getAll', filter, exam),
+    getByUUID: (uuid: string, exam?: ExamType) => ipcRenderer.invoke('questions:getByUUID', uuid, exam),
+    getByUUIDs: (uuids: string[], exam?: ExamType) => ipcRenderer.invoke('questions:getByUUIDs', uuids, exam),
+    search: (criteria: any, exam?: ExamType) => ipcRenderer.invoke('questions:search', criteria, exam),
+    getCount: (filter?: QuestionFilter, exam?: ExamType) => ipcRenderer.invoke('questions:getCount', filter, exam),
+    getAllExamCounts: () => ipcRenderer.invoke('questions:getAllExamCounts'),
+    getByChapterCodes: (type: string, chapterCodes: string[], exam?: ExamType) => ipcRenderer.invoke('questions:getByChapterCodes', type, chapterCodes, exam),
+    getAllForSubject: (chapterCodes: string[], exam?: ExamType) => ipcRenderer.invoke('questions:getAllForSubject', chapterCodes, exam),
+    incrementFrequency: (uuid: string, exam?: ExamType) => ipcRenderer.invoke('questions:incrementFrequency', uuid, exam),
+    decrementFrequency: (uuid: string, exam?: ExamType) => ipcRenderer.invoke('questions:decrementFrequency', uuid, exam),
+    updateQuestion: (uuid: string, updates: Partial<Question>, exam?: ExamType) => ipcRenderer.invoke('questions:updateQuestion', uuid, updates, exam),
+    bulkUpdateQuestions: (uuids: string[], updates: Partial<Question>, exam?: ExamType) => ipcRenderer.invoke('questions:bulkUpdate', uuids, updates, exam),
+    createQuestion: (question: Question, exam?: ExamType) => ipcRenderer.invoke('questions:createQuestion', question, exam),
+    clone: (uuid: string, exam?: ExamType) => ipcRenderer.invoke('questions:clone', uuid, exam),
+    getSolution: (uuid: string, exam?: ExamType) => ipcRenderer.invoke('questions:getSolution', uuid, exam),
+    getSolutionsByUUIDs: (uuids: string[], exam?: ExamType) => ipcRenderer.invoke('questions:getSolutionsByUUIDs', uuids, exam),
+    saveSolution: (uuid: string, solutionText: string, solutionImageUrl: string, exam?: ExamType) => ipcRenderer.invoke('questions:saveSolution', uuid, solutionText, solutionImageUrl, exam)
   },
+
+  // IPQ (Independent Parent Questions) operations
+  ipq: {
+    createQuestion: (question: Question, parentExam: ExamType) => ipcRenderer.invoke('ipq:createQuestion', question, parentExam),
+    saveSolution: (uuid: string, solutionText: string, solutionImageUrl: string, parentExam: ExamType) => ipcRenderer.invoke('ipq:saveSolution', uuid, solutionText, solutionImageUrl, parentExam),
+    getQuestions: (parentExam?: ExamType) => ipcRenderer.invoke('ipq:getQuestions', parentExam),
+    getSolution: (uuid: string) => ipcRenderer.invoke('ipq:getSolution', uuid),
+    getCount: (parentExam?: ExamType) => ipcRenderer.invoke('ipq:getCount', parentExam),
+    getTablesStatus: () => ipcRenderer.invoke('ipq:getTablesStatus')
+  },
+
 
   // Test operations
   test: {
