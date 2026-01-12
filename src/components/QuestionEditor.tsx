@@ -169,6 +169,9 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
     const [editedQuestion, setEditedQuestion] = useState<Question>(question);
     const [editedSolution, setEditedSolution] = useState<Solution | undefined>(solution);
 
+    // Auto-save status indicator for optimistic UI feedback
+    const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+
     // Undo/Redo hooks for specific fields
     const questionText = useUndoRedo(question.question || '');
     const solutionText = useUndoRedo(solution?.solution_text || '');
@@ -221,7 +224,19 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
 
     useEffect(() => {
         if (onIntermediateSaveRef.current) {
-            onIntermediateSaveRef.current(debouncedQuestion, debouncedSolution);
+            setSaveStatus('saving');
+            // Wrap the save call in a promise to handle both sync and async callbacks
+            Promise.resolve(onIntermediateSaveRef.current(debouncedQuestion, debouncedSolution))
+                .then(() => {
+                    setSaveStatus('saved');
+                    // Reset to idle after 2 seconds
+                    setTimeout(() => setSaveStatus('idle'), 2000);
+                })
+                .catch(() => {
+                    setSaveStatus('error');
+                    // Reset to idle after 3 seconds to allow retrying
+                    setTimeout(() => setSaveStatus('idle'), 3000);
+                });
         }
     }, [debouncedQuestion, debouncedSolution]);
 
@@ -283,7 +298,8 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
                     if (question.examSource === 'IPQ') {
                         fetchedSolution = await window.electronAPI.ipq.getSolution(question.uuid);
                     } else {
-                        fetchedSolution = await window.electronAPI.questions.getSolution(question.uuid);
+                        // Pass examSource to fetch from the correct exam-specific solutions table (NEET/BITS/JEE)
+                        fetchedSolution = await window.electronAPI.questions.getSolution(question.uuid, question.examSource as any);
                     }
                     if (fetchedSolution) {
                         setEditedSolution(fetchedSolution);
@@ -729,6 +745,25 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
                         {questionNumber !== undefined && (
                             <span className="text-xs font-bold px-2 py-1 bg-gray-100 dark:bg-white/10 rounded text-text-secondary">
                                 Q.{questionNumber}
+                            </span>
+                        )}
+                        {/* Auto-save status indicator */}
+                        {saveStatus === 'saving' && (
+                            <span className="flex items-center gap-1.5 text-xs font-medium text-blue-500 bg-blue-50 dark:bg-blue-500/10 px-2 py-1 rounded-full animate-pulse">
+                                <span className="material-symbols-outlined text-sm animate-spin">sync</span>
+                                Saving...
+                            </span>
+                        )}
+                        {saveStatus === 'saved' && (
+                            <span className="flex items-center gap-1.5 text-xs font-medium text-green-600 bg-green-50 dark:bg-green-500/10 px-2 py-1 rounded-full">
+                                <span className="material-symbols-outlined text-sm">check_circle</span>
+                                Saved
+                            </span>
+                        )}
+                        {saveStatus === 'error' && (
+                            <span className="flex items-center gap-1.5 text-xs font-medium text-red-600 bg-red-50 dark:bg-red-500/10 px-2 py-1 rounded-full">
+                                <span className="material-symbols-outlined text-sm">error</span>
+                                Save failed
                             </span>
                         )}
                     </div>

@@ -9,7 +9,8 @@ import {
   ExamType,
   SUPPORTED_EXAMS
 } from '../types';
-import FilterMenu, { FilterState } from './FilterMenu';
+import FilterMenu from './FilterMenu';
+import { useQuestionFilters, FilterState } from '../hooks/useQuestionFilters';
 import QuestionRow from './QuestionRow';
 import QuestionEditor from './QuestionEditor';
 import BulkEditModal from './BulkEditModal';
@@ -108,24 +109,46 @@ export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
   useEffect(() => {
     localStorage.setItem('databaseCleaning_examType', examType);
   }, [examType]);
-  const [searchText, setSearchText] = useState('');
-  const [searchUuid, setSearchUuid] = useState('');
-  const [filters, setFilters] = useState<FilterState>({
-    chapter: 'all', difficulty: 'all', division: 'all', type: 'all', year: 'all', tag1: '', tag4: '', sort: 'default', selectedOnly: false,
-    verificationLevel1: 'all', verificationLevel2: 'all'
-  });
-
-  // Bulk Selection State
+  // Bulk Selection State (moved up for hook dependency)
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedUuids, setSelectedUuids] = useState<Set<string>>(new Set());
+
+  // Local active search state for inputs
+  const [searchText, setSearchText] = useState('');
+  const [searchUuid, setSearchUuid] = useState('');
+
+  // Generate a persistence key based on active section
+  const persistenceKey = useMemo(() => `filter_pref_db_cleaning_${activeSection}`, [activeSection]);
+
+  const {
+    filters,
+    filteredQuestions,
+    updateFilters,
+    resetFilters
+  } = useQuestionFilters(availableQuestions, selectedUuids, persistenceKey);
+
+  // Sync search inputs with hook filters
+  useEffect(() => {
+    updateFilters({ searchText, searchUuid });
+  }, [searchText, searchUuid, updateFilters]);
+
+  // Sync local search state when filters change externally (e.g. loading from persistence)
+  useEffect(() => {
+    if (filters.searchText !== searchText) setSearchText(filters.searchText);
+    if (filters.searchUuid !== searchUuid) setSearchUuid(filters.searchUuid);
+  }, [filters.searchText, filters.searchUuid]);
+
+  // Handle local filter changes from UI to Hook
+  const handleFilterChange = (newFilters: Partial<FilterState>) => {
+    updateFilters(newFilters);
+  };
+
   const [showBulkEditModal, setShowBulkEditModal] = useState(false);
 
   // Local editing state
   const [editingQuestion, setEditingQuestion] = useState<{ question: Question, solution?: Solution } | null>(null);
 
-  const handleFilterChange = (newFilters: Partial<FilterState>) => {
-    setFilters(prev => ({ ...prev, ...newFilters }));
-  };
+  // REMOVED local handleFilterChange - replaced above
 
   const toggleSelectionMode = () => {
     setIsSelectionMode(prev => {
@@ -158,27 +181,34 @@ export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
     if (selectedUuids.size === 0) return;
 
     const uuids = Array.from(selectedUuids);
+
+    // Store previous state for rollback
+    const previousQuestions = [...availableQuestions];
+
+    // OPTIMISTIC UPDATE: Apply updates to local state immediately
+    setAvailableQuestions(prev => prev.map(q =>
+      uuids.includes(q.uuid) ? { ...q, ...updates } : q
+    ));
+
+    // Optimistically close modal and exit selection mode for better UX
+    setShowBulkEditModal(false);
+    setIsSelectionMode(false);
+    setSelectedUuids(new Set());
+
     try {
       const result = await window.electronAPI.questions.bulkUpdateQuestions(uuids, updates);
       if (result.success) {
         addNotification('success', `Successfully updated ${result.updatedCount} questions.`);
-        setShowBulkEditModal(false);
-        setIsSelectionMode(false);
-        setSelectedUuids(new Set());
-
-        // Trigger refresh logic - reusing existing pattern or forcing re-fetch
-        // Since availableQuestions is local, we need to update it or reload
-        // Reloading is safer for bulk updates
-        if (activeChapterCode) {
-          const questions = await window.electronAPI.questions.getAllForSubject([activeChapterCode], examType);
-          setAvailableQuestions(questions);
-        }
       } else {
-        addNotification('error', 'Failed to update questions.');
+        // ROLLBACK: Revert to previous state on failure
+        setAvailableQuestions(previousQuestions);
+        addNotification('error', 'Failed to update questions. Changes reverted.');
       }
     } catch (error) {
+      // ROLLBACK: Revert to previous state on error
+      setAvailableQuestions(previousQuestions);
       console.error("Bulk update failed:", error);
-      addNotification('error', 'An error occurred during bulk update.');
+      addNotification('error', 'An error occurred during bulk update. Changes reverted.');
     }
   };
 
@@ -240,11 +270,30 @@ export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
       setShowIPQModal(false);
       setIpqTargetQuestion(null);
 
-      // Refresh the question list
-      if (activeChapterCode) {
-        const questions = await window.electronAPI.questions.getAllForSubject([activeChapterCode], examType);
-        setAvailableQuestions(questions);
-      }
+      // Redirect logic similar to QuestionSelection
+      // Preserve current chapter context but switch to IPQ view to show the new question
+      const currentChapterCode = activeChapterCode;
+
+      setExamType('IPQ');
+
+      // We need to reload questions for IPQ, possibly filtered by the chapter we were just in
+      // Since DatabaseCleaning loads by chapter, we might need to rely on the hook filter primarily
+      // but ensure we are targeting the right set of data.
+      // For IPQ in DB Cleaning, we might want to load ALL IPQs or filtered ones.
+      // Re-using the activeChapterCode logic:
+
+      // Force reload or just let effects handle it?
+      // If we switch examType, the effect [activeChapterCode, refreshTrigger, examType] runs.
+      // So if activeChapterCode is set, it will fetch IPQs for that chapter.
+
+      // We also want to auto-search for this UUID
+      setTimeout(() => {
+        setSearchUuid(newQuestion.uuid.substring(0, 8));
+        if (currentChapterCode) {
+          setActiveChapterCode(currentChapterCode); // Ensure we stay on chapter
+        }
+      }, 100);
+
     } catch (error) {
       console.error('Error creating IPQ:', error);
       addNotification('error', 'An error occurred while creating IPQ.');
@@ -337,33 +386,6 @@ export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
     loadQuestions();
   }, [activeChapterCode, refreshTrigger, examType]);
 
-  const filteredQuestions = useMemo(() => {
-    return availableQuestions
-      .filter(q => {
-        if (filters.difficulty !== 'all' && q.tag_3 !== filters.difficulty) return false;
-        if (filters.division !== 'all') {
-          if (filters.division === '1' && isNumericalAnswer(q)) return false;
-          if (filters.division === '2' && !isNumericalAnswer(q)) return false;
-        }
-        if (filters.type !== 'all' && q.type !== filters.type) return false;
-        if (filters.year !== 'all' && q.year !== filters.year) return false;
-        if (filters.verificationLevel1 !== 'all' && (q.verification_level_1 || 'pending') !== filters.verificationLevel1) return false;
-        if (filters.verificationLevel2 !== 'all' && (q.verification_level_2 || 'pending') !== filters.verificationLevel2) return false;
-        if (searchText && !q.question.toLowerCase().includes(searchText.toLowerCase())) return false;
-        if (searchUuid && !q.uuid.toLowerCase().includes(searchUuid.toLowerCase())) return false;
-        return true;
-      })
-      .sort((a, b) => {
-        switch (filters.sort) {
-          case 'year_desc': return (b.year || '').localeCompare(a.year || '');
-          case 'year_asc': return (a.year || '').localeCompare(b.year || '');
-          case 'freq_desc': return (b.frequency || 0) - (a.frequency || 0);
-          case 'freq_asc': return (a.frequency || 0) - (b.frequency || 0);
-          default: return 0;
-        }
-      });
-  }, [availableQuestions, filters, searchText, searchUuid]);
-
   // Scroll to edited question when returning from edit mode
   useEffect(() => {
     if (scrollToQuestionUuid && !loading && filteredQuestions.length > 0) {
@@ -406,17 +428,31 @@ export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
   const handleSaveQuestion = async (updatedQuestion: Question, updatedSolution?: Solution) => {
     if (!window.electronAPI) return;
 
+    // Store previous state for rollback
+    const previousQuestions = [...availableQuestions];
+    const isNewQuestion = !availableQuestions.find(q => q.uuid === updatedQuestion.uuid);
+
+    // OPTIMISTIC UPDATE: Update local state immediately for instant UI feedback
+    setAvailableQuestions(prev => {
+      const index = prev.findIndex(q => q.uuid === updatedQuestion.uuid);
+      if (index !== -1) {
+        const newQuestions = [...prev];
+        newQuestions[index] = updatedQuestion;
+        return newQuestions;
+      } else {
+        return [...prev, updatedQuestion];
+      }
+    });
+
     try {
       // Determine the correct exam table to target:
       // 1. Use examSource from the question if available (question knows where it came from)
       // 2. Fall back to component's examType state
       const targetExam = ((updatedQuestion as any).examSource as ExamType) || examType;
 
-      // Check if it's a new question (clone) or update
-      const existing = availableQuestions.find(q => q.uuid === updatedQuestion.uuid);
       let success = false;
 
-      if (!existing && editingQuestion?.question.uuid === updatedQuestion.uuid) {
+      if (isNewQuestion && editingQuestion?.question.uuid === updatedQuestion.uuid) {
         // It's a new question (from clone)
         success = await window.electronAPI.questions.createQuestion(updatedQuestion, targetExam);
       } else {
@@ -473,26 +509,17 @@ export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
             );
           }
         }
-
-        // Update local state
-        setAvailableQuestions(prev => {
-          const index = prev.findIndex(q => q.uuid === updatedQuestion.uuid);
-          if (index !== -1) {
-            const newQuestions = [...prev];
-            newQuestions[index] = updatedQuestion;
-            return newQuestions;
-          } else {
-            return [...prev, updatedQuestion];
-          }
-        });
-
         addNotification('success', 'Question saved successfully!');
       } else {
-        addNotification('error', 'Failed to save question.');
+        // ROLLBACK: Revert to previous state on failure
+        setAvailableQuestions(previousQuestions);
+        addNotification('error', 'Failed to save question. Changes reverted.');
       }
     } catch (error) {
+      // ROLLBACK: Revert to previous state on error
+      setAvailableQuestions(previousQuestions);
       console.error(error);
-      addNotification('error', 'An error occurred while saving.');
+      addNotification('error', 'An error occurred while saving. Changes reverted.');
     }
   };
 
@@ -663,7 +690,7 @@ export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
                 <span className="material-symbols-outlined">{isSelectionMode ? 'check_box' : 'check_box_outline_blank'}</span>
                 {isSelectionMode ? 'Done' : 'Select'}
               </button>
-              <FilterMenu chapters={[]} availableTypes={availableTypes} availableYears={availableYears} currentFilters={filters} onFilterChange={handleFilterChange} />
+              <FilterMenu chapters={[]} availableTypes={availableTypes} availableYears={availableYears} currentFilters={filters} onFilterChange={handleFilterChange} onReset={resetFilters} resultCount={filteredQuestions.length} />
             </div>
 
             {/* Bulk Selection Actions Bar */}
@@ -734,7 +761,10 @@ export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
           onSave={handleIPQSave}
           initialData={ipqTargetQuestion}
           isIPQMode={true}
-          parentExam={(ipqTargetQuestion as any).examSource || (examType !== 'IPQ' ? examType : 'JEE')}
+          parentExam={((): 'JEE' | 'NEET' | 'BITS' | undefined => {
+            const source = (ipqTargetQuestion as any).examSource || (examType !== 'IPQ' ? examType : 'JEE');
+            return ['JEE', 'NEET', 'BITS'].includes(source) ? source as 'JEE' | 'NEET' | 'BITS' : undefined;
+          })()}
         />
       )}
     </div>

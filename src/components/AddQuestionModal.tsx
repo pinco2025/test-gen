@@ -151,6 +151,7 @@ const AddQuestionModal: React.FC<AddQuestionModalProps> = ({ onClose, onSave, in
         legacy_d: mergedData.legacy_d || null,
         legacy_solution: mergedData.legacy_solution || null,
         links: mergedData.links || null,
+        division_override: mergedData.division_override || null,
         created_at: mergedData.created_at || new Date().toISOString(),
         updated_at: mergedData.updated_at || new Date().toISOString(),
         frequency: mergedData.frequency || 0

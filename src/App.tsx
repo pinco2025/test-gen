@@ -397,16 +397,9 @@ function App() {
 
 
   // Helper to initiate switch with data fetching
-  const initiateSwitchQuestion = async (uuid: string) => {
-    setSwitchTargetQuestionUuid(uuid);
-    if (window.electronAPI) {
-      try {
-        const q = await window.electronAPI.questions.getByUUID(uuid);
-        if (q) setSwitchTargetQuestionData(q);
-      } catch (e) {
-        console.error("Failed to fetch target question for switch:", e);
-      }
-    }
+  const initiateSwitchQuestion = (question: Question) => {
+    setSwitchTargetQuestionUuid(question.uuid);
+    setSwitchTargetQuestionData(question);
   };
 
   // Load a project (from disk if not in memory, or just switch to it)
@@ -450,7 +443,8 @@ function App() {
               if (q?.examSource === 'IPQ') {
                 s = await window.electronAPI.ipq.getSolution(projectState.lastActiveQuestionUuid);
               } else {
-                s = await window.electronAPI.questions.getSolution(projectState.lastActiveQuestionUuid);
+                // Pass examSource to fetch from the correct exam-specific solutions table
+                s = await window.electronAPI.questions.getSolution(projectState.lastActiveQuestionUuid, q?.examSource as any);
               }
               if (q) {
                 setEditingQuestion({
@@ -969,9 +963,28 @@ function App() {
   }, [currentProjectId, sections, updateCurrentProject]);
 
   const handleVerifyQuestion = useCallback(async (questionUuid: string, status: 'approved' | 'rejected' | 'pending') => {
+    console.log('[App] handleVerifyQuestion called:', questionUuid, status);
+
+    // ALWAYS update sections state (for UI persistence across tab switches)
+    const updatedSections = sections.map(section => ({
+      ...section,
+      selectedQuestions: section.selectedQuestions.map(sq => {
+        if (sq.question.uuid === questionUuid) {
+          return {
+            ...sq,
+            question: { ...sq.question, verification_level_1: status },
+            status: status === 'approved' ? 'accepted' as const : sq.status
+          };
+        }
+        return sq;
+      })
+    }));
+
+    updateCurrentProject({ sections: updatedSections });
+
+    // Also try to update in DB (may fail for orphaned questions)
     if (!window.electronAPI) return;
     try {
-      // Find the question to get its examSource for correct table targeting
       let examSource: ExamType | undefined;
       for (const section of sections) {
         const found = section.selectedQuestions.find(sq => sq.question.uuid === questionUuid);
@@ -983,15 +996,12 @@ function App() {
 
       const success = await window.electronAPI.questions.updateQuestion(questionUuid, { verification_level_1: status }, examSource);
       if (!success) {
-        console.error("Failed to update verification status in DB");
-      } else {
-        // Also update status in memory if needed
-        handleQuestionStatusUpdate(questionUuid, status === 'approved' ? 'accepted' : 'pending');
+        console.warn("[App] DB update for verification status failed (question may not exist in DB)");
       }
     } catch (e) {
-      console.error("Error verifying question:", e);
+      console.error("Error verifying question in DB:", e);
     }
-  }, [handleQuestionStatusUpdate, sections]);
+  }, [sections, updateCurrentProject]);
 
   const handleStartEditing = (question: Question) => {
     if (!currentProject) return;
@@ -1113,8 +1123,16 @@ function App() {
             updatedSolution.solution_image_url || ''
           );
         } else {
+          console.log('[App] Question UUID:', updatedQuestion.uuid, '(length:', updatedQuestion.uuid?.length, ')');
+          console.log('[App] Solution UUID:', updatedSolution.uuid, '(length:', updatedSolution.uuid?.length, ')');
+          console.log('[App] examSource:', updatedQuestion.examSource);
+
+          // Use question UUID instead of solution UUID for consistency
+          const uuidToUse = updatedQuestion.uuid;
+          console.log('[App] Using UUID for save:', uuidToUse);
+
           await window.electronAPI.questions.saveSolution(
-            updatedSolution.uuid,
+            uuidToUse,
             updatedSolution.solution_text || '',
             updatedSolution.solution_image_url || '',
             updatedQuestion.examSource as any
@@ -1216,7 +1234,7 @@ function App() {
       'question-select-chemistry',
       'question-select-math',
       'test-review',
-      // We explicitly exclude UI test steps from the main wizard navigation as they are preview steps
+      // We explicitly exclude UI test steps from the main wizard navigation as they are preview steps and now removed/skipped
       // 'ui-test-interface',
       // 'ui-review-interface'
     ].includes(step);
@@ -1381,7 +1399,7 @@ function App() {
               sections={sections}
               onStartEditing={handleStartEditing}
               onBack={handleBackFromSelection}
-              onExport={() => updateCurrentProject({ currentStep: 'ui-test-interface' })}
+              onExport={handleExportTest}
               onRemoveQuestion={handleRemoveQuestion}
               onUpdateQuestionStatus={handleQuestionStatusUpdate}
               initialQuestionUuid={lastEditedQuestionUuid}

@@ -1,20 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Chapter } from '../types';
-
-export interface FilterState {
-  chapter: string;
-  difficulty: string;
-  division: string;
-  type: string;
-  year: string;
-  tag1: string;
-  tag4: string;
-  sort: string;
-  selectedOnly: boolean;
-  verificationLevel1: string;
-  verificationLevel2: string;
-}
+import { FilterState, DEFAULT_FILTERS } from '../hooks/useQuestionFilters';
 
 interface FilterMenuProps {
   chapters: Chapter[];
@@ -22,8 +9,9 @@ interface FilterMenuProps {
   availableYears: string[];
   currentFilters: FilterState;
   onFilterChange: (filters: Partial<FilterState>) => void;
+  onReset: () => void;
   hiddenFilters?: string[]; // Array of filter keys to hide
-  defaultFilters?: Partial<FilterState>; // Default values for reset
+  resultCount?: number;
 }
 
 const FilterMenu: React.FC<FilterMenuProps> = ({
@@ -32,318 +20,314 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
   availableYears,
   currentFilters,
   onFilterChange,
+  onReset,
   hiddenFilters = [],
-  defaultFilters = {}
+  resultCount
 }) => {
   const [isOpen, setIsOpen] = useState(false);
 
-  // Helper to check if a filter is active (not default 'all') AND not hidden
-  const isFilterActive = (key: keyof FilterState, defaultValue: any) => {
-      if (hiddenFilters.includes(key)) return false;
-      return currentFilters[key] !== defaultValue;
-  };
+  // Calculate active filter count (excluding defaults)
+  const activeCount = Object.keys(currentFilters).reduce((count, key) => {
+    const k = key as keyof FilterState;
+    if (hiddenFilters.includes(key)) return count;
+    // content filters
+    if (k === 'hasImage' || k === 'hasSolution') {
+      return currentFilters[k] !== 'ignore' ? count + 1 : count;
+    }
+    // boolean
+    if (k === 'isSelected') return currentFilters[k] ? count + 1 : count;
+    // strings
+    if (typeof currentFilters[k] === 'string') {
+      // @ts-ignore - simplistic check against default
+      if (DEFAULT_FILTERS[k] !== undefined && currentFilters[k] !== DEFAULT_FILTERS[k]) return count + 1;
+    }
+    return count;
+  }, 0);
 
-  const activeFilterCount =
-    (isFilterActive('chapter', 'all') ? 1 : 0) +
-    (isFilterActive('difficulty', 'all') ? 1 : 0) +
-    (isFilterActive('division', 'all') ? 1 : 0) +
-    (isFilterActive('type', 'all') ? 1 : 0) +
-    (isFilterActive('year', 'all') ? 1 : 0) +
-    (isFilterActive('tag1', '') ? 1 : 0) +
-    (isFilterActive('tag4', '') ? 1 : 0) +
-    (isFilterActive('selectedOnly', false) ? 1 : 0) +
-    (isFilterActive('verificationLevel1', 'all') ? 1 : 0) +
-    (isFilterActive('verificationLevel2', 'all') ? 1 : 0);
+  // Prevent scrolling when menu is open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [isOpen]);
 
-  const resetFilters = () => {
-    onFilterChange({
-      chapter: 'all',
-      difficulty: 'all',
-      division: 'all',
-      type: 'all',
-      year: 'all',
-      tag1: '',
-      tag4: '',
-      sort: 'default',
-      selectedOnly: false,
-      verificationLevel1: 'all',
-      verificationLevel2: 'all',
-      ...defaultFilters
-    });
-  };
+  const SectionHeader = ({ title, icon }: { title: string, icon: string }) => (
+    <div className="flex items-center gap-2 mb-3 mt-6 pb-2 border-b border-gray-100 dark:border-[#2d2d3b]">
+      <span className="material-symbols-outlined text-primary text-sm">{icon}</span>
+      <h4 className="text-xs font-bold uppercase text-gray-500 dark:text-gray-400 tracking-wider text-nowrap">{title}</h4>
+      <div className="h-px bg-gray-100 dark:bg-[#2d2d3b] w-full ml-2"></div>
+    </div>
+  );
+
+  const FilterChip = ({ label, active, onClick }: { label: string, active: boolean, onClick: () => void }) => (
+    <button
+      onClick={onClick}
+      className={`px-3 py-1.5 text-xs font-semibold rounded-full border transition-all ${active
+          ? 'bg-primary text-white border-primary shadow-sm'
+          : 'bg-white dark:bg-[#252535] text-gray-600 dark:text-gray-300 border-gray-200 dark:border-[#2d2d3b] hover:border-gray-300 dark:hover:border-gray-500'
+        }`}
+    >
+      {label}
+    </button>
+  );
 
   const menuContent = (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
-      onClick={() => setIsOpen(false)}
-    >
+    <div className="fixed inset-0 z-[100] flex justify-end isolat">
+      {/* Backdrop */}
       <div
-        className="flex flex-col w-full max-w-md max-h-[85vh] overflow-hidden bg-white dark:bg-[#1e1e2d] border border-gray-200 dark:border-[#2d2d3b] rounded-xl shadow-lg"
-        onClick={(e) => e.stopPropagation()}
+        className={`absolute inset-0 bg-black/30 backdrop-blur-sm transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0'}`}
+        onClick={() => setIsOpen(false)}
+      />
+
+      {/* Side Panel */}
+      <div
+        className={`relative w-full max-w-md h-full bg-white dark:bg-[#1e1e2d] shadow-2xl flex flex-col transition-transform duration-300 ease-out transform ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-[#2d2d3b] bg-gray-50 dark:bg-[#252535]">
-          <h3 className="text-lg font-bold text-gray-900 dark:text-white">Filters & Sorting</h3>
+        <div className="flex-shrink-0 px-6 py-5 border-b border-gray-100 dark:border-[#2d2d3b] flex justify-between items-center bg-white/50 dark:bg-[#1e1e2d]/50 backdrop-blur-md sticky top-0 z-10">
+          <div>
+            <h2 className="text-xl font-extrabold text-gray-900 dark:text-white flex items-center gap-2">
+              Filters
+              {activeCount > 0 && (
+                <span className="bg-primary text-white text-xs px-2 py-0.5 rounded-full font-bold">{activeCount}</span>
+              )}
+            </h2>
+            {resultCount !== undefined && (
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Showing {resultCount} questions</p>
+            )}
+          </div>
           <button
             onClick={() => setIsOpen(false)}
-            className="p-1 rounded-full text-gray-500 hover:bg-black/5 dark:hover:bg-white/10"
+            className="p-2 -mr-2 rounded-full hover:bg-gray-100 dark:hover:bg-[#2d2d3b] text-gray-500 transition-colors"
           >
             <span className="material-symbols-outlined">close</span>
           </button>
         </div>
 
         {/* Scrollable Content */}
-        <div className="flex-1 p-5 overflow-y-auto space-y-6 text-gray-900 dark:text-gray-100">
+        <div className="flex-1 overflow-y-auto px-6 py-4 custom-scrollbar">
 
-            {/* Sort Section */}
-            {!hiddenFilters.includes('sort') && (
-            <div className="space-y-2">
-                <label className="block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
-                  Sort By
-                </label>
-                <select
-                  value={currentFilters.sort}
-                  onChange={(e) => onFilterChange({ sort: e.target.value })}
-                  className="w-full p-2 text-sm border rounded-md bg-white dark:bg-[#252535] border-gray-200 dark:border-[#2d2d3b] focus:ring-2 focus:ring-primary/20 focus:border-primary text-gray-900 dark:text-white"
-                >
-                  <option value="default">Default</option>
-                  <option value="year_desc">Year (Newest First)</option>
-                  <option value="year_asc">Year (Oldest First)</option>
-                  <option value="freq_asc">Frequency (Low to High)</option>
-                  <option value="freq_desc">Frequency (High to Low)</option>
-                </select>
+          {/* Quick Filters - Top Section */}
+          <div className="mb-6">
+            <div className="flex flex-wrap gap-2">
+              <FilterChip
+                label="Has Image"
+                active={currentFilters.hasImage === true}
+                onClick={() => onFilterChange({ hasImage: currentFilters.hasImage === true ? 'ignore' : true })}
+              />
+              <FilterChip
+                label="Has Solution"
+                active={currentFilters.hasSolution === true}
+                onClick={() => onFilterChange({ hasSolution: currentFilters.hasSolution === true ? 'ignore' : true })}
+              />
+              <FilterChip
+                label="Selected Only"
+                active={currentFilters.isSelected}
+                onClick={() => onFilterChange({ isSelected: !currentFilters.isSelected })}
+              />
+              <FilterChip
+                label="No Solution"
+                active={currentFilters.hasSolution === false}
+                onClick={() => onFilterChange({ hasSolution: currentFilters.hasSolution === false ? 'ignore' : false })}
+              />
             </div>
-            )}
+          </div>
 
-            {/* Difficulty Filter */}
-            {!hiddenFilters.includes('difficulty') && (
-            <div className="space-y-2">
-                <label className="block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
-                  Difficulty
-                </label>
-                <div className="grid grid-cols-4 gap-2">
-                  {['all', 'E', 'M', 'H'].map(opt => (
-                    <button
-                      key={opt}
-                      onClick={() => onFilterChange({ difficulty: opt })}
-                      className={`px-3 py-1.5 text-sm rounded-md border transition-colors ${
-                        currentFilters.difficulty === opt
-                          ? 'bg-primary/10 border-primary text-primary font-semibold'
-                          : 'bg-transparent border-gray-200 dark:border-[#2d2d3b] hover:border-gray-400 dark:hover:border-gray-500 text-gray-700 dark:text-gray-300'
+          {!hiddenFilters.includes('sort') && (
+            <div className="mb-6">
+              <label className="block text-xs font-bold uppercase text-gray-500 dark:text-gray-400 mb-2">Sort By</label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { val: 'default', label: 'Default' },
+                  { val: 'year_desc', label: 'Newest First' },
+                  { val: 'year_asc', label: 'Oldest First' },
+                  { val: 'freq_desc', label: 'Most Frequent' },
+                  { val: 'freq_asc', label: 'Least Frequent' },
+                  { val: 'created_desc', label: 'Recently Added' },
+                ].map(opt => (
+                  <button
+                    key={opt.val}
+                    onClick={() => onFilterChange({ sort: opt.val })}
+                    className={`px-3 py-2 text-sm rounded-lg flex items-center gap-2 border transition-all ${currentFilters.sort === opt.val
+                        ? 'bg-primary/5 border-primary text-primary font-bold shadow-sm ring-1 ring-primary/20'
+                        : 'bg-white dark:bg-[#252535] border-gray-200 dark:border-[#2d2d3b] text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#2a2a3c]'
                       }`}
+                  >
+                    <span className="material-symbols-outlined text-lg">
+                      {opt.val.includes('year') ? 'calendar_month' : opt.val.includes('freq') ? 'bar_chart' : opt.val.includes('created') ? 'history' : 'sort'}
+                    </span>
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <SectionHeader title="Classification" icon="category" />
+
+          <div className="space-y-4">
+            {/* Type & Year Group */}
+            <div className="grid grid-cols-2 gap-4">
+              {!hiddenFilters.includes('type') && (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-gray-600 dark:text-gray-300">Type</label>
+                  <select
+                    value={currentFilters.type}
+                    onChange={(e) => onFilterChange({ type: e.target.value })}
+                    className="w-full p-2.5 text-sm bg-gray-50 dark:bg-[#252535] border border-gray-200 dark:border-[#2d2d3b] rounded-lg focus:ring-2 focus:ring-primary/50 outline-none transition-all dark:text-white"
+                  >
+                    <option value="all">Any Type</option>
+                    {availableTypes.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+              )}
+              {!hiddenFilters.includes('year') && (
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-gray-600 dark:text-gray-300">Year</label>
+                  <select
+                    value={currentFilters.year}
+                    onChange={(e) => onFilterChange({ year: e.target.value })}
+                    className="w-full p-2.5 text-sm bg-gray-50 dark:bg-[#252535] border border-gray-200 dark:border-[#2d2d3b] rounded-lg focus:ring-2 focus:ring-primary/50 outline-none transition-all dark:text-white"
+                  >
+                    <option value="all">Any Year</option>
+                    {availableYears.map(y => <option key={y} value={y}>{y}</option>)}
+                  </select>
+                </div>
+              )}
+            </div>
+
+            {/* Chapter */}
+            {!hiddenFilters.includes('chapter') && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-gray-600 dark:text-gray-300">Chapter</label>
+                <select
+                  value={currentFilters.chapter}
+                  onChange={(e) => onFilterChange({ chapter: e.target.value })}
+                  className="w-full p-2.5 text-sm bg-gray-50 dark:bg-[#252535] border border-gray-200 dark:border-[#2d2d3b] rounded-lg focus:ring-2 focus:ring-primary/50 outline-none transition-all dark:text-white font-medium"
+                >
+                  <option value="all">All Chapters</option>
+                  {chapters.map(ch => (
+                    <option key={ch.code} value={ch.code}>{ch.code} - {ch.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+
+
+          <SectionHeader title="Complexity" icon="psychology" />
+
+          <div className="space-y-4">
+            {/* Difficulty */}
+            {!hiddenFilters.includes('difficulty') && (
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-gray-600 dark:text-gray-300">Difficulty Level</label>
+                <div className="flex rounded-lg overflow-hidden border border-gray-200 dark:border-[#2d2d3b]">
+                  {['all', 'E', 'M', 'H'].map((d, idx) => (
+                    <button
+                      key={d}
+                      onClick={() => onFilterChange({ difficulty: d })}
+                      className={`flex-1 py-2 text-sm font-medium transition-colors ${currentFilters.difficulty === d
+                          ? 'bg-primary text-white'
+                          : 'bg-gray-50 dark:bg-[#252535] text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-[#2a2a3c]'
+                        } ${idx !== 3 ? 'border-r border-gray-200 dark:border-[#2d2d3b]' : ''}`}
                     >
-                      {opt === 'all' ? 'All' : opt === 'E' ? 'Easy' : opt === 'M' ? 'Medium' : 'Hard'}
+                      {d === 'all' ? 'Any' : d === 'E' ? 'Easy' : d === 'M' ? 'Medium' : 'Hard'}
                     </button>
                   ))}
                 </div>
-            </div>
+              </div>
             )}
 
-            {/* Division Filter */}
+            {/* Division */}
             {!hiddenFilters.includes('division') && (
-            <div className="space-y-2">
-                <label className="block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
-                  Division
-                </label>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-gray-600 dark:text-gray-300">Division</label>
                 <div className="grid grid-cols-3 gap-2">
                   {[
-                      { val: 'all', label: 'All' },
-                      { val: '1', label: 'Div 1 (MCQ)' },
-                      { val: '2', label: 'Div 2 (Num)' }
+                    { val: 'all', label: 'Any', icon: 'apps' },
+                    { val: '1', label: 'Div 1 (MCQ)', icon: 'check_circle' },
+                    { val: '2', label: 'Div 2 (Num)', icon: '123' }
                   ].map(opt => (
                     <button
                       key={opt.val}
                       onClick={() => onFilterChange({ division: opt.val })}
-                      className={`px-3 py-1.5 text-sm rounded-md border transition-colors ${
-                        currentFilters.division === opt.val
-                          ? 'bg-primary/10 border-primary text-primary font-semibold'
-                          : 'bg-transparent border-gray-200 dark:border-[#2d2d3b] hover:border-gray-400 dark:hover:border-gray-500 text-gray-700 dark:text-gray-300'
-                      }`}
+                      className={`flex flex-col items-center justify-center py-2 px-1 rounded-lg border transition-all ${currentFilters.division === opt.val
+                          ? 'bg-primary/5 border-primary text-primary'
+                          : 'bg-white dark:bg-[#252535] border-gray-200 dark:border-[#2d2d3b] text-gray-500 hover:border-gray-300'
+                        }`}
                     >
-                      {opt.label}
+                      <span className={`material-symbols-outlined text-lg mb-1 ${currentFilters.division === opt.val ? 'text-primary' : 'text-gray-400'}`}>{opt.icon}</span>
+                      <span className="text-[10px] font-bold uppercase">{opt.label}</span>
                     </button>
                   ))}
                 </div>
-            </div>
+              </div>
             )}
+          </div>
 
-            {/* Verification Level 1 Filter */}
+          <SectionHeader title="Verification Status" icon="verified" />
+
+          <div className="space-y-4">
             {!hiddenFilters.includes('verificationLevel1') && (
-            <div className="space-y-2">
-                <label className="block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
-                  Verification Level 1
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {['all', 'pending', 'approved', 'rejected'].map(status => (
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-2">Level 1 (Subject Matter)</label>
+                <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+                  {['all', 'pending', 'approved', 'rejected'].map(s => (
                     <button
-                      key={status}
-                      onClick={() => onFilterChange({ verificationLevel1: status })}
-                      className={`px-3 py-1.5 text-sm rounded-md border transition-colors ${
-                        (currentFilters.verificationLevel1 || 'all') === status
-                          ? 'bg-primary/10 border-primary text-primary font-semibold'
-                          : 'bg-transparent border-gray-200 dark:border-[#2d2d3b] hover:border-gray-400 dark:hover:border-gray-500 text-gray-700 dark:text-gray-300'
-                      }`}
+                      key={s}
+                      onClick={() => onFilterChange({ verificationLevel1: s })}
+                      className={`whitespace-nowrap px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-wider border transition-all ${(currentFilters.verificationLevel1 || 'all') === s
+                          ? s === 'approved' ? 'bg-green-100 text-green-700 border-green-200' : s === 'rejected' ? 'bg-red-100 text-red-700 border-red-200' : 'bg-primary/10 text-primary border-primary'
+                          : 'bg-white dark:bg-[#252535] text-gray-500 border-gray-200 dark:border-[#2d2d3b]'
+                        }`}
                     >
-                      {status.charAt(0).toUpperCase() + status.slice(1)}
+                      {s}
                     </button>
                   ))}
                 </div>
-            </div>
+              </div>
             )}
-
-            {/* Verification Level 2 Filter */}
             {!hiddenFilters.includes('verificationLevel2') && (
-            <div className="space-y-2">
-                <label className="block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
-                  Verification Level 2
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {['all', 'pending', 'approved', 'rejected'].map(status => (
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 dark:text-gray-300 mb-2">Level 2 (Data Entry)</label>
+                <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+                  {['all', 'pending', 'approved', 'rejected'].map(s => (
                     <button
-                      key={status}
-                      onClick={() => onFilterChange({ verificationLevel2: status })}
-                      className={`px-3 py-1.5 text-sm rounded-md border transition-colors ${
-                        (currentFilters.verificationLevel2 || 'all') === status
-                          ? 'bg-primary/10 border-primary text-primary font-semibold'
-                          : 'bg-transparent border-gray-200 dark:border-[#2d2d3b] hover:border-gray-400 dark:hover:border-gray-500 text-gray-700 dark:text-gray-300'
-                      }`}
+                      key={s}
+                      onClick={() => onFilterChange({ verificationLevel2: s })}
+                      className={`whitespace-nowrap px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-wider border transition-all ${(currentFilters.verificationLevel2 || 'all') === s
+                          ? s === 'approved' ? 'bg-green-100 text-green-700 border-green-200' : s === 'rejected' ? 'bg-red-100 text-red-700 border-red-200' : 'bg-primary/10 text-primary border-primary'
+                          : 'bg-white dark:bg-[#252535] text-gray-500 border-gray-200 dark:border-[#2d2d3b]'
+                        }`}
                     >
-                      {status.charAt(0).toUpperCase() + status.slice(1)}
+                      {s}
                     </button>
                   ))}
                 </div>
-            </div>
+              </div>
             )}
+          </div>
 
-            {/* Show Selected Only Filter */}
-            {!hiddenFilters.includes('selectedOnly') && (
-            <div className="space-y-2">
-                <label className="block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
-                  Selection Filter
-                </label>
-                <button
-                  onClick={() => onFilterChange({ selectedOnly: !currentFilters.selectedOnly })}
-                  className={`w-full px-4 py-2.5 text-sm rounded-md border transition-colors flex items-center justify-between ${
-                    currentFilters.selectedOnly
-                      ? 'bg-primary/10 border-primary text-primary font-semibold'
-                      : 'bg-transparent border-gray-200 dark:border-[#2d2d3b] hover:border-gray-400 dark:hover:border-gray-500 text-gray-700 dark:text-gray-300'
-                  }`}
-                >
-                  <span className="flex items-center gap-2">
-                    <span className="material-symbols-outlined text-base">
-                      {currentFilters.selectedOnly ? 'check_box' : 'check_box_outline_blank'}
-                    </span>
-                    Show Only Selected Questions
-                  </span>
-                </button>
-            </div>
-            )}
-
-            {/* Type Filter */}
-            {!hiddenFilters.includes('type') && (
-            <div className="space-y-2">
-                <label className="block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
-                  Type
-                </label>
-                <select
-                  value={currentFilters.type}
-                  onChange={(e) => onFilterChange({ type: e.target.value })}
-                  className="w-full p-2 text-sm border rounded-md bg-white dark:bg-[#252535] border-gray-200 dark:border-[#2d2d3b] focus:ring-2 focus:ring-primary/20 focus:border-primary text-gray-900 dark:text-white"
-                >
-                  <option value="all">All Types</option>
-                  {availableTypes.map(type => (
-                      <option key={type} value={type}>{type}</option>
-                  ))}
-                </select>
-            </div>
-            )}
-
-            {/* Year Filter */}
-            {!hiddenFilters.includes('year') && (
-            <div className="space-y-2">
-                <label className="block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
-                  Year
-                </label>
-                <select
-                  value={currentFilters.year}
-                  onChange={(e) => onFilterChange({ year: e.target.value })}
-                  className="w-full p-2 text-sm border rounded-md bg-white dark:bg-[#252535] border-gray-200 dark:border-[#2d2d3b] focus:ring-2 focus:ring-primary/20 focus:border-primary text-gray-900 dark:text-white"
-                >
-                  <option value="all">All Years</option>
-                  {availableYears.map(year => (
-                      <option key={year} value={year}>{year}</option>
-                  ))}
-                </select>
-            </div>
-            )}
-
-            {/* Chapter Filter */}
-            {!hiddenFilters.includes('chapter') && (
-            <div className="space-y-2">
-                <label className="block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
-                  Chapter
-                </label>
-                <select
-                  value={currentFilters.chapter}
-                  onChange={(e) => onFilterChange({ chapter: e.target.value })}
-                  className="w-full p-2 text-sm border rounded-md bg-white dark:bg-[#252535] border-gray-200 dark:border-[#2d2d3b] focus:ring-2 focus:ring-primary/20 focus:border-primary text-gray-900 dark:text-white"
-                >
-                  <option value="all">All Chapters</option>
-                  {chapters.map(ch => (
-                      <option key={ch.code} value={ch.code}>
-                      {ch.code} - {ch.name}
-                      </option>
-                  ))}
-                </select>
-            </div>
-            )}
-
-            {/* Tags Filter */}
-            {!hiddenFilters.includes('tag1') && !hiddenFilters.includes('tag4') && (
-            <div className="space-y-2">
-                <label className="block text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">
-                  Additional Tags
-                </label>
-                <div className="space-y-3">
-                    {!hiddenFilters.includes('tag1') && (
-                    <input
-                        type="text"
-                        placeholder="Tag 1 (e.g. Topic)"
-                        value={currentFilters.tag1}
-                        onChange={(e) => onFilterChange({ tag1: e.target.value })}
-                        className="w-full p-2 text-sm border rounded-md bg-white dark:bg-[#252535] border-gray-200 dark:border-[#2d2d3b] focus:ring-2 focus:ring-primary/20 focus:border-primary text-gray-900 dark:text-white"
-                    />
-                    )}
-                    {!hiddenFilters.includes('tag4') && (
-                    <input
-                        type="text"
-                        placeholder="Tag 4 (e.g. Sub-topic)"
-                        value={currentFilters.tag4}
-                        onChange={(e) => onFilterChange({ tag4: e.target.value })}
-                        className="w-full p-2 text-sm border rounded-md bg-white dark:bg-[#252535] border-gray-200 dark:border-[#2d2d3b] focus:ring-2 focus:ring-primary/20 focus:border-primary text-gray-900 dark:text-white"
-                    />
-                    )}
-                </div>
-            </div>
-            )}
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 p-4 border-t border-gray-200 dark:border-[#2d2d3b] bg-gray-50 dark:bg-[#252535]">
-             {activeFilterCount > 0 && (
-                <button
-                    onClick={resetFilters}
-                    className="px-4 py-2 text-sm font-semibold transition-colors border rounded-md text-gray-600 dark:text-gray-400 border-gray-200 dark:border-[#2d2d3b] hover:bg-black/5 dark:hover:bg-white/5"
-                >
-                    Clear All
-                </button>
-            )}
-            <button
-                className="px-6 py-2 text-sm font-bold text-white transition-all bg-primary rounded-md shadow-md shadow-primary/20 hover:shadow-lg hover:shadow-primary/30 hover:bg-primary/90"
-                onClick={() => setIsOpen(false)}
-            >
-                Done
-            </button>
+        <div className="flex-shrink-0 p-5 border-t border-gray-100 dark:border-[#2d2d3b] bg-gray-50/50 dark:bg-[#1e1e2d] backdrop-blur-sm flex justify-between items-center z-10">
+          <button
+            onClick={onReset}
+            className="text-sm font-semibold text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 px-4 py-2 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors"
+          >
+            Reset Defaults
+          </button>
+          <button
+            onClick={() => setIsOpen(false)}
+            className="bg-primary text-white text-sm font-bold px-8 py-2.5 rounded-lg shadow-lg shadow-primary/30 hover:shadow-primary/50 hover:bg-primary/90 transform active:scale-95 transition-all"
+          >
+            View Results
+          </button>
         </div>
       </div>
     </div>
@@ -353,17 +337,16 @@ const FilterMenu: React.FC<FilterMenuProps> = ({
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className={`flex items-center gap-2 px-4 py-2 border rounded-full transition-all whitespace-nowrap ${
-          activeFilterCount > 0
-            ? 'bg-primary/10 border-primary text-primary font-semibold'
-            : 'bg-white dark:bg-[#252535] border-gray-200 dark:border-[#2d2d3b] text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#2a2a3c]'
-        }`}
+        className={`relative flex items-center gap-2 px-4 py-2 border rounded-full transition-all group ${activeCount > 0
+            ? 'bg-primary/10 border-primary/30 text-primary'
+            : 'bg-white dark:bg-[#252535] border-gray-200 dark:border-[#2d2d3b] text-gray-600 dark:text-gray-300 hover:border-primary/50 hover:text-primary'
+          }`}
       >
-        <span className="material-symbols-outlined text-[20px]">filter_list</span>
-        <span>Filters</span>
-        {activeFilterCount > 0 && (
-          <span className="flex items-center justify-center w-5 h-5 ml-1 text-xs text-white rounded-full bg-primary">
-            {activeFilterCount}
+        <span className="material-symbols-outlined text-[20px] transition-transform group-hover:scale-110">tune</span>
+        <span className="text-sm font-semibold">Filters</span>
+        {activeCount > 0 && (
+          <span className="flex items-center justify-center size-5 text-[10px] font-bold text-white rounded-full bg-primary shadow-sm">
+            {activeCount}
           </span>
         )}
       </button>

@@ -16,47 +16,41 @@ export interface ExamTableStatus {
 }
 
 // Cache for available tables to avoid repeated queries
-let cachedTablesInfo: { hasLegacy: boolean; firstExamWithQuestions?: ExamType } | null = null;
+let cachedTablesInfo: { firstExamWithQuestions?: ExamType } | null = null;
 let cachedDbPath: string | null = null;
 
 /**
  * Get the questions table name for an exam type
- * Falls back to 'questions' if no exam specified (legacy support)
- * If legacy 'questions' table doesn't exist, uses first available exam table
+ * Requires exam type - no legacy fallback
  */
 export function getQuestionsTable(exam?: ExamType): string {
   if (exam) return `${exam.toLowerCase()}_questions`;
 
-  // If no exam specified, check cached table info for auto-fallback
-  if (cachedTablesInfo) {
-    if (cachedTablesInfo.hasLegacy) return 'questions';
-    if (cachedTablesInfo.firstExamWithQuestions) {
-      return `${cachedTablesInfo.firstExamWithQuestions.toLowerCase()}_questions`;
-    }
+  // If no exam specified, use first available exam table
+  if (cachedTablesInfo?.firstExamWithQuestions) {
+    return `${cachedTablesInfo.firstExamWithQuestions.toLowerCase()}_questions`;
   }
 
-  // Default to legacy table (will be checked at connect time)
-  return 'questions';
+  // Default to JEE if no tables detected yet
+  console.warn('[DB] getQuestionsTable called without exam, defaulting to jee_questions');
+  return 'jee_questions';
 }
 
 /**
  * Get the solutions table name for an exam type
- * Falls back to 'solutions' if no exam specified (legacy support)
- * If legacy 'solutions' table doesn't exist, uses first available exam table
+ * Requires exam type - no legacy fallback
  */
 export function getSolutionsTable(exam?: ExamType): string {
   if (exam) return `${exam.toLowerCase()}_solutions`;
 
-  // If no exam specified, check cached table info for auto-fallback
-  if (cachedTablesInfo) {
-    if (cachedTablesInfo.hasLegacy) return 'solutions';
-    if (cachedTablesInfo.firstExamWithQuestions) {
-      return `${cachedTablesInfo.firstExamWithQuestions.toLowerCase()}_solutions`;
-    }
+  // If no exam specified, use first available exam table
+  if (cachedTablesInfo?.firstExamWithQuestions) {
+    return `${cachedTablesInfo.firstExamWithQuestions.toLowerCase()}_solutions`;
   }
 
-  // Default to legacy table
-  return 'solutions';
+  // Default to JEE if no tables detected yet
+  console.warn('[DB] getSolutionsTable called without exam, defaulting to jee_solutions');
+  return 'jee_solutions';
 }
 
 /**
@@ -127,9 +121,6 @@ export class DatabaseService {
 
       const tableNames = new Set(tables.map(t => t.name.toLowerCase()));
 
-      // Check for legacy 'questions' table
-      const hasLegacy = tableNames.has('questions');
-
       // Find first exam with a questions table
       let firstExamWithQuestions: ExamType | undefined;
       for (const exam of SUPPORTED_EXAMS) {
@@ -139,16 +130,16 @@ export class DatabaseService {
         }
       }
 
-      cachedTablesInfo = { hasLegacy, firstExamWithQuestions };
+      cachedTablesInfo = { firstExamWithQuestions };
       cachedDbPath = this.dbPath || null;
 
       console.log('[DB] Table detection:', cachedTablesInfo);
-      if (!hasLegacy && firstExamWithQuestions) {
-        console.log(`[DB] No legacy 'questions' table found. Will use '${firstExamWithQuestions.toLowerCase()}_questions' as default.`);
+      if (firstExamWithQuestions) {
+        console.log(`[DB] First available exam table: ${firstExamWithQuestions.toLowerCase()}_questions`);
       }
     } catch (error) {
       console.error('[DB] Error detecting tables:', error);
-      cachedTablesInfo = { hasLegacy: true }; // Default to legacy on error
+      cachedTablesInfo = { firstExamWithQuestions: 'JEE' }; // Default to JEE on error
     }
   }
 
@@ -161,26 +152,36 @@ export class DatabaseService {
   findQuestionTable(uuid: string): { table: string, exam: ExamType } | null {
     if (!this.db) return null;
 
+    console.log(`[DB] findQuestionTable: Looking for UUID "${uuid}" (length: ${uuid.length})`);
+
     for (const exam of SUPPORTED_EXAMS) {
       try {
         const table = `${exam.toLowerCase()}_questions`;
-        // fast check
-        const stmt = this.db.prepare(`SELECT 1 FROM ${table} WHERE uuid = ? `);
-        if (stmt.get(uuid)) {
+
+        // Exact match
+        const stmt = this.db.prepare(`SELECT 1 FROM ${table} WHERE uuid = ?`);
+        const result = stmt.get(uuid);
+
+        if (result) {
+          console.log(`[DB] findQuestionTable: ${table} -> FOUND (exact match)`);
           return { table, exam };
         }
+
+        // Check for partial match (if UUID is truncated)
+        const likeStmt = this.db.prepare(`SELECT uuid FROM ${table} WHERE uuid LIKE ? LIMIT 1`);
+        const likeResult = likeStmt.get(`%${uuid}%`) as { uuid: string } | undefined;
+
+        if (likeResult) {
+          console.log(`[DB] findQuestionTable: ${table} -> PARTIAL MATCH! DB has: "${likeResult.uuid}"`);
+          // Use the full UUID from the database
+          return { table, exam };
+        }
+
+        console.log(`[DB] findQuestionTable: ${table} -> not found`);
       } catch (e) {
-        // Table might not exist, ignore
+        console.log(`[DB] findQuestionTable: ${exam.toLowerCase()}_questions table error`, e);
       }
     }
-
-    // Check legacy 'questions' table last
-    try {
-      const stmt = this.db.prepare(`SELECT 1 FROM questions WHERE uuid = ? `);
-      if (stmt.get(uuid)) {
-        return { table: 'questions', exam: 'JEE' }; // Legacy usually maps to JEE default
-      }
-    } catch (e) { }
 
     return null;
   }
@@ -208,9 +209,8 @@ export class DatabaseService {
       'division_override': "INTEGER"  // null = auto-detect, 1 = force Div1, 2 = force Div2
     };
 
-    // List of all possible question tables to check
+    // List of all possible question tables to check (exam-specific only)
     const tablesToCheck = [
-      'questions',           // Legacy table
       'jee_questions',       // JEE exam table
       'neet_questions',      // NEET exam table
       'bits_questions'       // BITS exam table
@@ -256,6 +256,8 @@ export class DatabaseService {
 
   createSolutionTable(): void {
     if (!this.db) return;
+
+    // Create legacy solutions table (for backwards compatibility)
     try {
       this.db.exec(`
         CREATE TABLE IF NOT EXISTS solutions(
@@ -265,9 +267,86 @@ export class DatabaseService {
     FOREIGN KEY(uuid) REFERENCES questions(uuid) ON DELETE CASCADE
   );
 `);
-      console.log('Solutions table checked/created');
+      console.log('[DB] Legacy solutions table checked/created');
     } catch (error) {
-      console.error('Error creating solutions table:', error);
+      console.error('[DB] Error creating legacy solutions table:', error);
+    }
+
+    // Create exam-specific solutions tables
+    const examTables = ['jee', 'neet', 'bits'];
+    for (const exam of examTables) {
+      try {
+        const questionsTable = `${exam}_questions`;
+        const solutionsTable = `${exam}_solutions`;
+
+        // Check if the corresponding questions table exists first
+        const tableInfo = this.db.pragma(`table_info(${questionsTable})`) as any[];
+        if (tableInfo.length === 0) {
+          // Questions table doesn't exist, skip creating solutions table
+          continue;
+        }
+
+        // Check if solutions table already exists
+        const solutionsTableInfo = this.db.pragma(`table_info(${solutionsTable})`) as any[];
+
+        if (solutionsTableInfo.length > 0) {
+          // Table exists - check if FK constraint is correct
+          const fkInfo = this.db.pragma(`foreign_key_list(${solutionsTable})`) as any[];
+          const hasCorrectFK = fkInfo.some((fk: any) => fk.table === questionsTable);
+
+          if (!hasCorrectFK) {
+            console.log(`[DB] ${solutionsTable} has incorrect FK, recreating with correct FK to ${questionsTable}...`);
+
+            // Backup existing data
+            const existingData = this.db.prepare(`SELECT * FROM ${solutionsTable}`).all();
+            console.log(`[DB] Backing up ${existingData.length} solutions from ${solutionsTable}`);
+
+            // Drop and recreate with correct FK
+            this.db.exec(`DROP TABLE ${solutionsTable}`);
+            this.db.exec(`
+              CREATE TABLE ${solutionsTable}(
+          uuid TEXT PRIMARY KEY,
+          solution_text TEXT,
+          solution_image_url TEXT,
+          FOREIGN KEY(uuid) REFERENCES ${questionsTable}(uuid) ON DELETE CASCADE
+        );
+      `);
+
+            // Restore data (only for UUIDs that exist in the correct questions table)
+            if (existingData.length > 0) {
+              const insertStmt = this.db.prepare(`
+                INSERT OR IGNORE INTO ${solutionsTable} (uuid, solution_text, solution_image_url)
+                SELECT ?, ?, ?
+                WHERE EXISTS (SELECT 1 FROM ${questionsTable} WHERE uuid = ?)
+              `);
+
+              let restored = 0;
+              for (const row of existingData as any[]) {
+                const result = insertStmt.run(row.uuid, row.solution_text, row.solution_image_url, row.uuid);
+                if (result.changes > 0) restored++;
+              }
+              console.log(`[DB] Restored ${restored}/${existingData.length} solutions to ${solutionsTable}`);
+            }
+
+            console.log(`[DB] ${solutionsTable} recreated with correct FK to ${questionsTable}`);
+          } else {
+            console.log(`[DB] ${solutionsTable} already has correct FK constraint`);
+          }
+        } else {
+          // Create new table
+          this.db.exec(`
+            CREATE TABLE IF NOT EXISTS ${solutionsTable}(
+        uuid TEXT PRIMARY KEY,
+        solution_text TEXT,
+        solution_image_url TEXT,
+        FOREIGN KEY(uuid) REFERENCES ${questionsTable}(uuid) ON DELETE CASCADE
+      );
+    `);
+          console.log(`[DB] ${solutionsTable} table created`);
+        }
+      } catch (error) {
+        console.error(`[DB] Error creating/migrating ${exam}_solutions table:`, error);
+      }
     }
   }
 
@@ -597,11 +676,14 @@ export class DatabaseService {
 
   /**
    * Get all unique values for a column
+   * @param column - Column name to get unique values from
+   * @param exam - Optional exam type to query from specific exam table
    */
-  getUniqueValues(column: string): string[] {
+  getUniqueValues(column: string, exam?: ExamType): string[] {
     if (!this.db) throw new Error('Database not connected');
 
-    const stmt = this.db.prepare(`SELECT DISTINCT ${column} FROM questions WHERE ${column} IS NOT NULL ORDER BY ${column} `);
+    const table = getQuestionsTable(exam);
+    const stmt = this.db.prepare(`SELECT DISTINCT ${column} FROM ${table} WHERE ${column} IS NOT NULL ORDER BY ${column} `);
     const results = stmt.all() as any[];
     return results.map(row => row[column]);
   }
@@ -742,28 +824,6 @@ export class DatabaseService {
 
 
 
-    // Fallback: If no exam-specific tables had data, check for legacy 'questions' table
-    if (total === 0) {
-      try {
-        // Check if legacy 'questions' table exists
-        const tableCheck = this.db.prepare(
-          "SELECT name FROM sqlite_master WHERE type='table' AND name='questions'"
-        ).get();
-
-        if (tableCheck) {
-          const stmt = this.db.prepare(`SELECT COUNT(*) as count FROM questions`);
-          const result = stmt.get() as { count: number };
-          if (result.count > 0) {
-            breakdown.push({ exam: 'Legacy', count: result.count });
-            total = result.count;
-            console.log('[DB] Using legacy questions table, count:', result.count);
-          }
-        }
-      } catch (error) {
-        console.error('[DB] Error counting legacy questions:', error);
-      }
-    }
-
     console.log('[DB] All exam counts:', { total, breakdown });
     return { total, breakdown };
   }
@@ -813,6 +873,7 @@ export class DatabaseService {
   /**
    * Increment the frequency of a question by 1
    * If frequency is NULL, set it to 1
+   * Auto-detects exam table if not provided
    * @param uuid - Question UUID
    * @param exam - Optional exam type to update in specific exam table
    */
@@ -820,7 +881,17 @@ export class DatabaseService {
     if (!this.db) throw new Error('Database not connected');
 
     try {
-      const table = getQuestionsTable(exam);
+      let table = getQuestionsTable(exam);
+
+      // Auto-detect table if exam type is not provided
+      if (!exam) {
+        const found = this.findQuestionTable(uuid);
+        if (found) {
+          table = found.table;
+          console.log(`[DB] Auto-detected table '${table}' for frequency update on ${uuid}`);
+        }
+      }
+
       const stmt = this.db.prepare(`
         UPDATE ${table}
         SET frequency = COALESCE(frequency, 0) + 1,
@@ -828,10 +899,10 @@ export class DatabaseService {
         WHERE uuid = ?
   `);
       const result = stmt.run(uuid);
-      console.log(`[DB] Incremented frequency for question ${uuid} in ${table}, changes: ${result.changes} `);
+      console.log(`[DB] Incremented frequency for question ${uuid} in ${table}, changes: ${result.changes}`);
       return result.changes > 0;
     } catch (error) {
-      console.error(`[DB] Error incrementing frequency for ${uuid}: `, error);
+      console.error(`[DB] Error incrementing frequency for ${uuid}:`, error);
       return false;
     }
   }
@@ -883,6 +954,7 @@ export class DatabaseService {
   /**
    * Decrement the frequency of a question by 1
    * Ensures frequency doesn't go below 0
+   * Auto-detects exam table if not provided
    * @param uuid - Question UUID
    * @param exam - Optional exam type to update in specific exam table
    */
@@ -890,7 +962,17 @@ export class DatabaseService {
     if (!this.db) throw new Error('Database not connected');
 
     try {
-      const table = getQuestionsTable(exam);
+      let table = getQuestionsTable(exam);
+
+      // Auto-detect table if exam type is not provided
+      if (!exam) {
+        const found = this.findQuestionTable(uuid);
+        if (found) {
+          table = found.table;
+          console.log(`[DB] Auto-detected table '${table}' for frequency decrement on ${uuid}`);
+        }
+      }
+
       const stmt = this.db.prepare(`
         UPDATE ${table}
         SET frequency = MAX(COALESCE(frequency, 0) - 1, 0),
@@ -898,11 +980,54 @@ export class DatabaseService {
         WHERE uuid = ?
   `);
       const result = stmt.run(uuid);
-      console.log(`[DB] Decremented frequency for question ${uuid} in ${table}, changes: ${result.changes} `);
+      console.log(`[DB] Decremented frequency for question ${uuid} in ${table}, changes: ${result.changes}`);
       return result.changes > 0;
     } catch (error) {
-      console.error(`[DB] Error decrementing frequency for ${uuid}: `, error);
+      console.error(`[DB] Error decrementing frequency for ${uuid}:`, error);
       return false;
+    }
+  }
+
+  /**
+   * Batch update frequencies for multiple questions
+   * Professional-grade method for efficient bulk updates
+   * @param uuids - Array of question UUIDs to update
+   * @param delta - Amount to change frequency (positive to increment, negative to decrement)
+   * @param exam - Exam type for the questions (all must be from same exam)
+   */
+  batchUpdateFrequencies(uuids: string[], delta: number, exam: ExamType): { success: boolean; updatedCount: number } {
+    if (!this.db) throw new Error('Database not connected');
+
+    if (uuids.length === 0) {
+      return { success: true, updatedCount: 0 };
+    }
+
+    try {
+      const table = getQuestionsTable(exam);
+      let updatedCount = 0;
+
+      // Use transaction for atomicity and performance
+      const updateStmt = this.db.prepare(`
+        UPDATE ${table}
+        SET frequency = MAX(COALESCE(frequency, 0) + ?, 0),
+            updated_at = CURRENT_TIMESTAMP
+        WHERE uuid = ?
+      `);
+
+      const transaction = this.db.transaction((uuidList: string[]) => {
+        for (const uuid of uuidList) {
+          const result = updateStmt.run(delta, uuid);
+          if (result.changes > 0) updatedCount++;
+        }
+      });
+
+      transaction(uuids);
+
+      console.log(`[DB] Batch updated frequencies for ${updatedCount}/${uuids.length} questions in ${table}, delta: ${delta}`);
+      return { success: true, updatedCount };
+    } catch (error) {
+      console.error(`[DB] Error batch updating frequencies:`, error);
+      return { success: false, updatedCount: 0 };
     }
   }
 
@@ -1128,14 +1253,41 @@ export class DatabaseService {
 
   /**
    * Get solution by question UUID
+   * 
+   * ARCHITECTURE: Always determines the correct solutions table by looking up
+   * where the question actually exists in the database.
+   * 
    * @param uuid - Question UUID
-   * @param exam - Optional exam type to query from specific exam solutions table
+   * @param exam - Optional exam type hint (used as fallback, not primary lookup)
    */
   getSolution(uuid: string, exam?: ExamType): { uuid: string, solution_text: string, solution_image_url: string } | null {
     if (!this.db) throw new Error('Database not connected');
-    const table = getSolutionsTable(exam);
-    const stmt = this.db.prepare(`SELECT * FROM ${table} WHERE uuid = ? `);
-    return (stmt.get(uuid) as { uuid: string, solution_text: string, solution_image_url: string }) || null;
+
+    // STEP 1: Find where the question actually exists
+    const questionLocation = this.findQuestionTable(uuid);
+
+    if (!questionLocation) {
+      console.log(`[DB] getSolution: Question ${uuid} not found, cannot determine solutions table`);
+      // Fallback: try the passed exam param or default
+      const fallbackTable = getSolutionsTable(exam);
+      try {
+        const stmt = this.db.prepare(`SELECT * FROM ${fallbackTable} WHERE uuid = ?`);
+        return (stmt.get(uuid) as { uuid: string, solution_text: string, solution_image_url: string }) || null;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    // STEP 2: Use the correct solutions table
+    const solutionsTable = `${questionLocation.exam.toLowerCase()}_solutions`;
+
+    try {
+      const stmt = this.db.prepare(`SELECT * FROM ${solutionsTable} WHERE uuid = ?`);
+      return (stmt.get(uuid) as { uuid: string, solution_text: string, solution_image_url: string }) || null;
+    } catch (error) {
+      console.error(`[DB] Error getting solution from ${solutionsTable}:`, error);
+      return null;
+    }
   }
 
   /**
@@ -1196,26 +1348,89 @@ export class DatabaseService {
 
   /**
    * Save solution (insert or update)
+   * 
+   * ARCHITECTURE: Always determines the correct solutions table by looking up
+   * where the question actually exists in the database. This ensures FK constraints
+   * are satisfied regardless of what exam parameter is passed.
+   * 
    * @param uuid - Question UUID
    * @param solutionText - Solution text content
    * @param solutionImageUrl - Solution image URL
-   * @param exam - Optional exam type to save into specific exam solutions table
+   * @param exam - Optional exam type hint (used as fallback, not primary lookup)
    */
   saveSolution(uuid: string, solutionText: string, solutionImageUrl: string, exam?: ExamType): boolean {
     if (!this.db) throw new Error('Database not connected');
+
+    console.log(`[DB] ========== saveSolution START ==========`);
+    console.log(`[DB] UUID: ${uuid}, Exam hint: ${exam}`);
+
     try {
-      const table = getSolutionsTable(exam);
+      // STEP 1: Try to find where the question actually exists
+      let questionLocation = this.findQuestionTable(uuid);
+      let solutionsTable: string;
+
+      if (!questionLocation) {
+        // Question not found in database - use exam hint as fallback
+        // This handles the case where question exists in project state but not in database
+        if (exam && exam !== 'IPQ') {
+          console.log(`[DB] Question ${uuid} not found in DB, using exam hint: ${exam}`);
+          solutionsTable = `${exam.toLowerCase()}_solutions`;
+        } else {
+          console.error(`[DB] FATAL: Question ${uuid} not found and no valid exam hint provided`);
+          console.error(`[DB] Cannot save solution - no matching question exists`);
+          return false;
+        }
+      } else {
+        console.log(`[DB] Question found in: ${questionLocation.table} (exam: ${questionLocation.exam})`);
+        // STEP 2: Determine the correct solutions table based on where question exists
+        solutionsTable = `${questionLocation.exam.toLowerCase()}_solutions`;
+      }
+
+      console.log(`[DB] Target solutions table: ${solutionsTable}`);
+
+      // STEP 3: Ensure the solutions table exists
+      try {
+        const tableExists = this.db.prepare(
+          `SELECT name FROM sqlite_master WHERE type='table' AND name=?`
+        ).get(solutionsTable);
+
+        if (!tableExists) {
+          // Determine the questions table for FK reference
+          const questionsTableForFK = questionLocation
+            ? questionLocation.table
+            : `${exam!.toLowerCase()}_questions`;
+
+          console.log(`[DB] Creating missing solutions table: ${solutionsTable}`);
+          this.db.exec(`
+            CREATE TABLE IF NOT EXISTS ${solutionsTable}(
+              uuid TEXT PRIMARY KEY,
+              solution_text TEXT,
+              solution_image_url TEXT,
+              FOREIGN KEY(uuid) REFERENCES ${questionsTableForFK}(uuid) ON DELETE CASCADE
+            )
+          `);
+        }
+      } catch (tableError) {
+        console.error(`[DB] Error ensuring solutions table exists:`, tableError);
+      }
+
+      // STEP 4: Insert or update the solution
       const stmt = this.db.prepare(`
-            INSERT INTO ${table} (uuid, solution_text, solution_image_url)
-VALUES(?, ?, ?)
-            ON CONFLICT(uuid) DO UPDATE SET
-solution_text = excluded.solution_text,
-  solution_image_url = excluded.solution_image_url
-    `);
+        INSERT INTO ${solutionsTable} (uuid, solution_text, solution_image_url)
+        VALUES (?, ?, ?)
+        ON CONFLICT(uuid) DO UPDATE SET
+          solution_text = excluded.solution_text,
+          solution_image_url = excluded.solution_image_url
+      `);
+
       const result = stmt.run(uuid, solutionText, solutionImageUrl);
+      console.log(`[DB] Solution saved to ${solutionsTable}, changes: ${result.changes}`);
+      console.log(`[DB] ========== saveSolution SUCCESS ==========`);
+
       return result.changes > 0;
     } catch (error) {
-      console.error(`[DB] Error saving solution for ${uuid}: `, error);
+      console.error(`[DB] ========== saveSolution FAILED ==========`);
+      console.error(`[DB] Error saving solution for ${uuid}:`, error);
       return false;
     }
   }
