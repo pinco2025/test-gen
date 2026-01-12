@@ -301,8 +301,8 @@ ipcMain.handle('ipq:createQuestion', async (_, question: Question, parentExam: E
   return dbService.createIPQQuestion(question, parentExam);
 });
 
-ipcMain.handle('ipq:saveSolution', async (_, uuid: string, solutionText: string, solutionImageUrl: string, parentExam: ExamType): Promise<boolean> => {
-  return dbService.saveIPQSolution(uuid, solutionText, solutionImageUrl, parentExam);
+ipcMain.handle('ipq:saveSolution', async (_, uuid: string, solutionText: string, solutionImageUrl: string): Promise<boolean> => {
+  return dbService.saveIPQSolution(uuid, solutionText, solutionImageUrl);
 });
 
 ipcMain.handle('ipq:getQuestions', async (_, parentExam?: ExamType): Promise<Question[]> => {

@@ -17,7 +17,7 @@ interface TestReviewProps {
     onReplaceQuestion: (oldUuid: string, newQuestion: Question) => void;
     initialQuestionUuid?: string | null;
     onNavigationComplete?: () => void;
-    onSwitchQuestion?: (questionUuid: string) => void;
+    onSwitchQuestion?: (question: Question) => void;
 }
 
 const TestReview: React.FC<TestReviewProps> = ({
@@ -25,7 +25,8 @@ const TestReview: React.FC<TestReviewProps> = ({
     onStartEditing,
     onBack,
     onExport,
-    onUpdateQuestionStatus,
+    // onUpdateQuestionStatus can be removed if not used elsewhere, but maybe keep in props interface
+    // onUpdateQuestionStatus, 
     onVerifyQuestion,
     onReplaceQuestion,
     initialQuestionUuid,
@@ -33,7 +34,20 @@ const TestReview: React.FC<TestReviewProps> = ({
     onSwitchQuestion
 }) => {
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
-    const [freshQuestionsMap, setFreshQuestionsMap] = useState<Record<string, Question>>({});
+    // Initialize freshQuestionsMap from sections to preserve verification status on remount
+    const [freshQuestionsMap, setFreshQuestionsMap] = useState<Record<string, Question>>(() => {
+        const initial: Record<string, Question> = {};
+        sections.forEach(s => s.selectedQuestions.forEach(sq => {
+            // Explicitly ensure we use the question from sections
+            initial[sq.question.uuid] = sq.question;
+        }));
+        return initial;
+    });
+    const [solutionsMap, setSolutionsMap] = useState<Record<string, { solution_text: string; solution_image_url: string }>>({});
+
+    // Local overrides for immediate UI feedback (before sections prop updates)
+    const [localVerificationOverrides, setLocalVerificationOverrides] = useState<Record<string, 'approved' | 'rejected' | 'pending'>>({});
+
     const [isAcceptModalOpen, setIsAcceptModalOpen] = useState(false);
     const [isComparisonModalOpen, setIsComparisonModalOpen] = useState(false);
     const [isSwitchModalOpen, setIsSwitchModalOpen] = useState(false);
@@ -53,29 +67,88 @@ const TestReview: React.FC<TestReviewProps> = ({
         solutionFormatting: false
     });
 
-    // Fetch fresh data on mount or when sections change
+    // Fetch fresh data on mount, when sections change, or when returning from editing
     useEffect(() => {
         const fetchFreshData = async () => {
             if (!window.electronAPI) return;
             const allUuids = sections.flatMap(s => s.selectedQuestions.map(sq => sq.question.uuid));
             if (allUuids.length === 0) return;
+            console.log('[TestReview] Fetching fresh data for', allUuids.length, 'questions');
             try {
                 const freshQuestions = await window.electronAPI.questions.getByUUIDs(allUuids);
 
-                // We do NOT need solutions for this view anymore, but we fetch questions
-                const map: Record<string, Question> = {};
-                freshQuestions.forEach(q => {
-                    map[q.uuid] = q;
+                // IMPORTANT: Merge with existing state but PRIORITIZE sections prop verification status
+                setFreshQuestionsMap(prev => {
+                    const map: Record<string, Question> = { ...prev };
+
+                    freshQuestions.forEach(q => {
+                        // Find the authoritative status from the sections prop
+                        // This ensures that even if DB is stale (pending), we keep 'approved' if App state has it
+                        let verificationStatus = q.verification_level_1; // Start with DB status
+
+                        // Check sections prop
+                        for (const section of sections) {
+                            const sq = section.selectedQuestions.find(sq => sq.question.uuid === q.uuid);
+                            if (sq?.question.verification_level_1 === 'approved' || sq?.question.verification_level_1 === 'rejected') {
+                                verificationStatus = sq.question.verification_level_1;
+                                break;
+                            }
+                        }
+
+                        // Also check local overrides (optimistic)
+                        const localOverride = prev[q.uuid]?.verification_level_1;
+                        if (localOverride === 'approved' || localOverride === 'rejected') {
+                            // If previous map had it (maybe from a different source), honor it? 
+                            // Better to trust sections prop mostly.
+                            // But let's stick to the logic: sections > DB
+                        }
+
+                        map[q.uuid] = { ...q, verification_level_1: verificationStatus };
+                    });
+                    return map;
                 });
-                setFreshQuestionsMap(map);
+                console.log('[TestReview] Refreshed freshQuestionsMap');
+
+                // Fetch solutions for all questions
+                const solutionPromises = allUuids.map(async (uuid) => {
+                    try {
+                        // Try to determine examSource from the question
+                        const question = freshQuestions.find(q => q.uuid === uuid) ||
+                            sections.flatMap(s => s.selectedQuestions).find(sq => sq.question.uuid === uuid)?.question;
+                        const examSource = (question as any)?.examSource;
+
+                        if (examSource === 'IPQ') {
+                            const sol = await window.electronAPI.ipq.getSolution(uuid);
+                            return { uuid, solution: sol };
+                        } else {
+                            const sol = await window.electronAPI.questions.getSolution(uuid, examSource);
+                            return { uuid, solution: sol };
+                        }
+                    } catch {
+                        return { uuid, solution: null };
+                    }
+                });
+
+                const solutions = await Promise.all(solutionPromises);
+                const solMap: Record<string, { solution_text: string; solution_image_url: string }> = {};
+                solutions.forEach(({ uuid, solution }) => {
+                    if (solution) {
+                        solMap[uuid] = {
+                            solution_text: solution.solution_text || '',
+                            solution_image_url: solution.solution_image_url || ''
+                        };
+                    }
+                });
+                setSolutionsMap(solMap);
             } catch (error) {
                 console.error('Failed to fetch fresh question data:', error);
             }
         };
         fetchFreshData();
-    }, [sections]);
+    }, [sections, initialQuestionUuid]); // Added initialQuestionUuid to trigger refetch after editing
 
     // Flatten and sort questions
+    // ARCHITECTURE: localVerificationOverrides for immediate UI, sections prop for persistence
     const allQuestions = useMemo(() => {
         const flat: Array<{ sq: SelectedQuestion; sectionIndex: number; absoluteIndex: number }> = [];
         let count = 0;
@@ -83,13 +156,24 @@ const TestReview: React.FC<TestReviewProps> = ({
             const sortedQuestions = sortQuestionsForSection(section.selectedQuestions);
             sortedQuestions.forEach((sq) => {
                 count++;
-                // Use fresh question data if available
-                const freshQuestion = freshQuestionsMap[sq.question.uuid] || sq.question;
-                flat.push({ sq: { ...sq, question: freshQuestion }, sectionIndex: sIdx, absoluteIndex: count });
+                // Merge fresh data from DB with sections prop data
+                const freshData = freshQuestionsMap[sq.question.uuid];
+
+                // PRIORITY: localOverrides > sections prop (for immediate UI feedback)
+                const verificationStatus = localVerificationOverrides[sq.question.uuid]
+                    ?? sq.question.verification_level_1;
+
+                const mergedQuestion = freshData
+                    ? { ...freshData, verification_level_1: verificationStatus }
+                    : { ...sq.question, verification_level_1: verificationStatus };
+
+                const solution = solutionsMap[sq.question.uuid];
+                const questionWithSolution = solution ? { ...mergedQuestion, solution } : mergedQuestion;
+                flat.push({ sq: { ...sq, question: questionWithSolution }, sectionIndex: sIdx, absoluteIndex: count });
             });
         });
         return flat;
-    }, [sections, freshQuestionsMap]);
+    }, [sections, freshQuestionsMap, solutionsMap, localVerificationOverrides]);
 
     // Sync current index if out of bounds
     useEffect(() => {
@@ -128,26 +212,25 @@ const TestReview: React.FC<TestReviewProps> = ({
 
     const confirmAccept = () => {
         if (!currentQuestion) return;
+        // Set local override for immediate UI feedback (still good for instant responsiveness)
+        setLocalVerificationOverrides(prev => ({ ...prev, [currentQuestion.uuid]: 'approved' }));
+
+        // Update parent for persistence
+        // This handles both verification_level_1 AND status='accepted'
         if (onVerifyQuestion) {
             onVerifyQuestion(currentQuestion.uuid, 'approved');
-            setFreshQuestionsMap(prev => ({
-                ...prev,
-                [currentQuestion.uuid]: { ...currentQuestion, verification_level_1: 'approved' }
-            }));
         }
-        onUpdateQuestionStatus(currentQuestion.uuid, 'accepted');
         setIsAcceptModalOpen(false);
         handleNext();
     };
 
     const handleReject = () => {
         if (!currentQuestion) return;
+        // Set local override for immediate UI feedback
+        setLocalVerificationOverrides(prev => ({ ...prev, [currentQuestion.uuid]: 'rejected' }));
+        // Also update parent for persistence
         if (onVerifyQuestion) {
             onVerifyQuestion(currentQuestion.uuid, 'rejected');
-            setFreshQuestionsMap(prev => ({
-                ...prev,
-                [currentQuestion.uuid]: { ...currentQuestion, verification_level_1: 'rejected' }
-            }));
         }
     };
 
@@ -295,12 +378,12 @@ const TestReview: React.FC<TestReviewProps> = ({
                         onClick={onExport}
                         disabled={!canExport}
                         className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${canExport
-                                ? 'bg-primary text-white shadow-lg shadow-primary/20 hover:bg-primary/90'
-                                : 'bg-gray-200 dark:bg-[#252535] text-gray-400 cursor-not-allowed'
+                            ? 'bg-primary text-white shadow-lg shadow-primary/20 hover:bg-primary/90'
+                            : 'bg-gray-200 dark:bg-[#252535] text-gray-400 cursor-not-allowed'
                             }`}
                     >
-                        Proceed to UI Test
-                        <span className="material-symbols-outlined text-lg">arrow_forward</span>
+                        Export Test
+                        <span className="material-symbols-outlined text-lg">ios_share</span>
                     </button>
                 </div>
             </header>
@@ -369,10 +452,8 @@ const TestReview: React.FC<TestReviewProps> = ({
                                         question={currentQuestion}
                                         questionNumber={currentItem.absoluteIndex}
                                         showAnswer={true}
-                                        defaultSolutionExpanded={false}
-                                        showSolutionToggle={false} // Force hidden
-                                        isSolutionExpanded={false} // Force hidden
-                                        onToggleSolution={undefined} // No toggle
+                                        defaultSolutionExpanded={true}
+                                        showSolutionToggle={true}
                                     />
                                 </div>
 
@@ -432,8 +513,8 @@ const TestReview: React.FC<TestReviewProps> = ({
                     <button
                         onClick={handleReject}
                         className={`flex items-center gap-2 px-5 py-2 rounded-lg font-bold text-sm transition-all ${currentQuestion?.verification_level_1 === 'rejected'
-                                ? 'bg-red-600 text-white shadow-md'
-                                : 'bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/20'
+                            ? 'bg-red-600 text-white shadow-md'
+                            : 'bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/20'
                             }`}
                     >
                         <span className="material-symbols-outlined text-lg">thumb_down</span>
@@ -451,8 +532,8 @@ const TestReview: React.FC<TestReviewProps> = ({
                     <button
                         onClick={handleAcceptClick}
                         className={`flex items-center gap-2 px-5 py-2 rounded-lg font-bold text-sm transition-all ${currentQuestion?.verification_level_1 === 'approved'
-                                ? 'bg-green-600 text-white shadow-md'
-                                : 'bg-green-50 dark:bg-green-900/10 text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/20'
+                            ? 'bg-green-600 text-white shadow-md'
+                            : 'bg-green-50 dark:bg-green-900/10 text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/20'
                             }`}
                     >
                         <span className="material-symbols-outlined text-lg">thumb_up</span>
@@ -547,7 +628,7 @@ const TestReview: React.FC<TestReviewProps> = ({
                     onSwitchWithIPQ={() => {
                         setIsSwitchModalOpen(false);
                         if (currentQuestion && onSwitchQuestion) {
-                            onSwitchQuestion(currentQuestion.uuid);
+                            onSwitchQuestion(currentQuestion);
                         }
                     }}
                     onCloneAndEdit={handleCloneAndEdit}

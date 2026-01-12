@@ -71,6 +71,10 @@ export interface Question {
   // Question Links
   links: string | null; // JSON array of linked question UUIDs
 
+  // Division Override: Manual override for Div1/Div2 classification
+  // null = auto-detect from answer, 1 = force Div1, 2 = force Div2
+  division_override: number | null;
+
   // Multi-table support: tracks which exam table this question came from
   examSource?: 'JEE' | 'NEET' | 'BITS' | 'IPQ';
 }

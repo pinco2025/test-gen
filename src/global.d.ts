@@ -106,9 +106,9 @@ declare global {
       };
       ipq: {
         createQuestion: (question: Question, parentExam: ExamType) => Promise<boolean>;
-        saveSolution: (uuid: string, solutionText: string, solutionImageUrl: string, parentExam: ExamType) => Promise<boolean>;
+        saveSolution: (uuid: string, solutionText: string, solutionImageUrl: string) => Promise<boolean>;
         getQuestions: (parentExam?: ExamType) => Promise<Question[]>;
-        getSolution: (uuid: string) => Promise<{ uuid: string; solution_text: string; solution_image_url: string; parent_exam: ExamType } | null>;
+        getSolution: (uuid: string) => Promise<{ uuid: string; solution_text: string; solution_image_url: string } | null>;
         getCount: (parentExam?: ExamType) => Promise<number>;
         getTablesStatus: () => Promise<{ hasQuestionsTable: boolean; hasSolutionsTable: boolean; isComplete: boolean }>;
       };

@@ -3,6 +3,7 @@ import { VariableSizeList as List, ListChildComponentProps } from 'react-window'
 import AutoSizer from 'react-virtualized-auto-sizer';
 import {
   Question,
+  Solution,
   AlphaConstraint,
   BetaConstraint,
   SelectedQuestion,
@@ -13,7 +14,8 @@ import {
   ExamType,
   SUPPORTED_EXAMS
 } from '../types';
-import FilterMenu, { FilterState } from './FilterMenu';
+import FilterMenu from './FilterMenu';
+import { useQuestionFilters, FilterState } from '../hooks/useQuestionFilters';
 import QuestionRow from './QuestionRow';
 import AddQuestionModal from './AddQuestionModal';
 import { useNotification } from './Notification';
@@ -53,7 +55,22 @@ interface ItemData {
   selectionMode?: 'default' | 'single-replace';
 }
 
-const isNumericalAnswer = (question: Question): boolean => !['A', 'B', 'C', 'D'].includes(question.answer.toUpperCase().trim());
+/**
+ * Determines if a question is Division 2 (numerical/integer answer type)
+ * Priority: division_override > auto-detection from answer format
+ * @returns true if Div2, false if Div1
+ */
+const isDivision2Question = (question: Question): boolean => {
+  // Check for manual override first
+  if (question.division_override === 1) return false; // Force Div1
+  if (question.division_override === 2) return true;  // Force Div2
+
+  // Auto-detect from answer format: MCQ answers (A/B/C/D) = Div1, numerical = Div2
+  return !['A', 'B', 'C', 'D'].includes(question.answer.toUpperCase().trim());
+};
+
+// Legacy alias for backward compatibility
+const isNumericalAnswer = isDivision2Question;
 
 const Row = ({ index, style, data }: ListChildComponentProps<ItemData>) => {
   const { questions, selectedUuids, onToggle, onEdit, onCreateIPQ, setSize, zoomLevel } = data;
@@ -63,7 +80,16 @@ const Row = ({ index, style, data }: ListChildComponentProps<ItemData>) => {
   useEffect(() => {
     const element = rowRef.current;
     if (!element) return;
-    const observer = new ResizeObserver(() => setSize(index, element.getBoundingClientRect().height));
+
+    const observer = new ResizeObserver(() => {
+      // Wrap in requestAnimationFrame to avoid "ResizeObserver loop limit exceeded" error
+      window.requestAnimationFrame(() => {
+        if (element) {
+          setSize(index, element.getBoundingClientRect().height);
+        }
+      });
+    });
+
     observer.observe(element);
     return () => observer.disconnect();
   }, [setSize, index]);
@@ -114,30 +140,49 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
     return (stored && SUPPORTED_EXAMS.includes(stored as ExamType)) ? stored as ExamType : 'JEE';
   });
 
+  // State management for filters using the new hook
+  const selectedUuids = useMemo(() => new Set(selectedQuestions.map(sq => sq.question.uuid)), [selectedQuestions]);
+
+  // Generate a persistence key based on section name
+  // e.g., 'filter_pref_Physics', 'filter_pref_Chemistry'
+  const persistenceKey = useMemo(() => `filter_pref_${sectionName}`, [sectionName]);
+
+  const {
+    filters,
+    filteredQuestions,
+    updateFilters,
+    resetFilters
+  } = useQuestionFilters(availableQuestions, selectedUuids, persistenceKey);
+
   // Persist examType to localStorage when changed
   useEffect(() => {
     localStorage.setItem('questionSelection_examType', examType);
     // Reset filters when switching to IPQ to show all IPQ questions
+    // BUT preserve context if we just created one (handled via props/state elsewhere if needed)
     if (examType === 'IPQ') {
-      setFilters(prev => ({
-        ...prev,
-        type: 'all',
-        chapter: 'all',
-        year: 'all'
-      }));
+      // If we switched to IPQ, we generally want to see all. 
+      // EXCEPT if we came from handleIPQSave which might want to preserve chapter
     }
-  }, [examType]);
+  }, [examType]); // Removed updateFilters from dependency to avoid loop
 
   const [loading, setLoading] = useState(true);
-  const [searchText, setSearchText] = useState('');
-  const [searchUuid, setSearchUuid] = useState('');
-  const [filters, setFilters] = useState<FilterState>({
-    chapter: 'all', difficulty: 'all', division: 'all', type: 'all', year: 'all', tag1: '', tag4: '', sort: 'default', selectedOnly: false,
-    verificationLevel1: 'all', verificationLevel2: 'all'
-  });
+  // Keep local search state for input control
+  const [searchText, setSearchText] = useState(filters.searchText || ''); // Initialize from persisted filters
+  const [searchUuid, setSearchUuid] = useState(filters.searchUuid || '');
+
+  // Sync Search state with Hook
+  useEffect(() => {
+    updateFilters({ searchText, searchUuid });
+  }, [searchText, searchUuid, updateFilters]);
+
+  // Sync local search state when filters change externally (e.g. loading from persistence)
+  useEffect(() => {
+    if (filters.searchText !== searchText) setSearchText(filters.searchText);
+    if (filters.searchUuid !== searchUuid) setSearchUuid(filters.searchUuid);
+  }, [filters.searchText, filters.searchUuid]);
 
   const handleFilterChange = (newFilters: Partial<FilterState>) => {
-    setFilters(prev => ({ ...prev, ...newFilters }));
+    updateFilters(newFilters);
   };
 
   const handleEdit = (e: React.MouseEvent, question: Question) => {
@@ -156,7 +201,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
     setShowIPQModal(true);
   };
 
-  const handleIPQSave = async (newQuestion: Question) => {
+  const handleIPQSave = async (newQuestion: Question, newSolution?: Partial<Solution>) => {
     if (!window.electronAPI || !ipqTargetQuestion) return;
 
     try {
@@ -176,6 +221,16 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
         return;
       }
 
+      // Save solution if provided
+      if (newSolution && (newSolution.solution_text || newSolution.solution_image_url)) {
+        console.log('[handleIPQSave] Saving solution:', newSolution);
+        await window.electronAPI.ipq.saveSolution(
+          newQuestion.uuid,
+          newSolution.solution_text || '',
+          newSolution.solution_image_url || ''
+        );
+      }
+
       // Update original question links
       const originalLinks = ipqTargetQuestion.links ? JSON.parse(ipqTargetQuestion.links) : [];
       if (!originalLinks.includes(newQuestion.uuid)) {
@@ -189,9 +244,24 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
       setShowIPQModal(false);
       setIpqTargetQuestion(null);
 
-      // Redirect to IPQ view and search for the new question
+      // Preserve current chapter before switching
+      const currentChapter = filters.chapter;
+
+      // Redirect to IPQ view
       setExamType('IPQ');
-      setSearchUuid(newQuestion.uuid.substring(0, 8));
+
+      // Set filters to find this question BUT preserve chapter context if possible
+      // AND set the UUID search to find the new question immediately
+      // We use a timeout to let the examType effect run first
+      setTimeout(() => {
+        updateFilters({
+          chapter: currentChapter, // Try to keep the same chapter context
+          searchUuid: newQuestion.uuid.substring(0, 8),
+          type: 'all' // Reset type to ensure we see it
+        });
+        setSearchUuid(newQuestion.uuid.substring(0, 8)); // Sync local state
+      }, 100);
+
     } catch (error) {
       console.error('Error creating IPQ:', error);
       addNotification('error', 'An error occurred while creating IPQ.');
@@ -268,48 +338,14 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
   // Apply locked filters & presets
   useEffect(() => {
     if (lockedChapterCode) {
-      // Full Test Preset: Year Descending Sort (no auto PYQ filter)
-      setFilters(prev => ({
-        ...prev,
-        chapter: lockedChapterCode,
-        sort: 'year_desc'
-      }));
+      updateFilters({ chapter: lockedChapterCode, sort: 'year_desc' });
     }
     if (lockedDivision) {
-      setFilters(prev => ({ ...prev, division: lockedDivision.toString() as '1' | '2' }));
+      updateFilters({ division: lockedDivision.toString() });
     }
-  }, [lockedChapterCode, lockedDivision]);
+  }, [lockedChapterCode, lockedDivision, updateFilters]);
 
-  const selectedUuids = useMemo(() => new Set(selectedQuestions.map(sq => sq.question.uuid)), [selectedQuestions]);
-
-  const filteredQuestions = useMemo(() => {
-    return availableQuestions
-      .filter(q => {
-        if (filters.chapter !== 'all' && q.tag_2 !== filters.chapter) return false;
-        if (filters.difficulty !== 'all' && q.tag_3 !== filters.difficulty) return false;
-        if (filters.division !== 'all') {
-          if (filters.division === '1' && isNumericalAnswer(q)) return false;
-          if (filters.division === '2' && !isNumericalAnswer(q)) return false;
-        }
-        if (filters.type !== 'all' && q.type !== filters.type) return false;
-        if (filters.year !== 'all' && q.year !== filters.year) return false;
-        if (searchText && !q.question.toLowerCase().includes(searchText.toLowerCase())) return false;
-        if (searchUuid && !q.uuid.toLowerCase().includes(searchUuid.toLowerCase())) return false;
-        if (filters.selectedOnly && !selectedUuids.has(q.uuid)) return false;
-        if (filters.verificationLevel1 !== 'all' && (q.verification_level_1 || 'pending') !== filters.verificationLevel1) return false;
-        if (filters.verificationLevel2 !== 'all' && (q.verification_level_2 || 'pending') !== filters.verificationLevel2) return false;
-        return true;
-      })
-      .sort((a, b) => {
-        switch (filters.sort) {
-          case 'year_desc': return (b.year || '').localeCompare(a.year || '');
-          case 'year_asc': return (a.year || '').localeCompare(b.year || '');
-          case 'freq_desc': return (b.frequency || 0) - (a.frequency || 0);
-          case 'freq_asc': return (a.frequency || 0) - (b.frequency || 0);
-          default: return 0;
-        }
-      });
-  }, [availableQuestions, filters, searchText, searchUuid, selectedUuids]);
+  // Hook handles filtering logic now
 
   // Scroll to edited question when returning from edit mode
   useEffect(() => {
@@ -320,7 +356,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
         setTimeout(() => {
           listRef.current?.scrollToItem(questionIndex, 'center');
           onScrollComplete?.();
-        }, 100);
+        }, 300);
       } else {
         // Question not found in filtered list (might be filtered out)
         onScrollComplete?.();
@@ -348,13 +384,29 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
     });
     selectedQuestions.forEach(sq => {
       if (sq.division === 1) div1Count++; else div2Count++;
-      if (byChapter[sq.chapterCode]) {
-        if (sq.division === 1) byChapter[sq.chapterCode].a++; else byChapter[sq.chapterCode].b++;
-        // Track difficulty
-        if (sq.difficulty === 'E') byChapter[sq.chapterCode].e++;
-        else if (sq.difficulty === 'M') byChapter[sq.chapterCode].m++;
-        else if (sq.difficulty === 'H') byChapter[sq.chapterCode].h++;
+
+      // Ensure the chapter entry exists (important for IPQ questions whose chapters may not be in alphaConstraint)
+      if (!byChapter[sq.chapterCode]) {
+        byChapter[sq.chapterCode] = {
+          chapterName: sq.chapterName || sq.chapterCode,
+          a: 0,
+          b: 0,
+          e: 0,
+          m: 0,
+          h: 0,
+          required_a: 0,
+          required_b: 0,
+          required_e: 0,
+          required_m: 0,
+          required_h: 0
+        };
       }
+
+      if (sq.division === 1) byChapter[sq.chapterCode].a++; else byChapter[sq.chapterCode].b++;
+      // Track difficulty
+      if (sq.difficulty === 'E') byChapter[sq.chapterCode].e++;
+      else if (sq.difficulty === 'M') byChapter[sq.chapterCode].m++;
+      else if (sq.difficulty === 'H') byChapter[sq.chapterCode].h++;
     });
     return { total: selectedQuestions.length, division1: div1Count, division2: div2Count, byChapter, byDifficulty: { easy: 0, medium: 0, hard: 0, required_e: 0, required_m: 0, required_h: 0 } };
   }, [selectedQuestions, alphaConstraint]);
@@ -383,15 +435,62 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
       if (!isSelected && ((isDiv2 && summary.division2 >= 5) || (!isDiv2 && summary.division1 >= 20))) return;
     }
 
-    if (isSelected) {
-      await window.electronAPI.questions.decrementFrequency(question.uuid);
-      setSelectedQuestions(prev => prev.filter(sq => sq.question.uuid !== question.uuid));
-    } else {
-      await window.electronAPI.questions.incrementFrequency(question.uuid);
-      const chapter = chapters.find(ch => ch.code === question.tag_2);
-      setSelectedQuestions(prev => [...prev, { question, chapterCode: question.tag_2 || '', chapterName: chapter?.name || '', difficulty: (question.tag_3 as Difficulty) || 'M', division: isDiv2 ? 2 : 1, status: 'pending' }]);
+    const targetExam = (question as any).examSource || examType;
+    const previousFrequency = question.frequency || 0;
+    const newFrequency = isSelected
+      ? Math.max(previousFrequency - 1, 0)  // Decrement (min 0)
+      : previousFrequency + 1;              // Increment
+
+    // OPTIMISTIC UPDATE: Update local state immediately for instant UI feedback
+    setAvailableQuestions(prev => prev.map(q =>
+      q.uuid === question.uuid
+        ? { ...q, frequency: newFrequency }
+        : q
+    ));
+
+    try {
+      const success = isSelected
+        ? await window.electronAPI.questions.decrementFrequency(question.uuid, targetExam)
+        : await window.electronAPI.questions.incrementFrequency(question.uuid, targetExam);
+
+      if (!success) {
+        // ROLLBACK: Revert frequency on API failure
+        setAvailableQuestions(prev => prev.map(q =>
+          q.uuid === question.uuid
+            ? { ...q, frequency: previousFrequency }
+            : q
+        ));
+        addNotification('error', 'Failed to update question frequency');
+        return;
+      }
+
+      // Update selected questions state
+      if (isSelected) {
+        setSelectedQuestions(prev => prev.filter(sq => sq.question.uuid !== question.uuid));
+      } else {
+        const chapter = chapters.find(ch => ch.code === question.tag_2);
+        // Also update the question object in selected with new frequency
+        const updatedQuestion = { ...question, frequency: newFrequency };
+        setSelectedQuestions(prev => [...prev, {
+          question: updatedQuestion,
+          chapterCode: question.tag_2 || '',
+          chapterName: chapter?.name || question.tag_2 || 'Unknown',
+          difficulty: (question.tag_3 as Difficulty) || 'M',
+          division: isDiv2 ? 2 : 1,
+          status: 'pending'
+        }]);
+      }
+    } catch (error) {
+      // ROLLBACK: Revert frequency on error
+      console.error('[QuestionSelection] Error updating frequency:', error);
+      setAvailableQuestions(prev => prev.map(q =>
+        q.uuid === question.uuid
+          ? { ...q, frequency: previousFrequency }
+          : q
+      ));
+      addNotification('error', 'Error updating question frequency');
     }
-  }, [selectedUuids, summary, chapters, limitCount, lockedChapterCode, selectedQuestions, selectionMode, onSelectReplacement]);
+  }, [selectedUuids, summary, chapters, limitCount, lockedChapterCode, selectedQuestions, selectionMode, onSelectReplacement, examType, addNotification]);
 
   const isSelectionValid = useMemo(() => {
     // Full Test Validation
@@ -667,8 +766,9 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
                   availableYears={availableYears}
                   currentFilters={filters}
                   onFilterChange={handleFilterChange}
+                  onReset={() => resetFilters(defaultFilters)}
                   hiddenFilters={hiddenFilters}
-                  defaultFilters={defaultFilters}
+                  resultCount={filteredQuestions.length}
                 />
               </div>
 
@@ -752,7 +852,10 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
           onSave={handleIPQSave}
           initialData={ipqTargetQuestion}
           isIPQMode={true}
-          parentExam={(ipqTargetQuestion as any).examSource || (examType !== 'IPQ' ? examType : 'JEE')}
+          parentExam={((): 'JEE' | 'NEET' | 'BITS' | undefined => {
+            const source = (ipqTargetQuestion as any).examSource || (examType !== 'IPQ' ? examType : 'JEE');
+            return ['JEE', 'NEET', 'BITS'].includes(source) ? source as 'JEE' | 'NEET' | 'BITS' : undefined;
+          })()}
         />
       )}
     </div>
