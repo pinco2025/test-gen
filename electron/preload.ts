@@ -61,7 +61,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // IPQ (Independent Parent Questions) operations
   ipq: {
     createQuestion: (question: Question, parentExam: ExamType) => ipcRenderer.invoke('ipq:createQuestion', question, parentExam),
-    saveSolution: (uuid: string, solutionText: string, solutionImageUrl: string, parentExam: ExamType) => ipcRenderer.invoke('ipq:saveSolution', uuid, solutionText, solutionImageUrl, parentExam),
+    saveSolution: (uuid: string, solutionText: string, solutionImageUrl: string) => ipcRenderer.invoke('ipq:saveSolution', uuid, solutionText, solutionImageUrl),
     getQuestions: (parentExam?: ExamType) => ipcRenderer.invoke('ipq:getQuestions', parentExam),
     getSolution: (uuid: string) => ipcRenderer.invoke('ipq:getSolution', uuid),
     getCount: (parentExam?: ExamType) => ipcRenderer.invoke('ipq:getCount', parentExam),

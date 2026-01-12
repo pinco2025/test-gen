@@ -16,14 +16,14 @@ export const FloatingTextMenu: React.FC = () => {
 
                 if (start !== null && end !== null && start !== end) {
                     // Show menu above mouse cursor
-                    const menuHeight = 40;
+                    const menuHeight = 80; // Increased height estimation for potential two rows
                     let top = e.clientY - menuHeight - 10;
                     let left = e.clientX;
 
                     // Keep within viewport
                     if (top < 0) top = e.clientY + 20;
                     if (left < 0) left = 10;
-                    if (left > window.innerWidth - 150) left = window.innerWidth - 150;
+                    if (left > window.innerWidth - 320) left = window.innerWidth - 320; // Adjusted for wider menu
 
                     setPosition({ top, left });
                     setTargetInput(input);
@@ -121,6 +121,37 @@ export const FloatingTextMenu: React.FC = () => {
         setPosition(null);
     };
 
+    const cleanAndBold = () => {
+        if (!targetInput) return;
+        const start = targetInput.selectionStart || 0;
+        const end = targetInput.selectionEnd || 0;
+        const text = targetInput.value;
+        const selectedText = text.substring(start, end);
+
+        // Remove all *
+        const cleanedText = selectedText.replace(/\*/g, '');
+        // Wrap in $\textbf{...}$
+        const newText = text.substring(0, start) + '$\\textbf{' + cleanedText + '}$' + text.substring(end);
+
+        triggerChange(targetInput, newText);
+        setPosition(null);
+    };
+
+    const fixDoubleDollars = () => {
+        if (!targetInput) return;
+        const start = targetInput.selectionStart || 0;
+        const end = targetInput.selectionEnd || 0;
+        const text = targetInput.value;
+        const selectedText = text.substring(start, end);
+
+        // Replace $$ with $
+        const fixedText = selectedText.replace(/\$\$/g, '$');
+        const newText = text.substring(0, start) + fixedText + text.substring(end);
+
+        triggerChange(targetInput, newText);
+        setPosition(null);
+    };
+
     const wrapBold = (withDelimiters: boolean) => {
         if (!targetInput) return;
         const start = targetInput.selectionStart || 0;
@@ -143,39 +174,79 @@ export const FloatingTextMenu: React.FC = () => {
 
     if (!position) return null;
 
+    const Button = ({ onClick, children, title, className = "", colorClass = "hover:bg-gray-700 text-gray-200" }: any) => (
+        <button
+            onClick={onClick}
+            className={`h-8 px-2.5 rounded-md text-sm font-semibold flex items-center justify-center gap-1.5 transition-colors ${colorClass} ${className}`}
+            title={title}
+        >
+            {children}
+        </button>
+    );
+
+    const Separator = () => <div className="w-[1px] h-5 bg-gray-600/50 mx-1"></div>;
+
     return (
         <div
-            className="fixed z-[9999] flex items-center bg-gray-800 text-white rounded-lg shadow-xl px-2 py-1.5 gap-2 animate-in fade-in zoom-in duration-100"
-            style={{ top: position.top, left: position.left, transform: 'translateX(-50%)' }}
+            className="fixed z-[9999] flex flex-col bg-[#1e1e2d] border border-gray-700 text-white rounded-xl shadow-2xl p-2 gap-2 animate-in fade-in zoom-in duration-100 max-w-[400px]"
+            style={{ top: position.top, left: position.left }}
             onMouseDown={(e) => e.preventDefault()} // Prevent losing focus on input
         >
-            <button onClick={() => wrapSelection('$', '$')} className="px-2 py-1 hover:bg-gray-700 rounded text-sm font-mono font-bold" title="Wrap in $...$">$</button>
-            <div className="w-[1px] h-4 bg-gray-600"></div>
-            <button onClick={() => wrapSelection('$$', '$$')} className="px-2 py-1 hover:bg-gray-700 rounded text-sm font-mono font-bold" title="Wrap in $$...$$">$$</button>
-            <div className="w-[1px] h-4 bg-gray-600"></div>
-            <button onClick={cleanAndWrap} className="px-2 py-1 hover:bg-gray-700 rounded text-sm font-mono font-bold flex items-center" title="Clean & Wrap in $...$">
-                <span className="material-symbols-outlined text-[16px]">cleaning_services</span>$
-            </button>
-            <button onClick={() => {
-                if (!targetInput) return;
-                const start = targetInput.selectionStart || 0;
-                const end = targetInput.selectionEnd || 0;
-                const text = targetInput.value;
-                const selectedText = text.substring(start, end);
+            {/* Row 1: LaTeX Wrappers */}
+            <div className="flex items-center flex-wrap gap-1">
+                <Button onClick={() => wrapSelection('$', '$')} title="Wrap in $...$" colorClass="bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-blue-500/20">
+                    <span className="font-mono">$</span>
+                </Button>
+                <Button onClick={() => wrapSelection('$$', '$$')} title="Wrap in $$...$$" colorClass="bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 border border-blue-500/20">
+                    <span className="font-mono">$$</span>
+                </Button>
+                <Separator />
+                <Button onClick={() => wrapBold(false)} title="Bold \textbf{}" colorClass="hover:bg-gray-700">
+                    <span className="font-serif font-bold">B</span>
+                </Button>
+                <Button onClick={() => wrapBold(true)} title="Math Bold $\textbf{}$" colorClass="hover:bg-gray-700">
+                    <span className="font-mono text-xs">$</span><span className="font-serif font-bold">B</span><span className="font-mono text-xs">$</span>
+                </Button>
+                <Button onClick={cleanAndBold} title="Clean * & Bold $\textbf{}$" colorClass="bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 border border-purple-500/20">
+                    <span className="material-symbols-outlined text-[16px]">format_bold</span>
+                    <span className="text-[10px] leading-none opacity-60">Clean</span>
+                </Button>
+            </div>
 
-                const cleanedText = selectedText.replace(/\$/g, '');
-                const newText = text.substring(0, start) + cleanedText + text.substring(end);
+            {/* Row 2: Fixers & Utilities */}
+            <div className="flex items-center flex-wrap gap-1 border-t border-gray-700 pt-2">
+                <Button onClick={cleanAndWrap} title="Clean & Wrap in $...$" colorClass="hover:bg-green-900/30 text-green-400">
+                    <span className="material-symbols-outlined text-[16px]">cleaning_services</span>
+                    <span className="font-mono text-xs">$</span>
+                </Button>
+                <Button onClick={fixDoubleDollars} title="Replace $$ with $" colorClass="hover:bg-orange-900/30 text-orange-400">
+                    <span className="font-mono text-xs line-through opacity-70">$$</span>
+                    <span className="material-symbols-outlined text-[14px]">arrow_right_alt</span>
+                    <span className="font-mono text-xs">$</span>
+                </Button>
+                <Button onClick={fixSlashes} title="Replace \\ with \" colorClass="hover:bg-yellow-900/30 text-yellow-500">
+                    <span className="font-mono text-xs">\\</span>
+                    <span className="material-symbols-outlined text-[14px]">arrow_right_alt</span>
+                    <span className="font-mono text-xs">\</span>
+                </Button>
+                <Separator />
+                <Button onClick={() => {
+                    if (!targetInput) return;
+                    const start = targetInput.selectionStart || 0;
+                    const end = targetInput.selectionEnd || 0;
+                    const text = targetInput.value;
+                    const selectedText = text.substring(start, end);
 
-                triggerChange(targetInput, newText);
-                setPosition(null);
-            }} className="px-2 py-1 hover:bg-gray-700 rounded text-sm font-mono font-bold flex items-center text-red-400" title="Remove all $">
-                <span className="material-symbols-outlined text-[16px]">backspace</span>$
-            </button>
-            <div className="w-[1px] h-4 bg-gray-600"></div>
-            <button onClick={() => wrapBold(false)} className="px-2 py-1 hover:bg-gray-700 rounded text-sm font-mono font-bold" title="Bold \textbf{}">B</button>
-            <button onClick={() => wrapBold(true)} className="px-2 py-1 hover:bg-gray-700 rounded text-sm font-mono font-bold" title="Bold $\textbf{}$">$B$</button>
-            <div className="w-[1px] h-4 bg-gray-600"></div>
-            <button onClick={fixSlashes} className="px-2 py-1 hover:bg-gray-700 rounded text-sm font-mono font-bold" title="Replace \\ with \">\</button>
+                    const cleanedText = selectedText.replace(/\$/g, '');
+                    const newText = text.substring(0, start) + cleanedText + text.substring(end);
+
+                    triggerChange(targetInput, newText);
+                    setPosition(null);
+                }} title="Remove all $" colorClass="hover:bg-red-900/30 text-red-400">
+                    <span className="material-symbols-outlined text-[16px]">backspace</span>
+                    <span className="font-mono text-xs">$</span>
+                </Button>
+            </div>
         </div>
     );
 };

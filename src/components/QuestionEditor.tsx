@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Question, Solution } from '../types';
 import QuestionDisplay from './QuestionDisplay';
 import ImageUpload from './ImageUpload';
@@ -28,6 +29,115 @@ const UndoRedoControls = ({ undoRedo }: { undoRedo: any }) => (
         </button>
     </div>
 );
+
+const InputActionMenu = ({ onAction, className = "" }: { onAction: (action: 'clear' | 'convert' | 'limit') => void, className?: string }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const [coords, setCoords] = useState({ top: 0, left: 0 });
+    const buttonRef = React.useRef<HTMLButtonElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            // Since the menu is in a portal, we need to check if the click was inside the menu OR the button
+            const menu = document.getElementById('input-action-menu-portal');
+            if (
+                isOpen &&
+                menu &&
+                !menu.contains(event.target as Node) &&
+                buttonRef.current &&
+                !buttonRef.current.contains(event.target as Node)
+            ) {
+                setIsOpen(false);
+            }
+        };
+
+        // Handle scroll and resize to close menu or update position (closing is safer/easier)
+        const handleScrollOrResize = () => {
+            if (isOpen) setIsOpen(false);
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        window.addEventListener('scroll', handleScrollOrResize, true);
+        window.addEventListener('resize', handleScrollOrResize);
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+            window.removeEventListener('scroll', handleScrollOrResize, true);
+            window.removeEventListener('resize', handleScrollOrResize);
+        };
+    }, [isOpen]);
+
+    const toggleMenu = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!isOpen && buttonRef.current) {
+            const rect = buttonRef.current.getBoundingClientRect();
+            // Position: anchored to bottom-right of the button, opening upwards if needed or downwards
+            // Default: Open upwards (bottom-right aligned)
+            setCoords({
+                top: rect.top - 10, // Slightly above the button
+                left: rect.right,   // Aligned to right edge
+            });
+            setIsOpen(true);
+        } else {
+            setIsOpen(false);
+        }
+    };
+
+    const MenuItem = ({ icon, label, onClick, colorClass = "text-text-main dark:text-gray-200" }: any) => (
+        <button
+            onClick={(e) => { e.stopPropagation(); onClick(); setIsOpen(false); }}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 text-sm hover:bg-gray-100 dark:hover:bg-[#2c2c3e] transition-colors text-left font-medium ${colorClass}`}
+        >
+            <span className="material-symbols-outlined text-[18px] opacity-70">{icon}</span>
+            <span>{label}</span>
+        </button>
+    );
+
+    return (
+        <>
+            <button
+                ref={buttonRef}
+                onClick={toggleMenu}
+                className={`Relative p-1 rounded hover:bg-gray-200 dark:hover:bg-white/10 text-text-secondary transition-colors border-none ${isOpen
+                    ? 'bg-primary/10 text-primary'
+                    : ''
+                    } ${className}`}
+                title="Text Format Actions"
+            >
+                <span className="material-symbols-outlined text-[18px]">more_vert</span>
+            </button>
+
+            {isOpen && createPortal(
+                <div
+                    id="input-action-menu-portal"
+                    className="fixed z-[9999] w-56 bg-white dark:bg-[#1e1e2d] shadow-xl rounded-lg border border-gray-200 dark:border-[#2d2d3b] overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-100 origin-bottom-right"
+                    style={{
+                        bottom: window.innerHeight - coords.top + 5,
+                        right: window.innerWidth - coords.left
+                    }}
+                >
+                    <MenuItem
+                        icon="wrap_text"
+                        label="Convert \n to Lines"
+                        onClick={() => onAction('convert')}
+                    />
+                    <MenuItem
+                        icon="vertical_align_center"
+                        label="Limit Max 2 Newlines"
+                        onClick={() => onAction('limit')}
+                    />
+                    <div className="h-px bg-gray-100 dark:bg-[#2d2d3b] my-1"></div>
+                    <MenuItem
+                        icon="format_align_justify"
+                        label="Clear All Newlines"
+                        onClick={() => onAction('clear')}
+                        colorClass="text-red-500 hover:text-red-600"
+                    />
+                </div>,
+                document.body
+            )}
+        </>
+    );
+};
 
 // Simple debounce hook
 function useDebounce<T>(value: T, delay: number): T {
@@ -168,7 +278,13 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
         const fetchSolution = async () => {
             if (!solution && window.electronAPI) {
                 try {
-                    const fetchedSolution = await window.electronAPI.questions.getSolution(question.uuid);
+                    // Use the correct API based on question source
+                    let fetchedSolution;
+                    if (question.examSource === 'IPQ') {
+                        fetchedSolution = await window.electronAPI.ipq.getSolution(question.uuid);
+                    } else {
+                        fetchedSolution = await window.electronAPI.questions.getSolution(question.uuid);
+                    }
                     if (fetchedSolution) {
                         setEditedSolution(fetchedSolution);
                         solutionText.reset(fetchedSolution.solution_text || '');
@@ -261,11 +377,72 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
     const isMCQType = ['MCQ', 'Assertion-Reason', 'Matrix Match'].includes(editedQuestion.type || '') || editedQuestion.type?.includes('MCQ') || !editedQuestion.type;
 
     let showOptions = true;
-    if (hasAnswer) {
-        showOptions = !isNumericalAnswer(editedQuestion.answer);
+    // Determine if we should show options based on division_override OR auto-detection
+    if (editedQuestion.division_override === 1) {
+        // Force Div1: Always show MCQ options
+        showOptions = true;
+    } else if (editedQuestion.division_override === 2) {
+        // Force Div2: Never show MCQ options, show numerical input
+        showOptions = false;
     } else {
-        showOptions = isMCQType;
+        // Auto-detect based on answer or type
+        if (hasAnswer) {
+            showOptions = !isNumericalAnswer(editedQuestion.answer);
+        } else {
+            showOptions = isMCQType;
+        }
     }
+
+    /**
+     * Handle division change with answer conversion logic:
+     * - Div1 → Div2: Keep current answer as numerical value
+     * - Div2 → Div1: Put old numerical answer in option A, mark A as correct
+     */
+    const handleDivisionChange = (newDivision: number | null) => {
+        const oldDivision = editedQuestion.division_override;
+        const currentAnswer = editedQuestion.answer || '';
+
+        // Check what the effective old division was
+        const wasDiv2 = oldDivision === 2 || (oldDivision === null && isNumericalAnswer(currentAnswer));
+        const willBeDiv2 = newDivision === 2;
+        const willBeDiv1 = newDivision === 1;
+
+        // Converting FROM Div2 TO Div1: put old numerical answer in option A
+        if (wasDiv2 && willBeDiv1 && currentAnswer) {
+            // Put the old numerical answer in option A
+            optionA.setValue(currentAnswer);
+            // Clear other options
+            optionB.setValue('');
+            optionC.setValue('');
+            optionD.setValue('');
+            // Mark A as correct answer
+            handleQuestionChange('answer', 'A');
+        }
+        // Converting FROM Div1 TO Div2: keep the old answer letter or option value as numerical
+        else if (!wasDiv2 && willBeDiv2) {
+            // If current answer is a letter (A/B/C/D), get the corresponding option value
+            const answerUpper = currentAnswer.toUpperCase().trim();
+            if (['A', 'B', 'C', 'D'].includes(answerUpper)) {
+                // Get the value of the selected option
+                let optionValue = '';
+                switch (answerUpper) {
+                    case 'A': optionValue = optionA.value; break;
+                    case 'B': optionValue = optionB.value; break;
+                    case 'C': optionValue = optionC.value; break;
+                    case 'D': optionValue = optionD.value; break;
+                }
+                // If the option value looks like a number, use it; otherwise keep the letter
+                const cleanedValue = optionValue.replace(/[\$,\s]/g, '');
+                if (optionValue && /^-?\d+(\.\d+)?$/.test(cleanedValue)) {
+                    handleQuestionChange('answer', cleanedValue);
+                }
+                // Otherwise leave answer as is (will be editable in numerical field)
+            }
+        }
+
+        // Always update the division_override
+        handleQuestionChange('division_override', newDivision);
+    };
 
     // Format Options Handler
     const handleFormatOptions = () => {
@@ -441,24 +618,22 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
         };
     }, []);
 
-    const cleanNewlines = (field: 'question' | 'solution_text' | string) => {
-        let value = '';
-        if (field === 'question') {
-            value = questionText.value || '';
-        } else if (field === 'solution_text') {
-            value = solutionText.value || '';
-        } else {
-            return;
+    const handleTextAction = (field: 'question' | 'solution_text', action: 'clear' | 'convert' | 'limit') => {
+        const redoStack = field === 'question' ? questionText : solutionText;
+        let value = redoStack.value || '';
+
+        if (action === 'clear') {
+            // Replace literal \n and real newlines with space
+            value = value.replace(/(\\n|\n)/g, ' ');
+        } else if (action === 'convert') {
+            // Convert literal \n to actual newlines
+            value = value.replace(/\\n/g, '\n');
+        } else if (action === 'limit') {
+            // Replace 3+ consecutive newlines with 2
+            value = value.replace(/\n{3,}/g, '\n\n');
         }
 
-        // Replace literal \n and real newlines with space
-        const newValue = value.replace(/(\\n|\n)/g, ' ');
-
-        if (field === 'question') {
-            questionText.setValue(newValue);
-        } else if (field === 'solution_text') {
-            solutionText.setValue(newValue);
-        }
+        redoStack.setValue(value);
     };
 
     return (
@@ -572,6 +747,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
                                 <label className="block text-sm font-semibold text-text-main dark:text-gray-200">Question Statement</label>
                                 <UndoRedoControls undoRedo={questionText} />
                             </div>
+                            <InputActionMenu onAction={(action) => handleTextAction('question', action)} />
                         </div>
                         <div className="relative border border-border-light dark:border-border-dark rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-all group">
                             <textarea
@@ -580,13 +756,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
                                 value={questionText.value}
                                 onChange={(e) => questionText.setValue(e.target.value)}
                             />
-                            <button
-                                onClick={() => cleanNewlines('question')}
-                                className="absolute bottom-2 right-2 p-1.5 text-xs bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded text-text-secondary hover:text-primary shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
-                                title="Clear Newlines (\n)"
-                            >
-                                <span className="material-symbols-outlined text-[16px]">format_align_justify</span>
-                            </button>
                         </div>
                         <ImageUpload
                             label="Question Image"
@@ -686,6 +855,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
                                 <label className="block text-sm font-semibold text-text-main dark:text-gray-200">Detailed Solution</label>
                                 <UndoRedoControls undoRedo={solutionText} />
                             </div>
+                            <InputActionMenu onAction={(action) => handleTextAction('solution_text', action)} />
                         </div>
                         <div className="relative border border-border-light dark:border-border-dark rounded-lg overflow-hidden focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-all group">
                             <textarea
@@ -694,13 +864,6 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
                                 value={solutionText.value}
                                 onChange={(e) => solutionText.setValue(e.target.value)}
                             />
-                            <button
-                                onClick={() => cleanNewlines('solution_text')}
-                                className="absolute bottom-2 right-2 p-1.5 text-xs bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded text-text-secondary hover:text-primary shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
-                                title="Clear Newlines (\n)"
-                            >
-                                <span className="material-symbols-outlined text-[16px]">format_align_justify</span>
-                            </button>
                         </div>
                         <ImageUpload
                             label="Solution Image"
@@ -834,6 +997,53 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
                                         );
                                     })}
                                 </div>
+                            </div>
+
+                            {/* Division Override */}
+                            <div className="space-y-1.5">
+                                <label className="text-xs font-medium text-text-secondary uppercase tracking-wider">Division Override</label>
+                                <div className="flex gap-2">
+                                    {([
+                                        { label: 'Auto', value: null, icon: 'auto_awesome' },
+                                        { label: 'Div 1', value: 1, icon: 'looks_one' },
+                                        { label: 'Div 2', value: 2, icon: 'looks_two' }
+                                    ] as const).map(d => {
+                                        const isSelected = editedQuestion.division_override === d.value;
+                                        return (
+                                            <label
+                                                key={String(d.value)}
+                                                className="cursor-pointer flex-1"
+                                                onClick={(e) => {
+                                                    e.preventDefault();
+                                                    handleDivisionChange(d.value);
+                                                }}
+                                            >
+                                                <input
+                                                    className="peer sr-only"
+                                                    name="division_override"
+                                                    type="radio"
+                                                    value={String(d.value)}
+                                                    checked={isSelected}
+                                                    readOnly
+                                                />
+                                                <div className={`px-3 py-2 rounded-lg border text-xs font-medium text-center flex items-center justify-center gap-1 transition-all ${isSelected
+                                                    ? d.value === null
+                                                        ? 'bg-gray-100 text-gray-700 border-gray-300 dark:bg-gray-800 dark:text-gray-200 dark:border-gray-600'
+                                                        : d.value === 1
+                                                            ? 'bg-blue-50 text-blue-600 border-blue-200 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-800'
+                                                            : 'bg-purple-50 text-purple-600 border-purple-200 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-800'
+                                                    : 'border-border-light dark:border-border-dark text-text-secondary hover:border-gray-300 dark:hover:border-gray-600'
+                                                    }`}>
+                                                    <span className="material-symbols-outlined text-[14px]">{d.icon}</span>
+                                                    {d.label}
+                                                </div>
+                                            </label>
+                                        );
+                                    })}
+                                </div>
+                                <p className="text-[10px] text-text-secondary">
+                                    Auto: {!editedQuestion.answer || ['A', 'B', 'C', 'D'].includes(editedQuestion.answer.toUpperCase().trim()) ? 'Div 1 (MCQ)' : 'Div 2 (Numerical)'}
+                                </p>
                             </div>
 
                             {/* Topic Selection */}

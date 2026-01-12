@@ -12,7 +12,8 @@ import {
   WorkflowStep,
   Question,
   Solution,
-  TestType
+  TestType,
+  ExamType
 } from './types';
 import { ExamTableStatus } from './global.d';
 import { sortQuestionsForSection } from './utils/sorting';
@@ -167,11 +168,9 @@ function App() {
         setDbConnected(true);
         setDbPath(config.databasePath);
 
-        // Fetch exam tables status
+        // Fetch exam tables status (includes IPQ since it's in SUPPORTED_EXAMS)
         const examStatus = await window.electronAPI.db.getExamTablesStatus();
-        // Add IPQ tables status
-        const ipqStatus = await window.electronAPI.ipq.getTablesStatus();
-        setExamTablesStatus([...examStatus, { exam: 'IPQ', hasQuestionsTable: ipqStatus.hasQuestionsTable, hasSolutionsTable: ipqStatus.hasSolutionsTable, isComplete: ipqStatus.isComplete }]);
+        setExamTablesStatus(examStatus);
 
         // Load project list and show dashboard
         const loadedProjects = await window.electronAPI.project.list();
@@ -185,11 +184,9 @@ function App() {
         setDbConnected(connected);
 
         if (connected) {
-          // Fetch exam tables status
+          // Fetch exam tables status (includes IPQ since it's in SUPPORTED_EXAMS)
           const examStatus = await window.electronAPI.db.getExamTablesStatus();
-          // Add IPQ tables status
-          const ipqStatus = await window.electronAPI.ipq.getTablesStatus();
-          setExamTablesStatus([...examStatus, { exam: 'IPQ', hasQuestionsTable: ipqStatus.hasQuestionsTable, hasSolutionsTable: ipqStatus.hasSolutionsTable, isComplete: ipqStatus.isComplete }]);
+          setExamTablesStatus(examStatus);
 
           const loadedProjects = await window.electronAPI.project.list();
           setProjects(loadedProjects);
@@ -201,11 +198,9 @@ function App() {
       setDbConnected(connected);
 
       if (connected) {
-        // Fetch exam tables status
+        // Fetch exam tables status (includes IPQ since it's in SUPPORTED_EXAMS)
         const examStatus = await window.electronAPI.db.getExamTablesStatus();
-        // Add IPQ tables status
-        const ipqStatus = await window.electronAPI.ipq.getTablesStatus();
-        setExamTablesStatus([...examStatus, { exam: 'IPQ', hasQuestionsTable: ipqStatus.hasQuestionsTable, hasSolutionsTable: ipqStatus.hasSolutionsTable, isComplete: ipqStatus.isComplete }]);
+        setExamTablesStatus(examStatus);
 
         const loadedProjects = await window.electronAPI.project.list();
         setProjects(loadedProjects);
@@ -311,7 +306,17 @@ function App() {
   };
 
   const handleSwitchQuestion = async (newQuestion: Question, newSolution?: Partial<Solution>) => {
-    if (!currentProjectId || !switchTargetQuestionUuid || !window.electronAPI || !switchTargetQuestionData) return;
+    console.log('[handleSwitchQuestion] Called with:');
+    console.log('  newQuestion.uuid:', newQuestion?.uuid);
+    console.log('  newSolution:', newSolution);
+    console.log('  currentProjectId:', currentProjectId);
+    console.log('  switchTargetQuestionUuid:', switchTargetQuestionUuid);
+    console.log('  switchTargetQuestionData:', switchTargetQuestionData);
+
+    if (!currentProjectId || !switchTargetQuestionUuid || !window.electronAPI || !switchTargetQuestionData) {
+      console.log('[handleSwitchQuestion] Early return - missing required data');
+      return;
+    }
 
     try {
       // Get parent exam from the original question's exam source
@@ -325,13 +330,24 @@ function App() {
       }
 
       // 2. Save solution if exists (to IPQ solutions table)
+      console.log('[handleSwitchQuestion] Checking solution:');
+      console.log('  newSolution:', newSolution);
+      console.log('  newSolution?.solution_text:', newSolution?.solution_text);
+      console.log('  newSolution?.solution_image_url:', newSolution?.solution_image_url);
+      console.log('  Condition result:', !!(newSolution && (newSolution.solution_text || newSolution.solution_image_url)));
+
       if (newSolution && (newSolution.solution_text || newSolution.solution_image_url)) {
+        console.log('[handleSwitchQuestion] Saving solution with:');
+        console.log('  uuid:', newQuestion.uuid);
+        console.log('  solution_text:', newSolution.solution_text);
+        console.log('  solution_image_url:', newSolution.solution_image_url);
         await window.electronAPI.ipq.saveSolution(
           newQuestion.uuid,
           newSolution.solution_text || '',
-          newSolution.solution_image_url || '',
-          parentExam
+          newSolution.solution_image_url || ''
         );
+      } else {
+        console.log('[handleSwitchQuestion] NOT saving solution - condition failed');
       }
 
       // 3. Update links
@@ -429,7 +445,13 @@ function App() {
           if (projectState.currentStep === 'edit-question') {
             try {
               const q = await window.electronAPI.questions.getByUUID(projectState.lastActiveQuestionUuid);
-              const s = await window.electronAPI.questions.getSolution(projectState.lastActiveQuestionUuid);
+              // Fetch solution from the correct table based on question source
+              let s;
+              if (q?.examSource === 'IPQ') {
+                s = await window.electronAPI.ipq.getSolution(projectState.lastActiveQuestionUuid);
+              } else {
+                s = await window.electronAPI.questions.getSolution(projectState.lastActiveQuestionUuid);
+              }
               if (q) {
                 setEditingQuestion({
                   question: q,
@@ -564,11 +586,9 @@ function App() {
       setDbPath(result.path || null);
       await window.electronAPI.config.update({ databasePath: result.path || null });
 
-      // Fetch exam tables status for the new database
+      // Fetch exam tables status for the new database (includes IPQ since it's in SUPPORTED_EXAMS)
       const examStatus = await window.electronAPI.db.getExamTablesStatus();
-      // Add IPQ tables status
-      const ipqStatus = await window.electronAPI.ipq.getTablesStatus();
-      setExamTablesStatus([...examStatus, { exam: 'IPQ', hasQuestionsTable: ipqStatus.hasQuestionsTable, hasSolutionsTable: ipqStatus.hasSolutionsTable, isComplete: ipqStatus.isComplete }]);
+      setExamTablesStatus(examStatus);
     } else {
       addNotification('error', 'Failed to connect to database: ' + result.error);
     }
@@ -873,13 +893,15 @@ function App() {
           related_concepts: updatedQuestion.related_concepts,
           scary: updatedQuestion.scary,
           calc: updatedQuestion.calc,
+          division_override: updatedQuestion.division_override,
           updated_at: new Date().toISOString()
-        }
+        },
+        updatedQuestion.examSource as any // Pass exam type (e.g., 'IPQ', 'JEE')
       );
 
       if (success) {
         // Refetch the question from database to ensure sync
-        const freshQuestion = await window.electronAPI.questions.getByUUID(updatedQuestion.uuid);
+        const freshQuestion = await window.electronAPI.questions.getByUUID(updatedQuestion.uuid, updatedQuestion.examSource as any);
 
         if (freshQuestion) {
           // Update in-memory project state with fresh data from database
@@ -949,7 +971,17 @@ function App() {
   const handleVerifyQuestion = useCallback(async (questionUuid: string, status: 'approved' | 'rejected' | 'pending') => {
     if (!window.electronAPI) return;
     try {
-      const success = await window.electronAPI.questions.updateQuestion(questionUuid, { verification_level_1: status });
+      // Find the question to get its examSource for correct table targeting
+      let examSource: ExamType | undefined;
+      for (const section of sections) {
+        const found = section.selectedQuestions.find(sq => sq.question.uuid === questionUuid);
+        if (found && (found.question as any).examSource) {
+          examSource = (found.question as any).examSource;
+          break;
+        }
+      }
+
+      const success = await window.electronAPI.questions.updateQuestion(questionUuid, { verification_level_1: status }, examSource);
       if (!success) {
         console.error("Failed to update verification status in DB");
       } else {
@@ -959,7 +991,7 @@ function App() {
     } catch (e) {
       console.error("Error verifying question:", e);
     }
-  }, [handleQuestionStatusUpdate]);
+  }, [handleQuestionStatusUpdate, sections]);
 
   const handleStartEditing = (question: Question) => {
     if (!currentProject) return;
@@ -1073,11 +1105,21 @@ function App() {
     // Save solution if provided
     if (updatedSolution && window.electronAPI) {
       try {
-        await window.electronAPI.questions.saveSolution(
-          updatedSolution.uuid,
-          updatedSolution.solution_text || '',
-          updatedSolution.solution_image_url || ''
-        );
+        if (updatedQuestion.examSource === 'IPQ') {
+          // For IPQ, we need parent_exam. It should be available on the question object if loaded from IPQ table
+          await window.electronAPI.ipq.saveSolution(
+            updatedSolution.uuid,
+            updatedSolution.solution_text || '',
+            updatedSolution.solution_image_url || ''
+          );
+        } else {
+          await window.electronAPI.questions.saveSolution(
+            updatedSolution.uuid,
+            updatedSolution.solution_text || '',
+            updatedSolution.solution_image_url || '',
+            updatedQuestion.examSource as any
+          );
+        }
       } catch (error) {
         console.error('Error saving solution:', error);
         addNotification('warning', 'Question saved, but failed to save solution.');

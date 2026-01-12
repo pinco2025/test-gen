@@ -35,7 +35,22 @@ interface ItemData {
   onToggleSelect: (uuid: string) => void;
 }
 
-const isNumericalAnswer = (question: Question): boolean => !['A', 'B', 'C', 'D'].includes(question.answer.toUpperCase().trim());
+/**
+ * Determines if a question is Division 2 (numerical/integer answer type)
+ * Priority: division_override > auto-detection from answer format
+ * @returns true if Div2, false if Div1
+ */
+const isDivision2Question = (question: Question): boolean => {
+  // Check for manual override first
+  if (question.division_override === 1) return false; // Force Div1
+  if (question.division_override === 2) return true;  // Force Div2
+
+  // Auto-detect from answer format: MCQ answers (A/B/C/D) = Div1, numerical = Div2
+  return !['A', 'B', 'C', 'D'].includes(question.answer.toUpperCase().trim());
+};
+
+// Legacy alias for backward compatibility
+const isNumericalAnswer = isDivision2Question;
 
 const Row = ({ index, style, data }: ListChildComponentProps<ItemData>) => {
   const { questions, onEdit, onCreateIPQ, setSize, zoomLevel, isSelectionMode, selectedUuids, onToggleSelect } = data;
@@ -182,7 +197,7 @@ export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
     setShowIPQModal(true);
   };
 
-  const handleIPQSave = async (newQuestion: Question) => {
+  const handleIPQSave = async (newQuestion: Question, newSolution?: Partial<Solution>) => {
     if (!window.electronAPI || !ipqTargetQuestion) return;
 
     try {
@@ -200,6 +215,16 @@ export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
       if (!success) {
         addNotification('error', 'Failed to create IPQ question.');
         return;
+      }
+
+      // Save solution if provided
+      if (newSolution && (newSolution.solution_text || newSolution.solution_image_url)) {
+        console.log('[handleIPQSave] Saving solution:', newSolution);
+        await window.electronAPI.ipq.saveSolution(
+          newQuestion.uuid,
+          newSolution.solution_text || '',
+          newSolution.solution_image_url || ''
+        );
       }
 
       // Update original question links
@@ -382,13 +407,18 @@ export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
     if (!window.electronAPI) return;
 
     try {
+      // Determine the correct exam table to target:
+      // 1. Use examSource from the question if available (question knows where it came from)
+      // 2. Fall back to component's examType state
+      const targetExam = ((updatedQuestion as any).examSource as ExamType) || examType;
+
       // Check if it's a new question (clone) or update
       const existing = availableQuestions.find(q => q.uuid === updatedQuestion.uuid);
       let success = false;
 
       if (!existing && editingQuestion?.question.uuid === updatedQuestion.uuid) {
         // It's a new question (from clone)
-        success = await window.electronAPI.questions.createQuestion(updatedQuestion);
+        success = await window.electronAPI.questions.createQuestion(updatedQuestion, targetExam);
       } else {
         success = await window.electronAPI.questions.updateQuestion(
           updatedQuestion.uuid,
@@ -417,19 +447,31 @@ export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
             jee_mains_relevance: updatedQuestion.jee_mains_relevance,
             is_multi_concept: updatedQuestion.is_multi_concept,
             related_concepts: updatedQuestion.related_concepts,
+            division_override: updatedQuestion.division_override,
             updated_at: new Date().toISOString()
-          }
+          },
+          targetExam
         );
       }
 
       if (success) {
-        // Save solution
+        // Save solution using the same targetExam
         if (updatedSolution) {
-          await window.electronAPI.questions.saveSolution(
-            updatedQuestion.uuid,
-            updatedSolution.solution_text || '',
-            updatedSolution.solution_image_url || ''
-          );
+          // For IPQ questions, use IPQ solution API
+          if (targetExam === 'IPQ') {
+            await window.electronAPI.ipq.saveSolution(
+              updatedQuestion.uuid,
+              updatedSolution.solution_text || '',
+              updatedSolution.solution_image_url || ''
+            );
+          } else {
+            await window.electronAPI.questions.saveSolution(
+              updatedQuestion.uuid,
+              updatedSolution.solution_text || '',
+              updatedSolution.solution_image_url || '',
+              targetExam
+            );
+          }
         }
 
         // Update local state
@@ -490,7 +532,8 @@ export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
       <QuestionEditor
         question={editingQuestion.question}
         solution={editingQuestion.solution}
-        onSave={(q, s) => handleSaveQuestion(q, s)} // Just save, don't close
+        onSave={(q, s) => handleSaveQuestion(q, s)} // Final save
+        onIntermediateSave={(q, s) => handleSaveQuestion(q, s)} // Auto-save on changes
         onCancel={() => setEditingQuestion(null)}
         onNext={() => navigateQuestion('next')}
         onPrevious={() => navigateQuestion('prev')}

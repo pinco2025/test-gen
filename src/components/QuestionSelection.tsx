@@ -3,6 +3,7 @@ import { VariableSizeList as List, ListChildComponentProps } from 'react-window'
 import AutoSizer from 'react-virtualized-auto-sizer';
 import {
   Question,
+  Solution,
   AlphaConstraint,
   BetaConstraint,
   SelectedQuestion,
@@ -53,7 +54,22 @@ interface ItemData {
   selectionMode?: 'default' | 'single-replace';
 }
 
-const isNumericalAnswer = (question: Question): boolean => !['A', 'B', 'C', 'D'].includes(question.answer.toUpperCase().trim());
+/**
+ * Determines if a question is Division 2 (numerical/integer answer type)
+ * Priority: division_override > auto-detection from answer format
+ * @returns true if Div2, false if Div1
+ */
+const isDivision2Question = (question: Question): boolean => {
+  // Check for manual override first
+  if (question.division_override === 1) return false; // Force Div1
+  if (question.division_override === 2) return true;  // Force Div2
+
+  // Auto-detect from answer format: MCQ answers (A/B/C/D) = Div1, numerical = Div2
+  return !['A', 'B', 'C', 'D'].includes(question.answer.toUpperCase().trim());
+};
+
+// Legacy alias for backward compatibility
+const isNumericalAnswer = isDivision2Question;
 
 const Row = ({ index, style, data }: ListChildComponentProps<ItemData>) => {
   const { questions, selectedUuids, onToggle, onEdit, onCreateIPQ, setSize, zoomLevel } = data;
@@ -63,7 +79,16 @@ const Row = ({ index, style, data }: ListChildComponentProps<ItemData>) => {
   useEffect(() => {
     const element = rowRef.current;
     if (!element) return;
-    const observer = new ResizeObserver(() => setSize(index, element.getBoundingClientRect().height));
+
+    const observer = new ResizeObserver(() => {
+      // Wrap in requestAnimationFrame to avoid "ResizeObserver loop limit exceeded" error
+      window.requestAnimationFrame(() => {
+        if (element) {
+          setSize(index, element.getBoundingClientRect().height);
+        }
+      });
+    });
+
     observer.observe(element);
     return () => observer.disconnect();
   }, [setSize, index]);
@@ -156,7 +181,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
     setShowIPQModal(true);
   };
 
-  const handleIPQSave = async (newQuestion: Question) => {
+  const handleIPQSave = async (newQuestion: Question, newSolution?: Partial<Solution>) => {
     if (!window.electronAPI || !ipqTargetQuestion) return;
 
     try {
@@ -174,6 +199,16 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
       if (!success) {
         addNotification('error', 'Failed to create IPQ question.');
         return;
+      }
+
+      // Save solution if provided
+      if (newSolution && (newSolution.solution_text || newSolution.solution_image_url)) {
+        console.log('[handleIPQSave] Saving solution:', newSolution);
+        await window.electronAPI.ipq.saveSolution(
+          newQuestion.uuid,
+          newSolution.solution_text || '',
+          newSolution.solution_image_url || ''
+        );
       }
 
       // Update original question links
@@ -302,8 +337,11 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
       })
       .sort((a, b) => {
         switch (filters.sort) {
-          case 'year_desc': return (b.year || '').localeCompare(a.year || '');
-          case 'year_asc': return (a.year || '').localeCompare(b.year || '');
+          case 'year_desc':
+            // Safely cast to string to prevent crashes if DB returns numbers
+            return String(b.year || '').localeCompare(String(a.year || ''));
+          case 'year_asc':
+            return String(a.year || '').localeCompare(String(b.year || ''));
           case 'freq_desc': return (b.frequency || 0) - (a.frequency || 0);
           case 'freq_asc': return (a.frequency || 0) - (b.frequency || 0);
           default: return 0;

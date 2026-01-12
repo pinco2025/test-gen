@@ -156,13 +156,31 @@ const AddQuestionModal: React.FC<AddQuestionModalProps> = ({ onClose, onSave, in
         frequency: mergedData.frequency || 0
       };
 
-      // Parse solution if provided
+      // Parse solution if provided - support both nested and root-level formats
       let solution: Partial<Solution> | undefined;
+      console.log('[AddQuestionModal] Parsing solution from JSON:');
+      console.log('  data.solution:', data.solution);
+      console.log('  data.solution_text:', data.solution_text);
+
       if (data.solution) {
+        // Nested format: { solution: { solution_text: "..." } }
         solution = {
-          solution_text: data.solution.solution_text || '',
-          solution_image_url: data.solution.solution_image_url || ''
+          uuid: newQuestion.uuid,
+          solution_text: data.solution.solution_text || data.solution.text || '',
+          solution_image_url: data.solution.solution_image_url || data.solution.image_url || ''
         };
+        console.log('  Parsed nested solution - solution_text:', `"${solution.solution_text}"`);
+        console.log('  Parsed nested solution - solution_image_url:', `"${solution.solution_image_url}"`);
+      } else if (data.solution_text || data.solution_image_url) {
+        // Root-level format: { solution_text: "..." }
+        solution = {
+          uuid: newQuestion.uuid,
+          solution_text: data.solution_text || '',
+          solution_image_url: data.solution_image_url || ''
+        };
+        console.log('  Parsed root-level solution:', solution);
+      } else {
+        console.log('  No solution found in input');
       }
 
       return { question: newQuestion, solution };
@@ -183,9 +201,16 @@ const AddQuestionModal: React.FC<AddQuestionModalProps> = ({ onClose, onSave, in
   const handleSave = async () => {
     if (isSaving) return;
     const dataToSave = previewData || parseInput();
+    console.log('[AddQuestionModal] handleSave called:');
+    console.log('  previewData:', previewData);
+    console.log('  dataToSave:', dataToSave);
+    console.log('  dataToSave.solution:', dataToSave?.solution);
     if (dataToSave) {
       setIsSaving(true);
       try {
+        console.log('[AddQuestionModal] Calling onSave with:');
+        console.log('  question.uuid:', dataToSave.question.uuid);
+        console.log('  solution:', dataToSave.solution);
         await onSave(dataToSave.question, dataToSave.solution);
         onClose();
       } catch (err) {
@@ -241,6 +266,8 @@ const AddQuestionModal: React.FC<AddQuestionModalProps> = ({ onClose, onSave, in
                       solution: previewData.solution as Solution
                     }}
                     showAnswer={true}
+                    showSolutionToggle={true}
+                    defaultSolutionExpanded={true}
                   />
                 </div>
               </div>
