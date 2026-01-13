@@ -1,0 +1,87 @@
+{
+    "id": "jee-standard",
+    "name": "JEE",
+    "description": "Standard JEE exam selection preset with class-based distribution",
+    "Physics": {
+        "div1": {
+            "tableDistribution": {
+                "jee": 70,
+                "neet": 20,
+                "bits": 10
+            },
+            "classDistribution": {
+                "class2": 1,
+                "class1": 7,
+                "classNull": 12
+            }
+        },
+        "div2": {
+            "tableDistribution": {
+                "jee": 100,
+                "neet": 0,
+                "bits": 0
+            },
+            "classDistribution": {
+                "class2": 0,
+                "class1": 0,
+                "classNull": 5
+            }
+        }
+    },
+    "Chemistry": {
+        "div1": {
+            "tableDistribution": {
+                "jee": 70,
+                "neet": 20,
+                "bits": 10
+            },
+            "classDistribution": {
+                "class2": 1,
+                "class1": 7,
+                "classNull": 12
+            }
+        },
+        "div2": {
+            "tableDistribution": {
+                "jee": 100,
+                "neet": 0,
+                "bits": 0
+            },
+            "classDistribution": {
+                "class2": 0,
+                "class1": 0,
+                "classNull": 5
+            }
+        }
+    },
+    "Mathematics": {
+        "div1": {
+            "tableDistribution": {
+                "jee": 70,
+                "neet": 20,
+                "bits": 10
+            },
+            "classDistribution": {
+                "class2": 1,
+                "class1": 7,
+                "classNull": 12
+            }
+        },
+        "div2": {
+            "tableDistribution": {
+                "jee": 100,
+                "neet": 0,
+                "bits": 0
+            },
+            "classDistribution": {
+                "class2": 0,
+                "class1": 0,
+                "classNull": 5
+            }
+        }
+    },
+    "globalRules": {
+        "prioritizeLowFrequency": true,
+        "incrementFrequencyOnSelect": true
+    }
+}

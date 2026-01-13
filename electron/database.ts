@@ -206,8 +206,10 @@ export class DatabaseService {
       'legacy_d': "TEXT",
       'legacy_solution': "TEXT",
       'links': "TEXT",
-      'division_override': "INTEGER"  // null = auto-detect, 1 = force Div1, 2 = force Div2
+      'division_override': "INTEGER",  // null = auto-detect, 1 = force Div1, 2 = force Div2
+      'class': "INTEGER"  // null, 1, or 2 - for auto-selection preset distribution
     };
+
 
     // List of all possible question tables to check (exam-specific only)
     const tablesToCheck = [
@@ -1627,7 +1629,248 @@ solution_text = excluded.solution_text,
       return { hasQuestionsTable: false, hasSolutionsTable: false, isComplete: false };
     }
   }
+
+  /**
+   * Auto-select questions based on preset rules
+   * @param sections - Array of section inputs with name, type, maxQuestions, weightage
+   * @param preset - Selection preset with distribution rules
+   * @returns Object with selected UUIDs per section and selection details
+   */
+  autoSelectQuestions(
+    sections: Array<{
+      name: 'Physics' | 'Chemistry' | 'Mathematics';
+      type: 'Div 1' | 'Div 2';
+      maxQuestions: number;
+      weightage: Record<string, number>;
+    }>,
+    preset: {
+      Physics: { div1: any; div2: any };
+      Chemistry: { div1: any; div2: any };
+      Mathematics: { div1: any; div2: any };
+      globalRules: { prioritizeLowFrequency: boolean; incrementFrequencyOnSelect: boolean };
+    }
+  ): {
+    success: boolean;
+    sections: Array<{
+      sectionName: string;
+      sectionType: string;
+      selectedQuestionUuids: string[];
+      selectionDetails: {
+        byTable: { jee: number; neet: number; bits: number };
+        byClass: { class1: number; class2: number; classNull: number };
+        byChapter: Record<string, number>;
+      };
+    }>;
+    totalSelected: number;
+    frequencyUpdated: boolean;
+    error?: string;
+  } {
+    if (!this.db) {
+      return { success: false, sections: [], totalSelected: 0, frequencyUpdated: false, error: 'Database not connected' };
+    }
+
+    console.log('[AutoSelect] Starting auto-selection with', sections.length, 'sections');
+
+    const allSelectedUuids: string[] = [];
+    const resultSections: Array<{
+      sectionName: string;
+      sectionType: string;
+      selectedQuestionUuids: string[];
+      selectionDetails: {
+        byTable: { jee: number; neet: number; bits: number };
+        byClass: { class1: number; class2: number; classNull: number };
+        byChapter: Record<string, number>;
+      };
+    }> = [];
+
+    try {
+      for (const section of sections) {
+        const sectionPreset = preset[section.name];
+        const divRule = section.type === 'Div 1' ? sectionPreset.div1 : sectionPreset.div2;
+        const { tableDistribution, classDistribution } = divRule;
+
+        console.log(`[AutoSelect] Processing ${section.name} ${section.type}: max=${section.maxQuestions}`);
+
+        // Calculate how many questions to select from each table with proper rounding
+        // Use floor and distribute the remainder to preserve total
+        const total = section.maxQuestions;
+        let jeeCount = Math.floor((tableDistribution.jee / 100) * total);
+        let neetCount = Math.floor((tableDistribution.neet / 100) * total);
+        let bitsCount = Math.floor((tableDistribution.bits / 100) * total);
+
+        // Distribute the remainder to preserve total
+        let remainder = total - jeeCount - neetCount - bitsCount;
+        // Prioritize by highest percentage
+        const tablePriority = [
+          { name: 'jee', pct: tableDistribution.jee },
+          { name: 'neet', pct: tableDistribution.neet },
+          { name: 'bits', pct: tableDistribution.bits }
+        ].sort((a, b) => b.pct - a.pct);
+
+        let i = 0;
+        while (remainder > 0) {
+          if (tablePriority[i % 3].name === 'jee') jeeCount++;
+          else if (tablePriority[i % 3].name === 'neet') neetCount++;
+          else bitsCount++;
+          remainder--;
+          i++;
+        }
+
+        console.log(`[AutoSelect] Table distribution: JEE=${jeeCount}, NEET=${neetCount}, BITS=${bitsCount}, total=${jeeCount + neetCount + bitsCount}`);
+
+        // Get chapter codes from weightage
+        const chapterCodes = Object.keys(section.weightage);
+        if (chapterCodes.length === 0) {
+          console.warn(`[AutoSelect] No chapters specified for ${section.name}`);
+          continue;
+        }
+
+        const sectionSelectedUuids: string[] = [];
+        const byTable = { jee: 0, neet: 0, bits: 0 };
+        const byClass = { class1: 0, class2: 0, classNull: 0 };
+        const byChapter: Record<string, number> = {};
+        const warnings: string[] = [];
+        const sectionMax = total; // The hard cap for this section
+
+        // Division filter based on correct_answer column (as user specified):
+        // Div 1 (MCQ): answer is A, B, C, or D
+        // Div 2 (Integer): answer is NOT A, B, C, D (numeric answer)
+        const divisionFilter = section.type === 'Div 1'
+          ? "AND UPPER(answer) IN ('A', 'B', 'C', 'D')"
+          : "AND UPPER(answer) NOT IN ('A', 'B', 'C', 'D')";
+
+        const orderBy = preset.globalRules.prioritizeLowFrequency
+          ? 'ORDER BY COALESCE(frequency, 0) ASC, RANDOM()'
+          : 'ORDER BY RANDOM()';
+
+        // Helper to select questions for ONE chapter from a specific table
+        const selectForChapter = (
+          chapterCode: string,
+          neededCount: number,
+          tables: string[]
+        ): number => {
+          if (neededCount <= 0 || sectionSelectedUuids.length >= sectionMax) return 0;
+
+          let selected = 0;
+
+          for (const table of tables) {
+            if (selected >= neededCount || sectionSelectedUuids.length >= sectionMax) break;
+
+            const remaining = Math.min(neededCount - selected, sectionMax - sectionSelectedUuids.length);
+            if (remaining <= 0) break;
+
+            // Build exclude clause
+            const excludeClause = sectionSelectedUuids.length > 0
+              ? `AND uuid NOT IN (${sectionSelectedUuids.map(() => '?').join(',')})`
+              : '';
+            const excludeParams = sectionSelectedUuids.length > 0 ? [...sectionSelectedUuids] : [];
+
+            const query = `SELECT uuid, class FROM ${table} WHERE tag_2 = ? ${divisionFilter} ${excludeClause} ${orderBy} LIMIT ?`;
+            const params = [chapterCode, ...excludeParams, remaining];
+
+            try {
+              const results = this.db!.prepare(query).all(...params) as { uuid: string; class: number | null }[];
+
+              for (const r of results) {
+                if (sectionSelectedUuids.length >= sectionMax) break;
+                if (selected >= neededCount) break;
+
+                sectionSelectedUuids.push(r.uuid);
+                selected++;
+
+                // Track which table it came from
+                if (table.startsWith('jee')) byTable.jee++;
+                else if (table.startsWith('neet')) byTable.neet++;
+                else if (table.startsWith('bits')) byTable.bits++;
+
+                // Track class
+                if (r.class === 2) byClass.class2++;
+                else if (r.class === 1) byClass.class1++;
+                else byClass.classNull++;
+
+                byChapter[chapterCode] = (byChapter[chapterCode] || 0) + 1;
+              }
+            } catch (e) {
+              // Table might not exist or other error
+            }
+          }
+
+          return selected;
+        };
+
+        // Iterate through each chapter and select the required number
+        for (const [chapterCode, requiredCount] of Object.entries(section.weightage)) {
+          const needed = requiredCount as number;
+          if (needed <= 0) continue;
+          if (sectionSelectedUuids.length >= sectionMax) break;
+
+          // Try tables in priority order: JEE first, then NEET, then BITS
+          const tables = ['jee_questions', 'neet_questions', 'bits_questions'];
+          const selected = selectForChapter(chapterCode, needed, tables);
+
+          if (selected < needed) {
+            warnings.push(`Chapter ${chapterCode}: needed ${needed}, got ${selected}`);
+          }
+
+          console.log(`[AutoSelect] Chapter ${chapterCode}: needed ${needed}, selected ${selected}`);
+        }
+
+        // Log any warnings
+        if (warnings.length > 0) {
+          console.warn(`[AutoSelect] Warnings for ${section.name} ${section.type}:`, warnings);
+        }
+
+        console.log(`[AutoSelect] ${section.name} ${section.type}: selected ${sectionSelectedUuids.length} questions (target: ${total})`);
+
+        allSelectedUuids.push(...sectionSelectedUuids);
+        resultSections.push({
+          sectionName: section.name,
+          sectionType: section.type,
+          selectedQuestionUuids: sectionSelectedUuids,
+          selectionDetails: { byTable, byClass, byChapter },
+          warnings
+        } as any);
+      }
+
+      // Increment frequency for all selected questions if enabled
+      let frequencyUpdated = false;
+      if (preset.globalRules.incrementFrequencyOnSelect && allSelectedUuids.length > 0) {
+        console.log(`[AutoSelect] Incrementing frequency for ${allSelectedUuids.length} questions`);
+
+        // Update in batches per exam table
+        for (const exam of ['JEE', 'NEET', 'BITS'] as const) {
+          const table = `${exam.toLowerCase()}_questions`;
+          try {
+            const updateStmt = this.db.prepare(`UPDATE ${table} SET frequency = COALESCE(frequency, 0) + 1 WHERE uuid = ?`);
+            for (const uuid of allSelectedUuids) {
+              updateStmt.run(uuid);
+            }
+          } catch (e) {
+            // Table might not exist or UUID not in this table - ignore
+          }
+        }
+        frequencyUpdated = true;
+      }
+
+      return {
+        success: true,
+        sections: resultSections,
+        totalSelected: allSelectedUuids.length,
+        frequencyUpdated
+      };
+    } catch (error: any) {
+      console.error('[AutoSelect] Error during auto-selection:', error);
+      return {
+        success: false,
+        sections: resultSections,
+        totalSelected: allSelectedUuids.length,
+        frequencyUpdated: false,
+        error: error.message
+      };
+    }
+  }
 }
+
 
 
 // Singleton instance
