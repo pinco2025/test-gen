@@ -1799,20 +1799,47 @@ solution_text = excluded.solution_text,
         };
 
         // Iterate through each chapter and select the required number
+        // Iterate through each chapter and select the required number
         for (const [chapterCode, requiredCount] of Object.entries(section.weightage)) {
-          const needed = requiredCount as number;
+          let needed = requiredCount as number;
           if (needed <= 0) continue;
-          if (sectionSelectedUuids.length >= sectionMax) break;
 
-          // Try tables in priority order: JEE first, then NEET, then BITS
-          const tables = ['jee_questions', 'neet_questions', 'bits_questions'];
-          const selected = selectForChapter(chapterCode, needed, tables);
+          let chapterSelected = 0;
 
-          if (selected < needed) {
-            warnings.push(`Chapter ${chapterCode}: needed ${needed}, got ${selected}`);
+          // Try to fulfill the chapter requirement one by one to balance tables
+          while (needed > 0 && sectionSelectedUuids.length < sectionMax) {
+
+            // Dynamic priority: prefer tables that are furthest below their target count
+            const tableOptions = [
+              { name: 'jee_questions', deficit: jeeCount - byTable.jee },
+              { name: 'neet_questions', deficit: neetCount - byTable.neet },
+              { name: 'bits_questions', deficit: bitsCount - byTable.bits }
+            ].sort((a, b) => b.deficit - a.deficit); // Higher deficit first
+
+            let picked = false;
+
+            // Try each table in priority order
+            for (const opt of tableOptions) {
+              const count = selectForChapter(chapterCode, 1, [opt.name]);
+              if (count > 0) {
+                picked = true;
+                needed--;
+                chapterSelected++;
+                break;
+              }
+            }
+
+            if (!picked) {
+              // Could not find question in ANY table for this chapter
+              break;
+            }
           }
 
-          console.log(`[AutoSelect] Chapter ${chapterCode}: needed ${needed}, selected ${selected}`);
+          if (needed > 0) {
+            warnings.push(`Chapter ${chapterCode}: wanted ${requiredCount}, got ${chapterSelected}`);
+          }
+
+          console.log(`[AutoSelect] Chapter ${chapterCode}: needed ${requiredCount}, selected ${chapterSelected}`);
         }
 
         // Log any warnings
