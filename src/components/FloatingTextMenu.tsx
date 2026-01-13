@@ -1,11 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 export const FloatingTextMenu: React.FC = () => {
     const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
     const [targetInput, setTargetInput] = useState<HTMLInputElement | HTMLTextAreaElement | null>(null);
+    const menuRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         const handleMouseUp = (e: MouseEvent) => {
+            // Ignore clicks within the menu itself
+            if (menuRef.current && menuRef.current.contains(e.target as Node)) {
+                return;
+            }
+
             const activeElement = document.activeElement;
 
             // Only trigger for inputs and textareas
@@ -55,7 +61,7 @@ export const FloatingTextMenu: React.FC = () => {
             document.removeEventListener('mouseup', handleMouseUp);
             document.removeEventListener('selectionchange', handleSelectionChange);
         };
-    }, [targetInput]);
+    }, []);
 
     const triggerChange = (input: HTMLInputElement | HTMLTextAreaElement, newValue: string) => {
         const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
@@ -188,9 +194,11 @@ export const FloatingTextMenu: React.FC = () => {
 
     return (
         <div
+            ref={menuRef}
             className="fixed z-[9999] flex flex-col bg-[#1e1e2d] border border-gray-700 text-white rounded-xl shadow-2xl p-2 gap-2 animate-in fade-in zoom-in duration-100 max-w-[400px]"
             style={{ top: position.top, left: position.left }}
             onMouseDown={(e) => e.preventDefault()} // Prevent losing focus on input
+            onMouseUp={(e) => e.stopPropagation()} // Prevent document listener from triggering
         >
             {/* Row 1: LaTeX Wrappers */}
             <div className="flex items-center flex-wrap gap-1">
