@@ -1768,8 +1768,12 @@ solution_text = excluded.solution_text,
             const query = `SELECT uuid, class FROM ${table} WHERE tag_2 = ? ${divisionFilter} ${excludeClause} ${orderBy} LIMIT ?`;
             const params = [chapterCode, ...excludeParams, remaining];
 
+            console.log(`[AutoSelect DEBUG] Querying table=${table}, chapter=${chapterCode}, limit=${remaining}`);
+
             try {
               const results = this.db!.prepare(query).all(...params) as { uuid: string; class: number | null }[];
+
+              console.log(`[AutoSelect DEBUG] Table ${table} returned ${results.length} results for chapter ${chapterCode}`);
 
               for (const r of results) {
                 if (sectionSelectedUuids.length >= sectionMax) break;
@@ -1792,6 +1796,7 @@ solution_text = excluded.solution_text,
               }
             } catch (e) {
               // Table might not exist or other error
+              console.error(`[AutoSelect] Query failed for table ${table}, chapter ${chapterCode}:`, e);
             }
           }
 
@@ -1816,12 +1821,16 @@ solution_text = excluded.solution_text,
               { name: 'bits_questions', deficit: bitsCount - byTable.bits }
             ].sort((a, b) => b.deficit - a.deficit); // Higher deficit first
 
+            console.log(`[AutoSelect DEBUG] Table priority for chapter ${chapterCode}: ${tableOptions.map(t => `${t.name}(deficit=${t.deficit})`).join(', ')}`);
+            console.log(`[AutoSelect DEBUG] Current counts: JEE=${byTable.jee}/${jeeCount}, NEET=${byTable.neet}/${neetCount}, BITS=${byTable.bits}/${bitsCount}`);
+
             let picked = false;
 
             // Try each table in priority order
             for (const opt of tableOptions) {
               const count = selectForChapter(chapterCode, 1, [opt.name]);
               if (count > 0) {
+                console.log(`[AutoSelect DEBUG] Picked 1 from ${opt.name} for chapter ${chapterCode}`);
                 picked = true;
                 needed--;
                 chapterSelected++;
@@ -1831,6 +1840,7 @@ solution_text = excluded.solution_text,
 
             if (!picked) {
               // Could not find question in ANY table for this chapter
+              console.log(`[AutoSelect DEBUG] Could not find any question for chapter ${chapterCode} in any table`);
               break;
             }
           }
@@ -1848,6 +1858,7 @@ solution_text = excluded.solution_text,
         }
 
         console.log(`[AutoSelect] ${section.name} ${section.type}: selected ${sectionSelectedUuids.length} questions (target: ${total})`);
+        console.log(`[AutoSelect] FINAL TABLE DISTRIBUTION: JEE=${byTable.jee} (target ${jeeCount}), NEET=${byTable.neet} (target ${neetCount}), BITS=${byTable.bits} (target ${bitsCount})`);
 
         allSelectedUuids.push(...sectionSelectedUuids);
         resultSections.push({
