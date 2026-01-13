@@ -139,5 +139,24 @@ contextBridge.exposeInMainWorld('electronAPI', {
     minimize: () => ipcRenderer.invoke('window:minimize'),
     maximize: () => ipcRenderer.invoke('window:maximize'),
     close: () => ipcRenderer.invoke('window:close')
+  },
+
+  // Preset operations (for auto-selection)
+  presets: {
+    list: () => ipcRenderer.invoke('presets:list'),
+    get: (presetId: string) => ipcRenderer.invoke('presets:get', presetId),
+    import: () => ipcRenderer.invoke('presets:import'),
+    save: (preset: any) => ipcRenderer.invoke('presets:save', preset)
+  },
+
+  // Auto-selection operations
+  autoSelect: {
+    run: (sections: Array<{
+      name: 'Physics' | 'Chemistry' | 'Mathematics';
+      type: 'Div 1' | 'Div 2';
+      maxQuestions: number;
+      weightage: Record<string, number>;
+    }>, presetId: string) => ipcRenderer.invoke('autoSelect:run', sections, presetId)
   }
 });
+

@@ -890,3 +890,184 @@ ipcMain.handle('test:exportWithConfig', async (_, test: Test, exportConfig: {
     return { success: false, error: error.message };
   }
 });
+
+// ============ Auto-Selection IPC Handlers ============
+
+// Get the built-in presets directory path (Read Only in Prod)
+function getBuiltInPresetsDir(): string {
+  if (isDev) {
+    return path.join(__dirname, '..', 'src', 'data', 'presets');
+  } else {
+    return path.join(__dirname, '..', 'resources', 'presets');
+  }
+}
+
+// Get the user presets directory path (Read/Write)
+function getUserPresetsDir(): string {
+  return path.join(app.getPath('userData'), 'presets');
+}
+
+// Helper to load all presets from both sources
+async function loadAllPresets(): Promise<Map<string, any>> {
+  const presets = new Map<string, any>();
+
+  // 1. Load built-in presets
+  const builtInDir = getBuiltInPresetsDir();
+  if (fs.existsSync(builtInDir)) {
+    try {
+      const files = fs.readdirSync(builtInDir).filter(f => f.endsWith('.json'));
+      for (const file of files) {
+        try {
+          const content = fs.readFileSync(path.join(builtInDir, file), 'utf-8');
+          const preset = JSON.parse(content);
+          if (preset.id) presets.set(preset.id, preset);
+        } catch (e) {
+          console.warn(`[Presets] Failed to load built-in ${file}:`, e);
+        }
+      }
+    } catch (e) {
+      console.warn('[Presets] Failed to access built-in directory:', e);
+    }
+  }
+
+  // 2. Load user presets (override built-in)
+  const userDir = getUserPresetsDir();
+  if (fs.existsSync(userDir)) {
+    try {
+      const files = fs.readdirSync(userDir).filter(f => f.endsWith('.json'));
+      for (const file of files) {
+        try {
+          const content = fs.readFileSync(path.join(userDir, file), 'utf-8');
+          const preset = JSON.parse(content);
+          if (preset.id) presets.set(preset.id, preset);
+        } catch (e) {
+          console.warn(`[Presets] Failed to load user ${file}:`, e);
+        }
+      }
+    } catch (e) {
+      console.warn('[Presets] Failed to access user directory:', e);
+    }
+  }
+
+  return presets;
+}
+
+// List all available presets
+ipcMain.handle('presets:list', async () => {
+  try {
+    const presetsMap = await loadAllPresets();
+    return Array.from(presetsMap.values()).map(p => ({
+      id: p.id,
+      name: p.name,
+      description: p.description
+    }));
+  } catch (error: any) {
+    console.error('[Presets] Error listing presets:', error);
+    return [];
+  }
+});
+
+// Get a specific preset by ID
+ipcMain.handle('presets:get', async (_, presetId: string) => {
+  try {
+    const presetsMap = await loadAllPresets();
+    return presetsMap.get(presetId) || null;
+  } catch (error: any) {
+    console.error('[Presets] Error getting preset:', error);
+    return null;
+  }
+});
+
+// Import a preset from JSON file
+ipcMain.handle('presets:import', async () => {
+  try {
+    const { canceled, filePaths } = await dialog.showOpenDialog({
+      title: 'Import Preset',
+      filters: [{ name: 'JSON Files', extensions: ['json'] }],
+      properties: ['openFile']
+    });
+
+    if (canceled || filePaths.length === 0) {
+      return { success: false, message: 'Cancelled' };
+    }
+
+    const content = fs.readFileSync(filePaths[0], 'utf-8');
+    let preset;
+    try {
+      preset = JSON.parse(content);
+    } catch (e) {
+      return { success: false, message: 'Invalid JSON file' };
+    }
+
+    if (!preset.id || !preset.name) {
+      return { success: false, message: 'Preset must have "id" and "name" fields' };
+    }
+
+    // Sanitize ID to be safe for filename
+    const safeId = preset.id.replace(/[^a-zA-Z0-9-_]/g, '-').toLowerCase();
+    preset.id = safeId;
+
+    const userDir = getUserPresetsDir();
+    if (!fs.existsSync(userDir)) {
+      fs.mkdirSync(userDir, { recursive: true });
+    }
+
+    const targetPath = path.join(userDir, `${safeId}.json`);
+    fs.writeFileSync(targetPath, JSON.stringify(preset, null, 4));
+
+    return { success: true, id: safeId };
+  } catch (error: any) {
+    console.error('[Presets] Error importing preset:', error);
+    return { success: false, message: error.message };
+  }
+});
+
+// Save a preset
+ipcMain.handle('presets:save', async (_, preset: any) => {
+  try {
+    if (!preset.id || !preset.name) {
+      return { success: false, message: 'Preset must have "id" and "name" fields' };
+    }
+
+    // Sanitize ID
+    const safeId = preset.id.replace(/[^a-zA-Z0-9-_]/g, '-').toLowerCase();
+    preset.id = safeId;
+
+    const userDir = getUserPresetsDir();
+    if (!fs.existsSync(userDir)) {
+      fs.mkdirSync(userDir, { recursive: true });
+    }
+
+    const targetPath = path.join(userDir, `${safeId}.json`);
+    fs.writeFileSync(targetPath, JSON.stringify(preset, null, 4));
+
+    return { success: true, id: safeId };
+  } catch (error: any) {
+    console.error('[Presets] Error saving preset:', error);
+    return { success: false, message: error.message };
+  }
+});
+
+// Run auto-selection
+ipcMain.handle('autoSelect:run', async (_, sections: Array<{
+  name: 'Physics' | 'Chemistry' | 'Mathematics';
+  type: 'Div 1' | 'Div 2';
+  maxQuestions: number;
+  weightage: Record<string, number>;
+}>, presetId: string) => {
+  try {
+    // Load the preset
+    const presetsMap = await loadAllPresets();
+    const preset = presetsMap.get(presetId);
+
+    if (!preset) {
+      return { success: false, error: `Preset "${presetId}" not found` };
+    }
+
+    // Run auto-selection
+    return dbService.autoSelectQuestions(sections, preset);
+  } catch (error: any) {
+    console.error('[AutoSelect] Error running auto-selection:', error);
+    return { success: false, error: error.message };
+  }
+});

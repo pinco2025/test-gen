@@ -693,6 +693,295 @@ function App() {
     }
   };
 
+  // Handle auto-selection test creation (JSON upload + auto-select questions using preset)
+  const handleAutoSelectTestCreation = async (data: FullTestJson, presetId: string) => {
+    const now = new Date().toISOString();
+    const createdProjectIds: string[] = [];
+
+    if (!window.electronAPI) {
+      addNotification('error', 'Electron API not available');
+      return;
+    }
+
+    let allChapters: Record<SectionName, Chapter[]> = { Physics: [], Chemistry: [], Mathematics: [] };
+    try {
+      const rawChapters = await window.electronAPI.chapters.load();
+      if (rawChapters) {
+        allChapters = {
+          Physics: rawChapters.Physics || [],
+          Chemistry: rawChapters.Chemistry || [],
+          Mathematics: rawChapters.Mathematics || []
+        };
+      }
+    } catch (e) {
+      console.error("Failed to load chapters for test creation", e);
+    }
+
+    for (const testDef of data.tests) {
+      const projectId = testDef.testCode.replace(/[^a-zA-Z0-9]/g, '-');
+
+      // Prepare sections input for auto-selection
+      const autoSelectSections = testDef.sections.map(sectionDef => ({
+        name: sectionDef.name,
+        type: sectionDef.type,
+        maxQuestions: sectionDef.maxQuestions,
+        weightage: sectionDef.weightage
+      }));
+
+      // Run auto-selection
+      addNotification('info', `Auto-selecting questions for ${testDef.testCode}...`);
+      const result = await window.electronAPI.autoSelect.run(autoSelectSections, presetId);
+
+      if (!result.success) {
+        addNotification('error', `Auto-selection failed for ${testDef.testCode}: ${result.error}`);
+        continue;
+      }
+
+      addNotification('success', `Selected ${result.totalSelected} questions for ${testDef.testCode}`);
+
+      // Fetch selected questions by UUIDs
+      const allSelectedUuids = result.sections.flatMap(s => s.selectedQuestionUuids);
+      const selectedQuestionsByUuid = new Map<string, Question>();
+
+      // Fetch from all exam tables
+      for (const exam of ['JEE', 'NEET', 'BITS'] as ExamType[]) {
+        try {
+          const questions = await window.electronAPI.questions.getByUUIDs(allSelectedUuids, exam);
+          questions.forEach(q => selectedQuestionsByUuid.set(q.uuid, q));
+        } catch (e) {
+          // Table might not exist
+        }
+      }
+
+      const metadata: TestMetadata = {
+        code: testDef.testCode,
+        description: testDef.description,
+        testType: newTestType,
+        createdAt: now
+      };
+
+      // Build sections with selected questions populated
+      const sections: SectionConfig[] = testDef.sections.map((sectionDef) => {
+        const autoSelectResult = result.sections.find(
+          s => s.sectionName === sectionDef.name && s.sectionType === sectionDef.type
+        );
+
+        const selectedQuestions: SelectedQuestion[] = [];
+        if (autoSelectResult) {
+          autoSelectResult.selectedQuestionUuids.forEach((uuid) => {
+            const question = selectedQuestionsByUuid.get(uuid);
+            if (question) {
+              // Determine division based on answer type (numeric = Div2, else Div1)
+              const isNumeric = !isNaN(Number(question.answer)) || /^-?\d+(\.\d+)?$/.test(question.answer.trim());
+              const division: 1 | 2 = sectionDef.type === 'Div 2' ? 2 : (isNumeric ? 2 : 1);
+
+              selectedQuestions.push({
+                question,
+                chapterCode: question.tag_2 || '',
+                chapterName: allChapters[sectionDef.name]?.find(c => c.code === question.tag_2)?.name || question.tag_2 || '',
+                difficulty: (question.tag_3 as 'E' | 'M' | 'H') || 'M',
+                division,
+                status: 'pending'
+              });
+            }
+          });
+        }
+
+        return {
+          name: sectionDef.name,
+          chapters: allChapters[sectionDef.name] || [],
+          alphaConstraint: { chapters: [] },
+          betaConstraint: {
+            weightage: sectionDef.weightage,
+            maxQuestions: sectionDef.maxQuestions,
+            type: sectionDef.type
+          },
+          selectedQuestions
+        };
+      });
+
+      setProjectsData(prev => ({
+        ...prev,
+        [projectId]: {
+          testMetadata: metadata,
+          sections: sections,
+          currentSectionIndex: 0,
+          constraintConfig: { minIdx: 1, Sm: 0.1, Sh: 0.1 },
+          currentStep: 'test-review', // Go directly to test review since questions are selected
+          createdAt: now
+        }
+      }));
+
+      const projectState: ProjectState = {
+        id: projectId,
+        testMetadata: metadata,
+        sections: sections,
+        currentSectionIndex: 0,
+        constraintConfig: { minIdx: 1, Sm: 0.1, Sh: 0.1 },
+        currentStep: 'test-review',
+        createdAt: now,
+        lastModified: now
+      };
+      await window.electronAPI.project.save(projectState);
+
+      createdProjectIds.push(projectId);
+    }
+
+    const updatedProjects = await window.electronAPI.project.list();
+    setProjects(updatedProjects);
+
+    if (createdProjectIds.length > 0) {
+      addNotification('success', `${createdProjectIds.length} test(s) created with auto-selected questions!`);
+      setIsCreatingNew(false);
+      await loadProject(createdProjectIds[0]);
+    } else {
+      addNotification('error', 'No tests were created. Check auto-selection results.');
+    }
+  };
+
+  // Handle auto-selection for an already-created project from TestOverview
+  const handleOverviewAutoSelect = async (presetId: string) => {
+    if (!currentProjectId || !window.electronAPI) {
+      addNotification('error', 'No project selected');
+      return;
+    }
+
+    const currentData = projectsData[currentProjectId];
+    if (!currentData || !currentData.sections) {
+      addNotification('error', 'No sections found');
+      return;
+    }
+
+    // Load chapters for name lookup
+    let allChapters: Record<SectionName, Chapter[]> = { Physics: [], Chemistry: [], Mathematics: [] };
+    try {
+      const rawChapters = await window.electronAPI.chapters.load();
+      if (rawChapters) {
+        allChapters = {
+          Physics: rawChapters.Physics || [],
+          Chemistry: rawChapters.Chemistry || [],
+          Mathematics: rawChapters.Mathematics || []
+        };
+      }
+    } catch (e) {
+      console.error("Failed to load chapters", e);
+    }
+
+    // Prepare sections input for auto-selection
+    const autoSelectSections = currentData.sections.map(section => ({
+      name: section.name,
+      type: (section.betaConstraint?.type || 'Div 1') as 'Div 1' | 'Div 2',
+      maxQuestions: section.betaConstraint?.maxQuestions || 25,
+      weightage: section.betaConstraint?.weightage || {}
+    }));
+
+    addNotification('info', 'Auto-selecting questions...');
+    const result = await window.electronAPI.autoSelect.run(autoSelectSections, presetId);
+
+    if (!result.success) {
+      addNotification('error', `Auto-selection failed: ${result.error}`);
+      return;
+    }
+
+    addNotification('success', `Selected ${result.totalSelected} questions`);
+
+    // Fetch selected questions by UUIDs
+    const allSelectedUuids = result.sections.flatMap(s => s.selectedQuestionUuids);
+    const selectedQuestionsByUuid = new Map<string, Question>();
+
+    for (const exam of ['JEE', 'NEET', 'BITS'] as ExamType[]) {
+      try {
+        const questions = await window.electronAPI.questions.getByUUIDs(allSelectedUuids, exam);
+        questions.forEach(q => selectedQuestionsByUuid.set(q.uuid, q));
+      } catch (e) {
+        // Table might not exist
+      }
+    }
+
+    // Update sections with selected questions
+    const updatedSections = currentData.sections.map((section) => {
+      const autoSelectResult = result.sections.find(
+        s => s.sectionName === section.name && s.sectionType === (section.betaConstraint?.type || 'Div 1')
+      );
+
+      const selectedQuestions: SelectedQuestion[] = [];
+      if (autoSelectResult) {
+        autoSelectResult.selectedQuestionUuids.forEach((uuid) => {
+          const question = selectedQuestionsByUuid.get(uuid);
+          if (question) {
+            const isNumeric = !isNaN(Number(question.answer)) || /^-?\d+(\.\d+)?$/.test(question.answer.trim());
+            const division: 1 | 2 = section.betaConstraint?.type === 'Div 2' ? 2 : (isNumeric ? 2 : 1);
+
+            selectedQuestions.push({
+              question,
+              chapterCode: question.tag_2 || '',
+              chapterName: allChapters[section.name]?.find(c => c.code === question.tag_2)?.name || question.tag_2 || '',
+              difficulty: (question.tag_3 as 'E' | 'M' | 'H') || 'M',
+              division,
+              status: 'pending'
+            });
+          }
+        });
+      }
+
+      return { ...section, selectedQuestions };
+    });
+
+    updateCurrentProject({
+      sections: updatedSections,
+      currentStep: 'test-review'
+    });
+  };
+
+  // Handle clearing all questions from the test (with frequency decrement)
+  const handleClearTest = async () => {
+    if (!currentProjectId || !window.electronAPI) {
+      addNotification('error', 'No project selected');
+      return;
+    }
+
+    const currentData = projectsData[currentProjectId];
+    if (!currentData || !currentData.sections) {
+      addNotification('error', 'No sections found');
+      return;
+    }
+
+    // Collect all selected question UUIDs and their exam sources
+    const questionsToDecrement: { uuid: string; examSource: ExamType }[] = [];
+    for (const section of currentData.sections) {
+      for (const sq of section.selectedQuestions) {
+        const examSource = (sq.question as any).examSource || 'JEE';
+        questionsToDecrement.push({ uuid: sq.question.uuid, examSource });
+      }
+    }
+
+    // Decrement frequency for each question
+    if (questionsToDecrement.length > 0) {
+      addNotification('info', `Decrementing frequency for ${questionsToDecrement.length} questions...`);
+
+      for (const q of questionsToDecrement) {
+        try {
+          await window.electronAPI.questions.decrementFrequency(q.uuid, q.examSource);
+        } catch (e) {
+          console.error(`Failed to decrement frequency for ${q.uuid}:`, e);
+        }
+      }
+    }
+
+    // Clear all selected questions
+    const clearedSections = currentData.sections.map(section => ({
+      ...section,
+      selectedQuestions: []
+    }));
+
+    updateCurrentProject({
+      sections: clearedSections,
+      currentStep: 'full-test-overview' // Stay on overview to allow re-selection
+    });
+
+    addNotification('success', `Cleared ${questionsToDecrement.length} questions from test`);
+  };
+
   const handleSelectionChange = useCallback((selectedQuestions: SelectedQuestion[]) => {
     if (!currentProjectId) return;
 
@@ -1318,6 +1607,7 @@ function App() {
             <TestCreationUpload
               onCancel={() => setIsCreatingNew(false)}
               onProceed={handleJsonTestCreation}
+              onAutoSelect={handleAutoSelectTestCreation}
               testType={newTestType}
             />
           );
@@ -1339,7 +1629,9 @@ function App() {
               activeSectionIndex={currentProject?.fullTestSectionView}
               onSectionIndexChange={(idx) => updateCurrentProject({ fullTestSectionView: idx })}
               onReview={() => updateCurrentProject({ currentStep: 'test-review' })}
-              onBack={() => setIsCreatingNew(false)} // Or dashboard
+              onBack={() => setIsCreatingNew(false)}
+              onAutoSelect={handleOverviewAutoSelect}
+              onClearTest={handleClearTest}
             />
           );
 

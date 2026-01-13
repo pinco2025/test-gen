@@ -90,6 +90,13 @@
         "filter": [
           "**/*"
         ]
+      },
+      {
+        "from": "src/data/presets",
+        "to": "presets",
+        "filter": [
+          "**/*.json"
+        ]
       }
     ],
     "directories": {

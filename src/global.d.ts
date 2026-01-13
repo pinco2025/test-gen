@@ -150,6 +150,38 @@ declare global {
         maximize: () => Promise<void>;
         close: () => Promise<void>;
       };
+      presets: {
+        list: () => Promise<Array<{ id: string; name: string; description: string }>>;
+        get: (presetId: string) => Promise<any>;
+        import: () => Promise<{ success: boolean; id?: string; message?: string }>;
+        save: (preset: any) => Promise<{ success: boolean; id?: string; message?: string }>;
+      };
+      autoSelect: {
+        run: (
+          sections: Array<{
+            name: 'Physics' | 'Chemistry' | 'Mathematics';
+            type: 'Div 1' | 'Div 2';
+            maxQuestions: number;
+            weightage: Record<string, number>;
+          }>,
+          presetId: string
+        ) => Promise<{
+          success: boolean;
+          sections: Array<{
+            sectionName: string;
+            sectionType: string;
+            selectedQuestionUuids: string[];
+            selectionDetails: {
+              byTable: { jee: number; neet: number; bits: number };
+              byClass: { class1: number; class2: number; classNull: number };
+              byChapter: Record<string, number>;
+            };
+          }>;
+          totalSelected: number;
+          frequencyUpdated: boolean;
+          error?: string;
+        }>;
+      };
     };
   }
 }
