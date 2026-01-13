@@ -1718,6 +1718,12 @@ solution_text = excluded.solution_text,
 
         console.log(`[AutoSelect] Table distribution: JEE=${jeeCount}, NEET=${neetCount}, BITS=${bitsCount}, total=${jeeCount + neetCount + bitsCount}`);
 
+        // Calculate class distribution targets (absolute counts from preset)
+        const class1Target = classDistribution?.class1 ?? 0;
+        const class2Target = classDistribution?.class2 ?? 0;
+        const classNullTarget = classDistribution?.classNull ?? total; // Default: all classNull if not specified
+        console.log(`[AutoSelect] Class distribution targets: class1=${class1Target}, class2=${class2Target}, classNull=${classNullTarget}`);
+
         // Get chapter codes from weightage
         const chapterCodes = Object.keys(section.weightage);
         if (chapterCodes.length === 0) {
@@ -1743,67 +1749,57 @@ solution_text = excluded.solution_text,
           ? 'ORDER BY COALESCE(frequency, 0) ASC, RANDOM()'
           : 'ORDER BY RANDOM()';
 
-        // Helper to select questions for ONE chapter from a specific table
-        const selectForChapter = (
-          chapterCode: string,
-          neededCount: number,
-          tables: string[]
-        ): number => {
-          if (neededCount <= 0 || sectionSelectedUuids.length >= sectionMax) return 0;
-
-          let selected = 0;
-
-          for (const table of tables) {
-            if (selected >= neededCount || sectionSelectedUuids.length >= sectionMax) break;
-
-            const remaining = Math.min(neededCount - selected, sectionMax - sectionSelectedUuids.length);
-            if (remaining <= 0) break;
-
-            // Build exclude clause
-            const excludeClause = sectionSelectedUuids.length > 0
-              ? `AND uuid NOT IN (${sectionSelectedUuids.map(() => '?').join(',')})`
-              : '';
-            const excludeParams = sectionSelectedUuids.length > 0 ? [...sectionSelectedUuids] : [];
-
-            const query = `SELECT uuid, class FROM ${table} WHERE tag_2 = ? ${divisionFilter} ${excludeClause} ${orderBy} LIMIT ?`;
-            const params = [chapterCode, ...excludeParams, remaining];
-
-            console.log(`[AutoSelect DEBUG] Querying table=${table}, chapter=${chapterCode}, limit=${remaining}`);
-
-            try {
-              const results = this.db!.prepare(query).all(...params) as { uuid: string; class: number | null }[];
-
-              console.log(`[AutoSelect DEBUG] Table ${table} returned ${results.length} results for chapter ${chapterCode}`);
-
-              for (const r of results) {
-                if (sectionSelectedUuids.length >= sectionMax) break;
-                if (selected >= neededCount) break;
-
-                sectionSelectedUuids.push(r.uuid);
-                selected++;
-
-                // Track which table it came from
-                if (table.startsWith('jee')) byTable.jee++;
-                else if (table.startsWith('neet')) byTable.neet++;
-                else if (table.startsWith('bits')) byTable.bits++;
-
-                // Track class
-                if (r.class === 2) byClass.class2++;
-                else if (r.class === 1) byClass.class1++;
-                else byClass.classNull++;
-
-                byChapter[chapterCode] = (byChapter[chapterCode] || 0) + 1;
-              }
-            } catch (e) {
-              // Table might not exist or other error
-              console.error(`[AutoSelect] Query failed for table ${table}, chapter ${chapterCode}:`, e);
-            }
-          }
-
-          return selected;
+        // Helper to build class filter SQL clause
+        const getClassFilter = (classType: 'class1' | 'class2' | 'classNull'): string => {
+          if (classType === 'class1') return 'AND class = 1';
+          if (classType === 'class2') return 'AND class = 2';
+          return 'AND (class IS NULL OR class NOT IN (1, 2))';
         };
 
-        // Iterate through each chapter and select the required number
+        // Helper to select ONE question from a specific table with optional class filter
+        const selectOne = (
+          chapterCode: string,
+          table: string,
+          classFilter: string | null
+        ): { uuid: string; class: number | null } | null => {
+          if (sectionSelectedUuids.length >= sectionMax) return null;
+
+          // Build exclude clause
+          const excludeClause = sectionSelectedUuids.length > 0
+            ? `AND uuid NOT IN (${sectionSelectedUuids.map(() => '?').join(',')})`
+            : '';
+          const excludeParams = sectionSelectedUuids.length > 0 ? [...sectionSelectedUuids] : [];
+
+          const classClause = classFilter ?? '';
+          const query = `SELECT uuid, class FROM ${table} WHERE tag_2 = ? ${divisionFilter} ${classClause} ${excludeClause} ${orderBy} LIMIT 1`;
+          const params = [chapterCode, ...excludeParams];
+
+          try {
+            const result = this.db!.prepare(query).get(...params) as { uuid: string; class: number | null } | undefined;
+            return result ?? null;
+          } catch (e) {
+            console.error(`[AutoSelect] Query failed for table ${table}, chapter ${chapterCode}:`, e);
+            return null;
+          }
+        };
+
+        // Track a selected question
+        const trackSelection = (r: { uuid: string; class: number | null }, table: string, chapterCode: string) => {
+          sectionSelectedUuids.push(r.uuid);
+
+          // Track which table it came from
+          if (table.startsWith('jee')) byTable.jee++;
+          else if (table.startsWith('neet')) byTable.neet++;
+          else if (table.startsWith('bits')) byTable.bits++;
+
+          // Track class
+          if (r.class === 2) byClass.class2++;
+          else if (r.class === 1) byClass.class1++;
+          else byClass.classNull++;
+
+          byChapter[chapterCode] = (byChapter[chapterCode] || 0) + 1;
+        };
+
         // Iterate through each chapter and select the required number
         for (const [chapterCode, requiredCount] of Object.entries(section.weightage)) {
           let needed = requiredCount as number;
@@ -1811,36 +1807,76 @@ solution_text = excluded.solution_text,
 
           let chapterSelected = 0;
 
-          // Try to fulfill the chapter requirement one by one to balance tables
+          // Try to fulfill the chapter requirement one by one to balance both table and class
           while (needed > 0 && sectionSelectedUuids.length < sectionMax) {
 
-            // Dynamic priority: prefer tables that are furthest below their target count
-            const tableOptions = [
-              { name: 'jee_questions', deficit: jeeCount - byTable.jee },
-              { name: 'neet_questions', deficit: neetCount - byTable.neet },
-              { name: 'bits_questions', deficit: bitsCount - byTable.bits }
-            ].sort((a, b) => b.deficit - a.deficit); // Higher deficit first
+            // Calculate deficits for tables
+            const tableDeficits = [
+              { name: 'jee_questions', key: 'jee' as const, deficit: jeeCount - byTable.jee },
+              { name: 'neet_questions', key: 'neet' as const, deficit: neetCount - byTable.neet },
+              { name: 'bits_questions', key: 'bits' as const, deficit: bitsCount - byTable.bits }
+            ].filter(t => t.deficit > 0).sort((a, b) => b.deficit - a.deficit);
 
-            console.log(`[AutoSelect DEBUG] Table priority for chapter ${chapterCode}: ${tableOptions.map(t => `${t.name}(deficit=${t.deficit})`).join(', ')}`);
-            console.log(`[AutoSelect DEBUG] Current counts: JEE=${byTable.jee}/${jeeCount}, NEET=${byTable.neet}/${neetCount}, BITS=${byTable.bits}/${bitsCount}`);
+            // Calculate deficits for classes
+            const classDeficits = [
+              { key: 'class1' as const, filter: getClassFilter('class1'), deficit: class1Target - byClass.class1 },
+              { key: 'class2' as const, filter: getClassFilter('class2'), deficit: class2Target - byClass.class2 },
+              { key: 'classNull' as const, filter: getClassFilter('classNull'), deficit: classNullTarget - byClass.classNull }
+            ].filter(c => c.deficit > 0).sort((a, b) => b.deficit - a.deficit);
 
             let picked = false;
 
-            // Try each table in priority order
-            for (const opt of tableOptions) {
-              const count = selectForChapter(chapterCode, 1, [opt.name]);
-              if (count > 0) {
-                console.log(`[AutoSelect DEBUG] Picked 1 from ${opt.name} for chapter ${chapterCode}`);
-                picked = true;
-                needed--;
-                chapterSelected++;
-                break;
+            // STRATEGY 1: Try to satisfy both table AND class constraints
+            // Try combinations ordered by combined deficit
+            for (const tableOpt of tableDeficits) {
+              if (picked) break;
+              for (const classOpt of classDeficits) {
+                const result = selectOne(chapterCode, tableOpt.name, classOpt.filter);
+                if (result) {
+                  console.log(`[AutoSelect] Picked from ${tableOpt.name} with ${classOpt.key} for chapter ${chapterCode}`);
+                  trackSelection(result, tableOpt.name, chapterCode);
+                  picked = true;
+                  needed--;
+                  chapterSelected++;
+                  break;
+                }
+              }
+            }
+
+            // STRATEGY 2: If no match with class constraint, try table-only (any class)
+            if (!picked) {
+              for (const tableOpt of tableDeficits) {
+                const result = selectOne(chapterCode, tableOpt.name, null);
+                if (result) {
+                  console.log(`[AutoSelect] Picked from ${tableOpt.name} (any class) for chapter ${chapterCode}`);
+                  trackSelection(result, tableOpt.name, chapterCode);
+                  picked = true;
+                  needed--;
+                  chapterSelected++;
+                  break;
+                }
+              }
+            }
+
+            // STRATEGY 3: If still no match, try ANY table with ANY class (fallback)
+            if (!picked) {
+              const allTables = ['jee_questions', 'neet_questions', 'bits_questions'];
+              for (const table of allTables) {
+                const result = selectOne(chapterCode, table, null);
+                if (result) {
+                  console.log(`[AutoSelect] Picked from ${table} (fallback) for chapter ${chapterCode}`);
+                  trackSelection(result, table, chapterCode);
+                  picked = true;
+                  needed--;
+                  chapterSelected++;
+                  break;
+                }
               }
             }
 
             if (!picked) {
               // Could not find question in ANY table for this chapter
-              console.log(`[AutoSelect DEBUG] Could not find any question for chapter ${chapterCode} in any table`);
+              console.log(`[AutoSelect] Could not find any question for chapter ${chapterCode} in any table`);
               break;
             }
           }
@@ -1859,6 +1895,7 @@ solution_text = excluded.solution_text,
 
         console.log(`[AutoSelect] ${section.name} ${section.type}: selected ${sectionSelectedUuids.length} questions (target: ${total})`);
         console.log(`[AutoSelect] FINAL TABLE DISTRIBUTION: JEE=${byTable.jee} (target ${jeeCount}), NEET=${byTable.neet} (target ${neetCount}), BITS=${byTable.bits} (target ${bitsCount})`);
+        console.log(`[AutoSelect] FINAL CLASS DISTRIBUTION: class1=${byClass.class1} (target ${class1Target}), class2=${byClass.class2} (target ${class2Target}), classNull=${byClass.classNull} (target ${classNullTarget})`);
 
         allSelectedUuids.push(...sectionSelectedUuids);
         resultSections.push({
