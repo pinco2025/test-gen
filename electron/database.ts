@@ -959,6 +959,13 @@ export class DatabaseService {
         this.saveSolution(newUuid, solution.solution_text, solution.solution_image_url, exam);
       }
 
+      // Update original question links (Backward Link)
+      const originalLinks = original.links ? JSON.parse(original.links) : [];
+      if (!originalLinks.includes(newUuid)) {
+        originalLinks.push(newUuid);
+        this.updateQuestion(originalUuid, { links: JSON.stringify(originalLinks) }, exam);
+      }
+
       return newQuestion;
     } catch (error) {
       console.error(`[DB] Error cloning question ${originalUuid}: `, error);
