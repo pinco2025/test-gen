@@ -322,14 +322,21 @@ function App() {
       // Get parent exam from the original question's exam source
       const parentExam = (switchTargetQuestionData as any).examSource || 'JEE';
 
-      // 1. Save new question to IPQ table with parent exam tracking
-      const success = await window.electronAPI.ipq.createQuestion(newQuestion, parentExam);
+      // 1. Create question with link to original (forward link: IPQ → Base)
+      const questionWithLink = {
+        ...newQuestion,
+        links: JSON.stringify([switchTargetQuestionUuid]),
+        type: 'IPQ'
+      };
+
+      // 2. Save new question to IPQ table with parent exam tracking
+      const success = await window.electronAPI.ipq.createQuestion(questionWithLink, parentExam);
       if (!success) {
         addNotification('error', 'Failed to save new IPQ question to database.');
         return;
       }
 
-      // 2. Save solution if exists (to IPQ solutions table)
+      // 3. Save solution if exists (to IPQ solutions table)
       console.log('[handleSwitchQuestion] Checking solution:');
       console.log('  newSolution:', newSolution);
       console.log('  newSolution?.solution_text:', newSolution?.solution_text);
@@ -338,11 +345,11 @@ function App() {
 
       if (newSolution && (newSolution.solution_text || newSolution.solution_image_url)) {
         console.log('[handleSwitchQuestion] Saving solution with:');
-        console.log('  uuid:', newQuestion.uuid);
+        console.log('  uuid:', questionWithLink.uuid);
         console.log('  solution_text:', newSolution.solution_text);
         console.log('  solution_image_url:', newSolution.solution_image_url);
         await window.electronAPI.ipq.saveSolution(
-          newQuestion.uuid,
+          questionWithLink.uuid,
           newSolution.solution_text || '',
           newSolution.solution_image_url || ''
         );
@@ -350,30 +357,26 @@ function App() {
         console.log('[handleSwitchQuestion] NOT saving solution - condition failed');
       }
 
-      // 3. Update links
+      // 4. Update original question links (backward link: Base → IPQ)
       const originalQuestion = await window.electronAPI.questions.getByUUID(switchTargetQuestionUuid);
       if (originalQuestion) {
-        // Update original question links
         const originalLinks = originalQuestion.links ? JSON.parse(originalQuestion.links) : [];
-        if (!originalLinks.includes(newQuestion.uuid)) {
-          originalLinks.push(newQuestion.uuid);
+        if (!originalLinks.includes(questionWithLink.uuid)) {
+          originalLinks.push(questionWithLink.uuid);
           await window.electronAPI.questions.updateQuestion(originalQuestion.uuid, {
             links: JSON.stringify(originalLinks)
           });
         }
-
-        // Update new question links (note: this would need to be done via a separate update call for IPQ questions)
-        // For now we'll include the link in the question object before creation
       }
 
-      // 4. Replace in project state
+      // 5. Replace in project state
       const updatedSections = sections.map(section => ({
         ...section,
         selectedQuestions: section.selectedQuestions.map(sq => {
           if (sq.question.uuid === switchTargetQuestionUuid) {
             return {
               ...sq,
-              question: newQuestion,
+              question: questionWithLink,
               status: 'pending' as const // Reset status for the new question? Or keep same? Usually pending for review.
             };
           }
@@ -1509,6 +1512,7 @@ function App() {
             solution={editingQuestion.solution}
             onSave={handleFinishEditing}
             onCancel={() => handleFinishEditing(null)}
+            onError={(msg) => addNotification('error', msg)}
           />
         );
       }
@@ -1763,6 +1767,7 @@ function App() {
               onNext={handleEditorNext}
               onPrevious={handleEditorPrevious}
               questionNumber={absoluteIndex > 0 ? absoluteIndex : undefined}
+              onError={(msg) => addNotification('error', msg)}
             />
           );
 

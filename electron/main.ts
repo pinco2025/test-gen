@@ -23,9 +23,9 @@ function createWindow() {
     height: 900,
     frame: false, // Frameless window
     titleBarStyle: 'hidden', // Hide default title bar on Mac too
+    icon: path.join(__dirname, "assets/icons/logo.png"),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
-      icon: path.join(__dirname, "assets/icons/logo.png"),
       contextIsolation: true,
       nodeIntegration: false,
       webSecurity: false // Allow loading external images from Google Drive/CDN
@@ -372,10 +372,7 @@ ipcMain.handle('upload-image', async (_, filePath: string) => {
       errorMessage = 'Google Drive authentication required. Please ensure oauth-credentials.json is configured correctly.';
     }
 
-    dialog.showErrorBox(
-      'Image Upload Failed',
-      `Could not upload the image to Google Drive. ${errorMessage}`
-    );
+
     return { success: false, error: errorMessage };
   }
 });
@@ -432,10 +429,7 @@ ipcMain.handle('upload-image-buffer', async (_, buffer: ArrayBuffer, fileName: s
       errorMessage = 'Google Drive authentication required. Please ensure oauth-credentials.json is configured correctly.';
     }
 
-    dialog.showErrorBox(
-      'Image Upload Failed',
-      `Could not upload the image to Google Drive. ${errorMessage}`
-    );
+
     return { success: false, error: errorMessage };
   }
 });
@@ -701,7 +695,7 @@ ipcMain.handle('config:deleteAllProjects', async () => {
 // GitHub handlers
 ipcMain.handle('github:configure', async (_, config: { token: string; owner: string; repo: string; branch: string }) => {
   try {
-    githubService.saveConfig(config);
+    githubService.saveConfig({ ...config, enabled: true });
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };
@@ -847,7 +841,7 @@ ipcMain.handle('test:exportWithConfig', async (_, test: Test, exportConfig: {
     }
 
     // Step 3: Insert into Supabase if configured
-    let supabaseResult = { success: false, error: 'Supabase not configured' };
+    let supabaseResult: { success: boolean; error?: string } = { success: false, error: 'Supabase not configured' };
     let supabaseSkipped = false;
 
     if (supabaseService.isConfigured() && githubTestUrl) {

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { SectionName, ChaptersData, TestType } from '../types';
+import { PresetSelector } from './PresetSelector';
 
 interface TestCreationUploadProps {
   onCancel: () => void;
@@ -251,8 +252,8 @@ const TestCreationUpload: React.FC<TestCreationUploadProps> = ({ onCancel, onPro
             <button
               onClick={() => setShowAutoSelectMode(!showAutoSelectMode)}
               className={`px-3 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-all ${showAutoSelectMode
-                  ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-600'
-                  : 'bg-gray-100 dark:bg-[#252535] text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-[#2d2d3b]'
+                ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-300 dark:border-amber-600'
+                : 'bg-gray-100 dark:bg-[#252535] text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-[#2d2d3b]'
                 }`}
               title={showAutoSelectMode ? 'Switch to Manual Selection' : 'Enable Auto-Selection'}
             >
@@ -263,46 +264,25 @@ const TestCreationUpload: React.FC<TestCreationUploadProps> = ({ onCancel, onPro
             </button>
           )}
 
-          {/* Preset Selector (shown in auto mode) */}
+          {/* New Modern Preset Selector (Only shown in Auto Mode) */}
           {showAutoSelectMode && presets.length > 0 && (
-            <select
-              value={selectedPresetId}
-              onChange={(e) => setSelectedPresetId(e.target.value)}
-              className="px-3 py-2 bg-white dark:bg-[#1e1e2d] border border-gray-200 dark:border-[#2d2d3b] rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-primary/50 outline-none"
-            >
-              {presets.map(preset => (
-                <option key={preset.id} value={preset.id}>
-                  {preset.name} Preset
-                </option>
-              ))}
-            </select>
+            <div className="flex items-center gap-4">
+              <PresetSelector
+                presets={presets}
+                selectedPresetId={selectedPresetId}
+                onSelect={setSelectedPresetId}
+                onApply={() => {
+                  if (isValid && parsedData && selectedPresetId && onAutoSelect) {
+                    onAutoSelect(parsedData, selectedPresetId);
+                  }
+                }}
+                isValid={isValid}
+              />
+            </div>
           )}
 
-          <button
-            onClick={onCancel}
-            className="px-4 py-2 text-gray-600 dark:text-gray-400 font-medium hover:bg-gray-100 dark:hover:bg-[#252535] rounded-lg transition-colors"
-          >
-            Cancel
-          </button>
-
-          {/* Proceed or Auto-Select Button */}
-          {showAutoSelectMode && onAutoSelect ? (
-            <button
-              onClick={() => {
-                if (isValid && parsedData && selectedPresetId) {
-                  onAutoSelect(parsedData, selectedPresetId);
-                }
-              }}
-              disabled={!isValid || !selectedPresetId}
-              className={`px-6 py-2 rounded-lg font-bold flex items-center gap-2 transition-all ${isValid && selectedPresetId
-                  ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg hover:from-amber-600 hover:to-orange-600'
-                  : 'bg-gray-200 dark:bg-gray-700 text-gray-400 cursor-not-allowed'
-                }`}
-            >
-              <span className="material-symbols-outlined">auto_awesome</span>
-              <span>Auto-Select</span>
-            </button>
-          ) : (
+          {/* Show regular Proceed button ONLY if NOT in Auto Mode */}
+          {!showAutoSelectMode && (
             <button
               onClick={handleProceed}
               disabled={!isValid}
