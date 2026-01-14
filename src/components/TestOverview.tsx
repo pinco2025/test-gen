@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { SectionConfig, TestMetadata } from '../types';
+import { PresetSelector } from './PresetSelector';
 import { PresetEditor } from './PresetEditor';
 
 interface TestOverviewProps {
@@ -242,52 +243,27 @@ const TestOverview: React.FC<TestOverviewProps> = ({
         <div className="flex items-center gap-3">
           {/* Auto-Select Section */}
           {presets.length > 0 && onAutoSelect && stats.totalSelected === 0 && (
-            <>
-              <select
-                value={selectedPresetId}
-                onChange={(e) => setSelectedPresetId(e.target.value)}
-                className="px-3 py-2 bg-white dark:bg-[#252535] border border-gray-200 dark:border-[#3d3d4b] rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-primary/50 outline-none"
-                disabled={isAutoSelecting}
-              >
-                {presets.map(preset => (
-                  <option key={preset.id} value={preset.id}>
-                    {preset.name} Preset
-                  </option>
-                ))}
-              </select>
-              <button
-                onClick={handleAutoSelect}
-                disabled={!selectedPresetId || isAutoSelecting}
-                className={`px-5 py-2.5 rounded-lg font-bold flex items-center gap-2 transition-all shadow-md ${selectedPresetId && !isAutoSelecting
-                  ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600 shadow-amber-500/20'
-                  : 'bg-gray-200 dark:bg-gray-800 text-gray-400 cursor-not-allowed shadow-none'
-                  }`}
-              >
-                {isAutoSelecting ? (
-                  <>
-                    <span className="material-symbols-outlined animate-spin text-xl">progress_activity</span>
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <span className="material-symbols-outlined text-xl">smart_toy</span>
-                    Auto Select
-                  </>
-                )}
-              </button>
-            </>
+            <div className="flex items-center gap-4">
+              <PresetSelector
+                presets={presets}
+                selectedPresetId={selectedPresetId}
+                onSelect={setSelectedPresetId}
+                onApply={handleAutoSelect}
+                isValid={true}
+                isLoading={isAutoSelecting}
+                onManage={() => setShowPresetEditor(true)}
+                compact={true}
+              />
+            </div>
           )}
 
-          {/* Manage Presets Button */}
-          {stats.totalSelected === 0 && (
-            <button
-              onClick={() => setShowPresetEditor(true)}
-              className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-[#252535] rounded-lg transition-colors flex items-center gap-2"
-              title="Manage Presets"
-            >
-              <span className="material-symbols-outlined">settings</span>
-            </button>
-          )}
+          {/* Manage Presets Button - Show independently if selector is hidden (e.g. after selection started but not finished? or maybe just hide it)
+              Actually, if questions are selected, we hide the auto-select. 
+              But we might still want to show Manage Presets button? 
+              The original code hid the Manage Presets button if totalSelected > 0.
+              So we only need to care about the case where stats.totalSelected === 0.
+              In that case, the PresetSelector includes the Manage button now.
+          */}
 
           {/* Clear Test Button - shows when questions are selected */}
           {stats.totalSelected > 0 && onClearTest && (

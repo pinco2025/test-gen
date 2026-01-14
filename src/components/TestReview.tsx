@@ -55,6 +55,9 @@ const TestReview: React.FC<TestReviewProps> = ({
     const [isChapterSelectionOpen, setIsChapterSelectionOpen] = useState(false);
     const [isViewLinksModalOpen, setIsViewLinksModalOpen] = useState(false);
 
+    // Sidebar Toggle
+    const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
     // Removed Solution Visibility State
     // const [showSolutionsDefault, setShowSolutionsDefault] = useState(false);
     // const [isCurrentSolutionVisible, setIsCurrentSolutionVisible] = useState(false);
@@ -326,6 +329,9 @@ const TestReview: React.FC<TestReviewProps> = ({
         } else if (q.class === 1) {
             // Highlight class=1 questions with blue when not approved/rejected
             base = 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800';
+        } else if (q.legacy_solution) {
+            // Highlight questions with legacy solution (yellow)
+            base = 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 border-yellow-200 dark:border-yellow-800';
         }
 
         if (isActive) {
@@ -388,27 +394,39 @@ const TestReview: React.FC<TestReviewProps> = ({
         <div className="flex flex-col h-full bg-background-light dark:bg-[#121121] overflow-hidden">
 
             {/* Top Header - Compact */}
-            <header className="flex-shrink-0 h-14 flex items-center justify-between px-6 border-b border-gray-200 dark:border-[#2d2d3b] bg-white dark:bg-[#1e1e2d]">
-                <div className="flex items-center gap-4">
+            <header className="flex-shrink-0 h-14 flex items-center justify-between px-3 md:px-6 border-b border-gray-200 dark:border-[#2d2d3b] bg-white dark:bg-[#1e1e2d]">
+                <div className="flex items-center gap-2 md:gap-4">
                     <button onClick={onBack} className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-[#252535] text-text-secondary transition-colors">
                         <span className="material-symbols-outlined text-xl">arrow_back</span>
                     </button>
-                    <h2 className="text-base font-bold text-text-main dark:text-white">Test Review</h2>
-                    <span className="text-xs font-medium px-2 py-0.5 rounded bg-gray-100 dark:bg-[#252535] text-text-secondary">
-                        {allQuestions.length} Questions
+                    {/* Toggle Sidebar Button */}
+                    <button
+                        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                        className={`p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-[#252535] text-text-secondary transition-colors ${isSidebarOpen ? 'bg-gray-100 dark:bg-[#252535] text-primary' : ''}`}
+                        title={isSidebarOpen ? "Collapse Palette" : "Expand Palette"}
+                    >
+                        <span className="material-symbols-outlined text-xl">
+                            {isSidebarOpen ? 'left_panel_close' : 'left_panel_open'}
+                        </span>
+                    </button>
+
+                    <h2 className="text-sm md:text-base font-bold text-text-main dark:text-white truncate max-w-[150px] md:max-w-none">Test Review</h2>
+                    <span className="text-xs font-medium px-2 py-0.5 rounded bg-gray-100 dark:bg-[#252535] text-text-secondary whitespace-nowrap hidden sm:inline-block">
+                        {allQuestions.length} Qs
                     </span>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 md:gap-3">
                     {/* Solution Toggle Removed */}
                     <button
                         onClick={onExport}
                         disabled={!canExport}
-                        className={`px-4 py-1.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${canExport
+                        className={`px-3 md:px-4 py-1.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${canExport
                             ? 'bg-primary text-white shadow-lg shadow-primary/20 hover:bg-primary/90'
                             : 'bg-gray-200 dark:bg-[#252535] text-gray-400 cursor-not-allowed'
                             }`}
                     >
-                        Export Test
+                        <span className="hidden md:inline">Export Test</span>
+                        <span className="md:hidden">Export</span>
                         <span className="material-symbols-outlined text-lg">ios_share</span>
                     </button>
                 </div>
@@ -417,12 +435,14 @@ const TestReview: React.FC<TestReviewProps> = ({
             {/* Main Content Area */}
             <div className="flex-1 flex overflow-hidden">
 
-                {/* Palette Sidebar - Fixed Left */}
-                <aside className="w-80 flex-shrink-0 flex flex-col border-r border-gray-200 dark:border-[#2d2d3b] bg-white dark:bg-[#1e1e2d]">
-                    <div className="p-4 border-b border-gray-200 dark:border-[#2d2d3b]">
+                {/* Palette Sidebar - Collapsible */}
+                <aside
+                    className={`flex-shrink-0 flex flex-col border-r border-gray-200 dark:border-[#2d2d3b] bg-white dark:bg-[#1e1e2d] transition-all duration-300 ease-in-out ${isSidebarOpen ? 'w-80 opacity-100' : 'w-0 opacity-0 overflow-hidden border-none'}`}
+                >
+                    <div className="p-4 border-b border-gray-200 dark:border-[#2d2d3b] min-w-[320px]">
                         <h3 className="font-bold text-sm text-text-main dark:text-white uppercase tracking-wider">Question Palette</h3>
                     </div>
-                    <div className="flex-1 overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-700">
+                    <div className="flex-1 overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-700 min-w-[320px]">
                         {sections.map((section, idx) => {
                             const sectionQuestions = allQuestions.filter(q => q.sectionIndex === idx);
                             if (sectionQuestions.length === 0) return null;
@@ -457,8 +477,8 @@ const TestReview: React.FC<TestReviewProps> = ({
                             <p>No questions selected.</p>
                         </div>
                     ) : currentQuestion ? (
-                        <div className="flex-1 overflow-y-auto p-6 md:p-8 lg:p-12">
-                            <div className="max-w-4xl mx-auto flex flex-col gap-6">
+                        <div className="flex-1 overflow-y-auto p-2 md:p-6 lg:p-12">
+                            <div className="max-w-4xl mx-auto flex flex-col gap-4 md:gap-6">
                                 {/* Status Banner */}
                                 {currentQuestion.verification_level_1 === 'approved' && (
                                     <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-sm font-medium">
@@ -483,14 +503,15 @@ const TestReview: React.FC<TestReviewProps> = ({
                                     />
                                 </div>
 
-                                <div className="flex justify-end gap-3">
+                                <div className="flex justify-end gap-3 pb-4">
                                     {/* Solution Toggle Button Removed */}
                                     <button
                                         onClick={handleEditClick}
                                         className="flex items-center gap-2 px-4 py-2 rounded-lg text-primary hover:bg-primary/10 transition-colors font-medium text-sm"
                                     >
                                         <span className="material-symbols-outlined text-lg">edit_note</span>
-                                        Edit Question Content
+                                        <span className="hidden md:inline">Edit Question Content</span>
+                                        <span className="md:hidden">Edit</span>
                                     </button>
                                 </div>
                             </div>
@@ -501,38 +522,41 @@ const TestReview: React.FC<TestReviewProps> = ({
                 </main>
             </div>
 
-            {/* Footer Nav Bar - Compact & Modern */}
-            <footer className="flex-shrink-0 h-16 flex items-center justify-between px-6 border-t border-gray-200 dark:border-[#2d2d3b] bg-white dark:bg-[#1e1e2d] shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] dark:shadow-none z-10">
+            {/* Footer Nav Bar - Compact & Modern & Responsive */}
+            <footer className="flex-shrink-0 h-16 flex items-center justify-between px-3 md:px-6 border-t border-gray-200 dark:border-[#2d2d3b] bg-white dark:bg-[#1e1e2d] shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] dark:shadow-none z-10 overflow-x-auto gap-2">
 
                 {/* Left: Navigation */}
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
                     <button
                         onClick={handlePrev}
                         disabled={currentQuestionIndex === 0}
-                        className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 dark:border-[#2d2d3b] hover:bg-gray-50 dark:hover:bg-[#252535] disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm font-semibold text-text-main dark:text-white"
+                        className="flex items-center gap-2 px-3 md:px-4 py-2 rounded-lg border border-gray-200 dark:border-[#2d2d3b] hover:bg-gray-50 dark:hover:bg-[#252535] disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm font-semibold text-text-main dark:text-white"
+                        title="Previous Question"
                     >
                         <span className="material-symbols-outlined text-lg">arrow_back</span>
-                        Prev
+                        <span className="hidden md:inline">Prev</span>
                     </button>
                     <button
                         onClick={handleNext}
                         disabled={currentQuestionIndex === allQuestions.length - 1}
-                        className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 dark:border-[#2d2d3b] hover:bg-gray-50 dark:hover:bg-[#252535] disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm font-semibold text-text-main dark:text-white"
+                        className="flex items-center gap-2 px-3 md:px-4 py-2 rounded-lg border border-gray-200 dark:border-[#2d2d3b] hover:bg-gray-50 dark:hover:bg-[#252535] disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm font-semibold text-text-main dark:text-white"
+                        title="Next Question"
                     >
-                        Next
+                        <span className="hidden md:inline">Next</span>
                         <span className="material-symbols-outlined text-lg">arrow_forward</span>
                     </button>
                 </div>
 
                 {/* Center: Actions */}
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 md:gap-3 flex-shrink-0">
                     {linkedUuids.length > 0 && (
                         <button
                             onClick={() => setIsViewLinksModalOpen(true)}
-                            className="flex items-center gap-2 px-5 py-2 rounded-lg bg-purple-50 dark:bg-purple-900/10 text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/20 font-bold text-sm transition-all border border-purple-200 dark:border-purple-800/30"
+                            className="flex items-center gap-2 px-3 md:px-5 py-2 rounded-lg bg-purple-50 dark:bg-purple-900/10 text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/20 font-bold text-sm transition-all border border-purple-200 dark:border-purple-800/30"
+                            title="View Linked Questions"
                         >
                             <span className="material-symbols-outlined text-lg">link</span>
-                            View Links
+                            <span className="hidden md:inline">View Links</span>
                             {linkedUuids.length > 1 && (
                                 <span className="text-xs bg-purple-200 dark:bg-purple-800/50 px-1.5 py-0.5 rounded-full">
                                     {linkedUuids.length}
@@ -543,40 +567,44 @@ const TestReview: React.FC<TestReviewProps> = ({
 
                     <button
                         onClick={handleReject}
-                        className={`flex items-center gap-2 px-5 py-2 rounded-lg font-bold text-sm transition-all ${currentQuestion?.verification_level_1 === 'rejected'
+                        className={`flex items-center gap-2 px-3 md:px-5 py-2 rounded-lg font-bold text-sm transition-all ${currentQuestion?.verification_level_1 === 'rejected'
                             ? 'bg-red-600 text-white shadow-md'
                             : 'bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/20'
                             }`}
+                        title="Reject Question"
                     >
                         <span className="material-symbols-outlined text-lg">thumb_down</span>
-                        Reject
+                        <span className="hidden md:inline">Reject</span>
                     </button>
 
                     <button
                         onClick={() => setIsSwitchModalOpen(true)}
-                        className="flex items-center gap-2 px-5 py-2 rounded-lg bg-blue-50 dark:bg-blue-900/10 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/20 font-bold text-sm transition-all"
+                        className="flex items-center gap-2 px-3 md:px-5 py-2 rounded-lg bg-blue-50 dark:bg-blue-900/10 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/20 font-bold text-sm transition-all"
+                        title="Switch Question"
                     >
                         <span className="material-symbols-outlined text-lg">swap_calls</span>
-                        Switch Question
+                        <span className="hidden md:inline">Switch</span>
                     </button>
 
                     <button
                         onClick={handleAcceptClick}
-                        className={`flex items-center gap-2 px-5 py-2 rounded-lg font-bold text-sm transition-all ${currentQuestion?.verification_level_1 === 'approved'
+                        className={`flex items-center gap-2 px-3 md:px-5 py-2 rounded-lg font-bold text-sm transition-all ${currentQuestion?.verification_level_1 === 'approved'
                             ? 'bg-green-600 text-white shadow-md'
                             : 'bg-green-50 dark:bg-green-900/10 text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/20'
                             }`}
+                        title="Accept Question"
                     >
                         <span className="material-symbols-outlined text-lg">thumb_up</span>
-                        Accept
+                        <span className="hidden md:inline">Accept</span>
                     </button>
                 </div>
 
-                {/* Right: Info (Spacer) */}
-                <div className="w-[140px] flex justify-end">
+                {/* Right: Info (Spacer) - Hidden on small */}
+                <div className="hidden md:flex w-[140px] justify-end">
                     {/* Could add hotkey hints here */}
                 </div>
             </footer>
+
 
             {/* Acceptance Modal */}
             {isAcceptModalOpen && (

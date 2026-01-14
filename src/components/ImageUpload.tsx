@@ -4,6 +4,7 @@ interface ImageUploadProps {
   label: string;
   imageUrl: string | null;
   onImageUrlChange: (newUrl: string | null) => void;
+  onError?: (message: string) => void;
 }
 
 // This function now calls the backend IPC handler
@@ -13,11 +14,11 @@ const uploadFile = async (file: File): Promise<string> => {
   let result;
 
   if (filePath) {
-      result = await window.electronAPI.uploadImage(filePath);
+    result = await window.electronAPI.uploadImage(filePath);
   } else {
-      // For files from clipboard (paste), they don't have a path, so we send the buffer
-      const buffer = await file.arrayBuffer();
-      result = await window.electronAPI.uploadImageFromBuffer(buffer, file.name, file.type);
+    // For files from clipboard (paste), they don't have a path, so we send the buffer
+    const buffer = await file.arrayBuffer();
+    result = await window.electronAPI.uploadImageFromBuffer(buffer, file.name, file.type);
   }
 
   if (result.success && result.url) {
@@ -30,7 +31,7 @@ const uploadFile = async (file: File): Promise<string> => {
 };
 
 
-const ImageUpload: React.FC<ImageUploadProps> = ({ label, imageUrl, onImageUrlChange }) => {
+const ImageUpload: React.FC<ImageUploadProps> = ({ label, imageUrl, onImageUrlChange, onError }) => {
   const [internalImageUrl, setInternalImageUrl] = useState<string | null>(imageUrl);
   const [localPreview, setLocalPreview] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -61,12 +62,12 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ label, imageUrl, onImageUrlCh
         setWidth(parseInt(match[1], 10));
       }
     } else {
-        // If the external URL is cleared, also clear the local preview
-        // Only do this if we are not currently uploading (which sets localPreview)
-        if (localPreview && !isUploading) {
-            URL.revokeObjectURL(localPreview);
-            setLocalPreview(null);
-        }
+      // If the external URL is cleared, also clear the local preview
+      // Only do this if we are not currently uploading (which sets localPreview)
+      if (localPreview && !isUploading) {
+        URL.revokeObjectURL(localPreview);
+        setLocalPreview(null);
+      }
     }
   }, [imageUrl]);
 
@@ -91,20 +92,26 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ label, imageUrl, onImageUrlCh
     setLocalPreview(previewUrl);
 
     try {
-        const uploadedUrl = await uploadFile(file);
-        const formattedUrl = convertToL3Thumbnail(uploadedUrl, width);
-        handleUrlChange(formattedUrl);
-        // Revoke preview URL after successful upload since we now have the remote URL
-        URL.revokeObjectURL(previewUrl);
-        setLocalPreview(null);
+      const uploadedUrl = await uploadFile(file);
+      const formattedUrl = convertToL3Thumbnail(uploadedUrl, width);
+      handleUrlChange(formattedUrl);
+      // Revoke preview URL after successful upload since we now have the remote URL
+      URL.revokeObjectURL(previewUrl);
+      setLocalPreview(null);
     } catch (error: any) {
-        console.error("Upload failed:", error);
-        // The main process shows a detailed error box. We just reset the UI here.
-        // Clear preview on failure
-        URL.revokeObjectURL(previewUrl);
-        setLocalPreview(null);
+      console.error("Upload failed:", error);
+      // The main process shows a detailed error box. We just reset the UI here.
+      // Clear preview on failure
+      URL.revokeObjectURL(previewUrl);
+      setLocalPreview(null);
+      setLocalPreview(null);
+      if (onError) {
+        onError(error.message || 'Image upload failed');
+      } else {
+        alert(error.message || 'Image upload failed');
+      }
     } finally {
-        setIsUploading(false);
+      setIsUploading(false);
     }
   };
 
@@ -176,8 +183,8 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ label, imageUrl, onImageUrlCh
 
   const handleRemoveImage = () => {
     if (localPreview) {
-        URL.revokeObjectURL(localPreview);
-        setLocalPreview(null);
+      URL.revokeObjectURL(localPreview);
+      setLocalPreview(null);
     }
     handleUrlChange(null);
   };
@@ -192,65 +199,65 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ label, imageUrl, onImageUrlCh
 
       {!displayUrl && !isUploading ? (
         <div
-            onClick={() => fileInputRef.current?.click()}
-            onDrop={handleDrop}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onPaste={handlePaste}
-            tabIndex={0}
-            className={`relative flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer transition-colors outline-none
+          onClick={() => fileInputRef.current?.click()}
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onPaste={handlePaste}
+          tabIndex={0}
+          className={`relative flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer transition-colors outline-none
                 ${dragOver ? 'border-primary bg-primary/10' : 'border-border-light dark:border-border-dark hover:border-primary/50 hover:bg-black/5 dark:hover:bg-white/5 focus:border-primary focus:bg-primary/5'}`}
         >
-            <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*,.pdf"
-                onChange={handleFileSelect}
-                className="hidden"
-            />
-            <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center">
-                <span className="material-symbols-outlined text-3xl text-text-secondary/60">upload_file</span>
-                <p className="mb-2 text-sm text-text-secondary"><span className="font-semibold">Click to upload</span>, drag and drop, or Ctrl+V</p>
-                <div className="flex items-center gap-2 mt-1">
-                    <p className="text-xs text-text-secondary/70">PNG, JPG, GIF, PDF</p>
-                    <span className="text-xs text-text-secondary/30">|</span>
-                    <button
-                        type="button"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            navigator.clipboard.read().then(async items => {
-                                for (const item of items) {
-                                    if (item.types.includes('image/png') || item.types.includes('image/jpeg')) {
-                                        const blob = await item.getType(item.types[0]);
-                                        const file = new File([blob], "pasted-image.png", { type: item.types[0] });
-                                        processFile(file);
-                                        break;
-                                    }
-                                }
-                            }).catch(err => {
-                                console.error('Failed to read clipboard', err);
-                                alert('Could not read from clipboard. Please use Ctrl+V or click to upload.');
-                            });
-                        }}
-                        className="text-xs font-medium text-primary hover:underline flex items-center gap-1"
-                        title="Paste image from clipboard"
-                    >
-                        Paste from Clipboard
-                    </button>
-                </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,.pdf"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+          <div className="flex flex-col items-center justify-center pt-5 pb-6 text-center">
+            <span className="material-symbols-outlined text-3xl text-text-secondary/60">upload_file</span>
+            <p className="mb-2 text-sm text-text-secondary"><span className="font-semibold">Click to upload</span>, drag and drop, or Ctrl+V</p>
+            <div className="flex items-center gap-2 mt-1">
+              <p className="text-xs text-text-secondary/70">PNG, JPG, GIF, PDF</p>
+              <span className="text-xs text-text-secondary/30">|</span>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  navigator.clipboard.read().then(async items => {
+                    for (const item of items) {
+                      if (item.types.includes('image/png') || item.types.includes('image/jpeg')) {
+                        const blob = await item.getType(item.types[0]);
+                        const file = new File([blob], "pasted-image.png", { type: item.types[0] });
+                        processFile(file);
+                        break;
+                      }
+                    }
+                  }).catch(err => {
+                    console.error('Failed to read clipboard', err);
+                    alert('Could not read from clipboard. Please use Ctrl+V or click to upload.');
+                  });
+                }}
+                className="text-xs font-medium text-primary hover:underline flex items-center gap-1"
+                title="Paste image from clipboard"
+              >
+                Paste from Clipboard
+              </button>
             </div>
+          </div>
         </div>
       ) : (
         <div className="p-4 border border-border-light dark:border-border-dark rounded-lg space-y-4">
           <div className="relative w-full min-h-[150px] bg-gray-50 dark:bg-black/20 rounded-lg flex items-center justify-center border border-dashed border-border-light dark:border-border-dark overflow-hidden">
             {isUploading && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/30 z-10">
-                    <svg className="animate-spin -ml-1 mr-3 h-8 w-8 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <p className="text-white text-sm font-semibold mt-2">Uploading...</p>
-                </div>
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/30 z-10">
+                <svg className="animate-spin -ml-1 mr-3 h-8 w-8 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <p className="text-white text-sm font-semibold mt-2">Uploading...</p>
+              </div>
             )}
             {displayUrl && <img src={displayUrl} alt="Preview" className={`max-w-full h-auto ${isUploading ? 'opacity-50' : ''}`} />}
           </div>
@@ -267,23 +274,23 @@ const ImageUpload: React.FC<ImageUploadProps> = ({ label, imageUrl, onImageUrlCh
               />
               <span className="text-xs text-text-secondary">{width}px</span>
             </div>
-             <div className="flex items-center justify-between">
-                <input
-                  type="text"
-                  value={internalImageUrl || 'Uploading...'}
-                  readOnly
-                  className="w-full text-xs p-1 bg-transparent border-none focus:ring-0 text-text-main dark:text-gray-200"
-                  placeholder="Image URL"
-                />
-                <button
-                    onClick={handleRemoveImage}
-                    disabled={isUploading}
-                    className="text-xs font-medium text-red-500 hover:underline flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                    <span className="material-symbols-outlined text-sm">delete</span>
-                    Remove
-                </button>
-             </div>
+            <div className="flex items-center justify-between">
+              <input
+                type="text"
+                value={internalImageUrl || 'Uploading...'}
+                readOnly
+                className="w-full text-xs p-1 bg-transparent border-none focus:ring-0 text-text-main dark:text-gray-200"
+                placeholder="Image URL"
+              />
+              <button
+                onClick={handleRemoveImage}
+                disabled={isUploading}
+                className="text-xs font-medium text-red-500 hover:underline flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span className="material-symbols-outlined text-sm">delete</span>
+                Remove
+              </button>
+            </div>
           </div>
         </div>
       )}

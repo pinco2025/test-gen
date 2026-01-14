@@ -163,9 +163,10 @@ interface QuestionEditorProps {
     onPrevious?: () => void;
     subject?: string;
     questionNumber?: number;
+    onError?: (message: string) => void;
 }
 
-const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onSave, onIntermediateSave, onCancel, onNext, onPrevious, subject, questionNumber }) => {
+const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onSave, onIntermediateSave, onCancel, onNext, onPrevious, subject, questionNumber, onError }) => {
     const [editedQuestion, setEditedQuestion] = useState<Question>(question);
     const [editedSolution, setEditedSolution] = useState<Solution | undefined>(solution);
 
@@ -796,6 +797,7 @@ const QuestionEditor: React.FC<QuestionEditorProps> = ({ question, solution, onS
                             label="Question Image"
                             imageUrl={editedQuestion.question_image_url}
                             onImageUrlChange={(url) => handleQuestionChange('question_image_url', url)}
+                            onError={onError}
                         />
                     </div>
 

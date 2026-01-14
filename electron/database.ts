@@ -1221,6 +1221,12 @@ export class DatabaseService {
   createQuestion(question: Question, exam?: ExamType): boolean {
     if (!this.db) throw new Error('Database not connected');
 
+    // Default to IPQ if no exam specified or explicitly IPQ
+    if (!exam || exam === 'IPQ') {
+      console.log('[DB] createQuestion called without specific exam (or IPQ), defaulting to IPQ table with parent_exam=JEE');
+      return this.createIPQQuestion(question, 'JEE');
+    }
+
     try {
       const table = getQuestionsTable(exam);
       const keys = [

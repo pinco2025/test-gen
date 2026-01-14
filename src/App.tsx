@@ -1512,6 +1512,7 @@ function App() {
             solution={editingQuestion.solution}
             onSave={handleFinishEditing}
             onCancel={() => handleFinishEditing(null)}
+            onError={(msg) => addNotification('error', msg)}
           />
         );
       }
@@ -1766,6 +1767,7 @@ function App() {
               onNext={handleEditorNext}
               onPrevious={handleEditorPrevious}
               questionNumber={absoluteIndex > 0 ? absoluteIndex : undefined}
+              onError={(msg) => addNotification('error', msg)}
             />
           );
 
