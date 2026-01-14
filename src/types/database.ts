@@ -75,6 +75,9 @@ export interface Question {
   // null = auto-detect from answer, 1 = force Div1, 2 = force Div2
   division_override: number | null;
 
+  // Class: for auto-selection preset distribution (null, 1, or 2)
+  class?: number | null;
+
   // Multi-table support: tracks which exam table this question came from
   examSource?: 'JEE' | 'NEET' | 'BITS' | 'IPQ';
 }

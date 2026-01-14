@@ -382,6 +382,16 @@ function App() {
       }));
 
       updateCurrentProject({ sections: updatedSections });
+
+      // Increment frequency for the new IPQ question (original question's frequency is NOT decremented)
+      try {
+        // For IPQ questions, we don't have a dedicated incrementFrequency, so we update directly
+        // Since it's a new IPQ, its initial frequency is 0, we increment it to 1
+        await window.electronAPI.questions.incrementFrequency(newQuestion.uuid, 'IPQ' as any);
+      } catch (e) {
+        console.warn('Failed to increment IPQ frequency:', e);
+      }
+
       addNotification('success', `IPQ question created successfully! (Parent Exam: ${parentExam})`);
       setSwitchTargetQuestionUuid(null);
       setSwitchTargetQuestionData(null);

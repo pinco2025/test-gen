@@ -5,6 +5,7 @@ import QuestionDisplay from './QuestionDisplay';
 import IPQComparisonModal from './IPQComparisonModal';
 import SwitchQuestionModal from './SwitchQuestionModal';
 import QuestionSelection from './QuestionSelection';
+import ViewLinksModal from './ViewLinksModal';
 
 interface TestReviewProps {
     sections: SectionConfig[];
@@ -52,6 +53,7 @@ const TestReview: React.FC<TestReviewProps> = ({
     const [isComparisonModalOpen, setIsComparisonModalOpen] = useState(false);
     const [isSwitchModalOpen, setIsSwitchModalOpen] = useState(false);
     const [isChapterSelectionOpen, setIsChapterSelectionOpen] = useState(false);
+    const [isViewLinksModalOpen, setIsViewLinksModalOpen] = useState(false);
 
     // Removed Solution Visibility State
     // const [showSolutionsDefault, setShowSolutionsDefault] = useState(false);
@@ -269,28 +271,44 @@ const TestReview: React.FC<TestReviewProps> = ({
         setIsChapterSelectionOpen(true);
     };
 
-    const handleChapterSelectionReplace = (newQuestion: Question) => {
+    const handleChapterSelectionReplace = async (newQuestion: Question) => {
         if (!currentQuestion) return;
         if (confirm(`Replace current question with selected question (UUID: ${newQuestion.uuid.substring(0, 8)}...)?`)) {
+            // Update frequencies: decrement old, increment new
+            if (window.electronAPI) {
+                try {
+                    // Decrement frequency of the replaced question
+                    await window.electronAPI.questions.decrementFrequency(
+                        currentQuestion.uuid,
+                        currentQuestion.examSource as any
+                    );
+                    // Increment frequency of the newly selected question
+                    await window.electronAPI.questions.incrementFrequency(
+                        newQuestion.uuid,
+                        newQuestion.examSource as any
+                    );
+                } catch (e) {
+                    console.error('Failed to update frequencies:', e);
+                }
+            }
             onReplaceQuestion(currentQuestion.uuid, newQuestion);
             setIsChapterSelectionOpen(false);
         }
     };
 
-    const getOriginalQuestionUuid = (q: Question | undefined): string | null => {
-        if (!q || !q.links) return null;
+    const getLinkedUuids = (q: Question | undefined): string[] => {
+        if (!q || !q.links) return [];
         try {
             const links = JSON.parse(q.links);
-            if (Array.isArray(links) && links.length > 0) {
-                return links[0];
-            }
+            if (Array.isArray(links)) return links;
         } catch (e) {
-            return null;
+            // ignore parse errors
         }
-        return null;
+        return [];
     };
 
-    const originalUuid = getOriginalQuestionUuid(currentQuestion);
+    const linkedUuids = getLinkedUuids(currentQuestion);
+    const originalUuid = linkedUuids.length > 0 ? linkedUuids[0] : null;
 
     const canExport = useMemo(() => {
         if (allQuestions.length === 0) return false;
@@ -299,8 +317,16 @@ const TestReview: React.FC<TestReviewProps> = ({
 
     const getPaletteClass = (q: Question, isActive: boolean) => {
         let base = 'bg-gray-100 dark:bg-white/5 text-text-secondary';
-        if (q.verification_level_1 === 'approved') base = 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800';
-        if (q.verification_level_1 === 'rejected') base = 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800';
+
+        // Priority: approved (green) > rejected (red) > class=1 unapproved (blue) > default (gray)
+        if (q.verification_level_1 === 'approved') {
+            base = 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800';
+        } else if (q.verification_level_1 === 'rejected') {
+            base = 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800';
+        } else if (q.class === 1) {
+            // Highlight class=1 questions with blue when not approved/rejected
+            base = 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800';
+        }
 
         if (isActive) {
             return `${base} ring-2 ring-primary ring-offset-1 dark:ring-offset-[#1e1e2d] border-primary`;
@@ -500,13 +526,18 @@ const TestReview: React.FC<TestReviewProps> = ({
 
                 {/* Center: Actions */}
                 <div className="flex items-center gap-3">
-                    {originalUuid && (
+                    {linkedUuids.length > 0 && (
                         <button
-                            onClick={() => setIsComparisonModalOpen(true)}
+                            onClick={() => setIsViewLinksModalOpen(true)}
                             className="flex items-center gap-2 px-5 py-2 rounded-lg bg-purple-50 dark:bg-purple-900/10 text-purple-600 dark:text-purple-400 hover:bg-purple-100 dark:hover:bg-purple-900/20 font-bold text-sm transition-all border border-purple-200 dark:border-purple-800/30"
                         >
-                            <span className="material-symbols-outlined text-lg">compare_arrows</span>
-                            Compare Original
+                            <span className="material-symbols-outlined text-lg">link</span>
+                            View Links
+                            {linkedUuids.length > 1 && (
+                                <span className="text-xs bg-purple-200 dark:bg-purple-800/50 px-1.5 py-0.5 rounded-full">
+                                    {linkedUuids.length}
+                                </span>
+                            )}
                         </button>
                     )}
 
@@ -606,7 +637,7 @@ const TestReview: React.FC<TestReviewProps> = ({
                 </div>
             )}
 
-            {/* Comparison Modal */}
+            {/* Comparison Modal (Legacy - kept for backwards compatibility) */}
             {isComparisonModalOpen && currentQuestion && originalUuid && (
                 <IPQComparisonModal
                     currentQuestion={currentQuestion}
@@ -617,6 +648,23 @@ const TestReview: React.FC<TestReviewProps> = ({
                         handleEditClick();
                     }}
                     onEditOriginal={handleEditOriginal}
+                />
+            )}
+
+            {/* View Links Modal */}
+            {isViewLinksModalOpen && currentQuestion && linkedUuids.length > 0 && (
+                <ViewLinksModal
+                    currentQuestion={currentQuestion}
+                    linkedUuids={linkedUuids}
+                    onClose={() => setIsViewLinksModalOpen(false)}
+                    onEditCurrent={() => {
+                        setIsViewLinksModalOpen(false);
+                        handleEditClick();
+                    }}
+                    onEditLinked={(linkedQuestion) => {
+                        setIsViewLinksModalOpen(false);
+                        handleEditOriginal(linkedQuestion);
+                    }}
                 />
             )}
 
