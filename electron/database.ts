@@ -400,7 +400,8 @@ export class DatabaseService {
   updated_at TEXT,
   frequency INTEGER DEFAULT 0,
   parent_exam TEXT NOT NULL,
-  division_override INTEGER
+  division_override INTEGER,
+  class INTEGER
 );
 `);
       console.log('[DB] IPQ questions table checked/created');
@@ -451,6 +452,18 @@ export class DatabaseService {
       }
     } catch (e) {
       console.error('[DB] Error adding division_override to ipq_questions:', e);
+    }
+
+    // Migration: Add class column if it doesn't exist
+    try {
+      const tableInfo = this.db.prepare("PRAGMA table_info(ipq_questions)").all() as any[];
+      const hasClass = tableInfo.some(col => col.name === 'class');
+      if (!hasClass) {
+        console.log('[DB] Migrating ipq_questions: adding class column');
+        this.db.prepare("ALTER TABLE ipq_questions ADD COLUMN class INTEGER").run();
+      }
+    } catch (e) {
+      console.error('[DB] Error adding class to ipq_questions:', e);
     }
   }
 
@@ -1465,7 +1478,9 @@ export class DatabaseService {
         'legacy_question', 'legacy_a', 'legacy_b', 'legacy_c', 'legacy_d', 'legacy_solution',
         'links',
         'created_at', 'updated_at', 'frequency',
-        'parent_exam'
+        'parent_exam',
+        'division_override',
+        'class'
       ];
 
       const placeholders = keys.map(() => '?').join(', ');
