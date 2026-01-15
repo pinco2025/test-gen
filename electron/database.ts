@@ -600,6 +600,7 @@ export class DatabaseService {
    * Get questions by UUIDs (batch)
    * @param uuids - Array of question UUIDs
    * @param exam - Optional exam type to query from specific exam table
+   *               If not specified, searches across ALL exam tables
    */
   getQuestionsByUUIDs(uuids: string[], exam?: ExamType): Question[] {
     if (!this.db) throw new Error('Database not connected');
@@ -608,13 +609,41 @@ export class DatabaseService {
       return [];
     }
 
-    const table = getQuestionsTable(exam);
-    const placeholders = uuids.map(() => '?').join(',');
-    const query = `SELECT * FROM ${table} WHERE uuid IN(${placeholders})`;
+    // If exam is specified, search only that table (existing behavior)
+    if (exam) {
+      const table = getQuestionsTable(exam);
+      const placeholders = uuids.map(() => '?').join(',');
+      const query = `SELECT * FROM ${table} WHERE uuid IN(${placeholders})`;
+      const stmt = this.db.prepare(query);
+      const results = stmt.all(...uuids) as Question[];
+      return attachExamSourceToArray(results, exam, table);
+    }
 
-    const stmt = this.db.prepare(query);
-    const results = stmt.all(...uuids) as Question[];
-    return attachExamSourceToArray(results, exam, table);
+    // If no exam specified, search across ALL exam tables
+    // This is essential for IPQ linking where the linked question could be from any source
+    const allResults: Question[] = [];
+    const foundUuids = new Set<string>();
+
+    for (const examType of SUPPORTED_EXAMS) {
+      try {
+        const table = `${examType.toLowerCase()}_questions`;
+        const remainingUuids = uuids.filter(u => !foundUuids.has(u));
+        if (remainingUuids.length === 0) break;
+
+        const placeholders = remainingUuids.map(() => '?').join(',');
+        const query = `SELECT * FROM ${table} WHERE uuid IN(${placeholders})`;
+        const stmt = this.db.prepare(query);
+        const results = stmt.all(...remainingUuids) as Question[];
+
+        results.forEach(q => foundUuids.add(q.uuid));
+        allResults.push(...attachExamSourceToArray(results, examType, table));
+      } catch (e) {
+        // Table might not exist, continue to next
+        console.log(`[DB] getQuestionsByUUIDs: ${examType} table not found, skipping`);
+      }
+    }
+
+    return allResults;
   }
 
   /**
