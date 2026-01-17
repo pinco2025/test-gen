@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { limitNewlines } from '../utils/formatting';
 import { SectionConfig, Question, SelectedQuestion, Chapter } from '../types';
 import { sortQuestionsForSection } from '../utils/sorting';
 import QuestionDisplay from './QuestionDisplay';
@@ -450,7 +451,7 @@ const TestReview: React.FC<TestReviewProps> = ({
                 if (originalSolution) {
                     await window.electronAPI.ipq.saveSolution(
                         newUuid,
-                        originalSolution.solution_text || '',
+                        limitNewlines(originalSolution.solution_text || ''),
                         originalSolution.solution_image_url || ''
                     );
                 }
@@ -475,7 +476,7 @@ const TestReview: React.FC<TestReviewProps> = ({
                 console.warn('Could not update original question links:', e);
             }
 
-            addNotification('success', `Created adapted IPQ (Div ${targetDivision}) for this section.`);
+            addNotification('success', `Created adapted IPQ(Div ${targetDivision}) for this section.`);
             return clonedQuestion;
 
         } catch (error) {
@@ -503,7 +504,7 @@ const TestReview: React.FC<TestReviewProps> = ({
             const confirmClone = confirm(
                 `The selected question is Div ${questionDivision}, but this section requires Div ${requiredDivision}.\n\n` +
                 `An adapted copy will be created as an IPQ with the correct division.\n\n` +
-                `Proceed?`
+                `Proceed ? `
             );
             if (!confirmClone) return;
 
@@ -512,7 +513,7 @@ const TestReview: React.FC<TestReviewProps> = ({
             finalQuestion = adaptedQuestion;
         } else {
             // Normal flow - just confirm replacement
-            if (!confirm(`Replace current question with selected question (UUID: ${newQuestion.uuid.substring(0, 8)}...)?`)) {
+            if (!confirm(`Replace current question with selected question(UUID: ${newQuestion.uuid.substring(0, 8)}...) ? `)) {
                 return;
             }
         }
@@ -641,7 +642,7 @@ const TestReview: React.FC<TestReviewProps> = ({
                     {/* Toggle Sidebar Button */}
                     <button
                         onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                        className={`p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-[#252535] text-text-secondary transition-colors ${isSidebarOpen ? 'bg-gray-100 dark:bg-[#252535] text-primary' : ''}`}
+                        className={`p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-[#252535] text-text-secondary transition-colors ${isSidebarOpen ? 'bg-gray-100 dark:bg-[#252535] text-primary' : ''} `}
                         title={isSidebarOpen ? "Collapse Palette" : "Expand Palette"}
                     >
                         <span className="material-symbols-outlined text-xl">
@@ -662,7 +663,7 @@ const TestReview: React.FC<TestReviewProps> = ({
                         className={`px-3 md:px-4 py-1.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${canExport
                             ? 'bg-primary text-white shadow-lg shadow-primary/20 hover:bg-primary/90'
                             : 'bg-gray-200 dark:bg-[#252535] text-gray-400 cursor-not-allowed'
-                            }`}
+                            } `}
                     >
                         <span className="hidden md:inline">Export Test</span>
                         <span className="md:hidden">Export</span>
@@ -676,7 +677,7 @@ const TestReview: React.FC<TestReviewProps> = ({
 
                 {/* Palette Sidebar - Collapsible */}
                 <aside
-                    className={`flex-shrink-0 flex flex-col border-r border-gray-200 dark:border-[#2d2d3b] bg-white dark:bg-[#1e1e2d] transition-all duration-300 ease-in-out ${isSidebarOpen ? 'w-80 opacity-100' : 'w-0 opacity-0 overflow-hidden border-none'}`}
+                    className={`flex-shrink-0 flex flex-col border-r border-gray-200 dark:border-[#2d2d3b] bg-white dark:bg-[#1e1e2d] transition-all duration-300 ease-in-out ${isSidebarOpen ? 'w-80 opacity-100' : 'w-0 opacity-0 overflow-hidden border-none'} `}
                 >
                     <div className="p-4 border-b border-gray-200 dark:border-[#2d2d3b] min-w-[320px]">
                         <h3 className="font-bold text-sm text-text-main dark:text-white uppercase tracking-wider">Question Palette</h3>
@@ -695,7 +696,7 @@ const TestReview: React.FC<TestReviewProps> = ({
                                                 <button
                                                     key={item.sq.question.uuid}
                                                     onClick={() => handleJumpToQuestion(allQuestions.findIndex(q => q.sq.question.uuid === item.sq.question.uuid))}
-                                                    className={`aspect-square rounded-md flex items-center justify-center text-xs font-bold transition-all ${getPaletteClass(item.sq.question, isActive)}`}
+                                                    className={`aspect-square rounded-md flex items-center justify-center text-xs font-bold transition-all ${getPaletteClass(item.sq.question, isActive)} `}
                                                 >
                                                     {item.absoluteIndex}
                                                 </button>
@@ -809,7 +810,7 @@ const TestReview: React.FC<TestReviewProps> = ({
                         className={`flex items-center gap-2 px-3 md:px-5 py-2 rounded-lg font-bold text-sm transition-all ${currentQuestion?.verification_level_1 === 'rejected'
                             ? 'bg-red-600 text-white shadow-md'
                             : 'bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/20'
-                            }`}
+                            } `}
                         title="Reject Question"
                     >
                         <span className="material-symbols-outlined text-lg">thumb_down</span>
@@ -830,7 +831,7 @@ const TestReview: React.FC<TestReviewProps> = ({
                         className={`flex items-center gap-2 px-3 md:px-5 py-2 rounded-lg font-bold text-sm transition-all ${currentQuestion?.verification_level_1 === 'approved'
                             ? 'bg-green-600 text-white shadow-md'
                             : 'bg-green-50 dark:bg-green-900/10 text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/20'
-                            }`}
+                            } `}
                         title="Accept Question"
                     >
                         <span className="material-symbols-outlined text-lg">thumb_up</span>
