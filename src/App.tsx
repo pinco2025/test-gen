@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { limitNewlines } from './utils/formatting';
 import {
   Test,
   TestMetadata,
@@ -350,7 +351,7 @@ function App() {
         console.log('  solution_image_url:', newSolution.solution_image_url);
         await window.electronAPI.ipq.saveSolution(
           questionWithLink.uuid,
-          newSolution.solution_text || '',
+          limitNewlines(newSolution.solution_text || ''),
           newSolution.solution_image_url || ''
         );
       } else {
@@ -1421,7 +1422,7 @@ function App() {
           // For IPQ, we need parent_exam. It should be available on the question object if loaded from IPQ table
           await window.electronAPI.ipq.saveSolution(
             updatedSolution.uuid,
-            updatedSolution.solution_text || '',
+            limitNewlines(updatedSolution.solution_text || ''),
             updatedSolution.solution_image_url || ''
           );
         } else {

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { limitNewlines } from '../utils/formatting';
 import { VariableSizeList as List, ListChildComponentProps } from 'react-window';
 import AutoSizer from 'react-virtualized-auto-sizer';
 import {
@@ -252,7 +253,7 @@ export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
         console.log('[handleIPQSave] Saving solution:', newSolution);
         await window.electronAPI.ipq.saveSolution(
           newQuestion.uuid,
-          newSolution.solution_text || '',
+          limitNewlines(newSolution.solution_text || ''),
           newSolution.solution_image_url || ''
         );
       }
@@ -497,7 +498,7 @@ export const DatabaseCleaning: React.FC<DatabaseCleaningProps> = ({
           if (targetExam === 'IPQ') {
             await window.electronAPI.ipq.saveSolution(
               updatedQuestion.uuid,
-              updatedSolution.solution_text || '',
+              limitNewlines(updatedSolution.solution_text || ''),
               updatedSolution.solution_image_url || ''
             );
           } else {
