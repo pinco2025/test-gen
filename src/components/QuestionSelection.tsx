@@ -431,6 +431,14 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
 
     // Check Part Test Division Limits (Legacy logic)
     const isDiv2 = isNumericalAnswer(question);
+    const questionDiv: 1 | 2 = isDiv2 ? 2 : 1;
+
+    // Strict Division Enforcement: Prevent selecting questions of wrong division
+    if (!isSelected && lockedDivision !== undefined && questionDiv !== lockedDivision) {
+      addNotification('warning', `This section only accepts Div ${lockedDivision} questions.`);
+      return;
+    }
+
     if (limitCount === undefined) { // Only enforce Part Test limits if not in Full Test mode (where limitCount is set)
       if (!isSelected && ((isDiv2 && summary.division2 >= 5) || (!isDiv2 && summary.division1 >= 20))) return;
     }
@@ -490,7 +498,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
       ));
       addNotification('error', 'Error updating question frequency');
     }
-  }, [selectedUuids, summary, chapters, limitCount, lockedChapterCode, selectedQuestions, selectionMode, onSelectReplacement, examType, addNotification]);
+  }, [selectedUuids, summary, chapters, limitCount, lockedChapterCode, lockedDivision, selectedQuestions, selectionMode, onSelectReplacement, examType, addNotification]);
 
   const isSelectionValid = useMemo(() => {
     // Full Test Validation

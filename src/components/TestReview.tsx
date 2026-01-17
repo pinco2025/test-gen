@@ -6,6 +6,18 @@ import IPQComparisonModal from './IPQComparisonModal';
 import SwitchQuestionModal from './SwitchQuestionModal';
 import QuestionSelection from './QuestionSelection';
 import ViewLinksModal from './ViewLinksModal';
+import { useNotification } from './Notification';
+
+/**
+ * Determines the effective division for a question (1 or 2)
+ * Priority: division_override > auto-detection from answer format
+ */
+const getDivisionForQuestion = (q: Question): 1 | 2 => {
+    if (q.division_override === 1) return 1;
+    if (q.division_override === 2) return 2;
+    // Auto-detect: MCQ answers (A/B/C/D) = Div1, numerical = Div2
+    return !['A', 'B', 'C', 'D'].includes((q.answer || '').toUpperCase().trim()) ? 2 : 1;
+};
 
 interface TestReviewProps {
     sections: SectionConfig[];
@@ -30,10 +42,12 @@ const TestReview: React.FC<TestReviewProps> = ({
     // onUpdateQuestionStatus, 
     onVerifyQuestion,
     onReplaceQuestion,
+    onRemoveQuestion,
     initialQuestionUuid,
     onNavigationComplete,
     onSwitchQuestion
 }) => {
+    const { addNotification } = useNotification();
     const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
     // Initialize freshQuestionsMap from sections to preserve verification status on remount
     const [freshQuestionsMap, setFreshQuestionsMap] = useState<Record<string, Question>>(() => {
@@ -54,6 +68,15 @@ const TestReview: React.FC<TestReviewProps> = ({
     const [isSwitchModalOpen, setIsSwitchModalOpen] = useState(false);
     const [isChapterSelectionOpen, setIsChapterSelectionOpen] = useState(false);
     const [isViewLinksModalOpen, setIsViewLinksModalOpen] = useState(false);
+
+    // Division Warning Modal State
+    const [isDivisionWarningOpen, setIsDivisionWarningOpen] = useState(false);
+    const [divisionWarningData, setDivisionWarningData] = useState<{
+        questionUuid: string;
+        sectionName: string;
+        oldDivision: 1 | 2;
+        newDivision: 1 | 2;
+    } | null>(null);
 
     // Sidebar Toggle
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -198,6 +221,65 @@ const TestReview: React.FC<TestReviewProps> = ({
         }
     }, [initialQuestionUuid, allQuestions, onNavigationComplete]);
 
+    // Division change detection: When returning from editing, check if division changed
+    useEffect(() => {
+        if (!initialQuestionUuid) return;
+
+        // Find the selected question and its section
+        for (let sectionIndex = 0; sectionIndex < sections.length; sectionIndex++) {
+            const section = sections[sectionIndex];
+            const sectionDivType = (section as any).betaConstraint?.type; // 'Div 1', 'Div 2', or undefined
+
+            if (!sectionDivType || (sectionDivType !== 'Div 1' && sectionDivType !== 'Div 2')) {
+                continue; // Skip mixed sections
+            }
+
+            const sq = section.selectedQuestions.find(sq => sq.question.uuid === initialQuestionUuid);
+            if (sq) {
+                const freshQuestion = freshQuestionsMap[initialQuestionUuid];
+                if (!freshQuestion) continue;
+
+                const oldDivision = sq.division; // From SelectedQuestion
+                const newDivision = getDivisionForQuestion(freshQuestion);
+
+                // Determine section's expected division
+                const expectedDivision: 1 | 2 = sectionDivType === 'Div 2' ? 2 : 1;
+
+                // Check if new division mismatches section's expected division
+                if (newDivision !== expectedDivision) {
+                    setDivisionWarningData({
+                        questionUuid: initialQuestionUuid,
+                        sectionName: section.name,
+                        oldDivision,
+                        newDivision
+                    });
+                    setIsDivisionWarningOpen(true);
+                }
+                break;
+            }
+        }
+    }, [initialQuestionUuid, sections, freshQuestionsMap]);
+
+    // Handle division warning proceed - remove question from section
+    const handleDivisionWarningProceed = () => {
+        if (divisionWarningData) {
+            onRemoveQuestion(divisionWarningData.questionUuid);
+        }
+        setIsDivisionWarningOpen(false);
+        setDivisionWarningData(null);
+    };
+
+    // Handle division warning cancel - keep question but navigate away
+    const handleDivisionWarningCancel = () => {
+        setIsDivisionWarningOpen(false);
+        setDivisionWarningData(null);
+    };
+
+    // Copy UUID to clipboard
+    const copyUuidToClipboard = (uuid: string) => {
+        navigator.clipboard.writeText(uuid);
+    };
+
     const currentItem = allQuestions[currentQuestionIndex];
     const currentQuestion = currentItem?.sq.question;
 
@@ -274,29 +356,186 @@ const TestReview: React.FC<TestReviewProps> = ({
         setIsChapterSelectionOpen(true);
     };
 
-    const handleChapterSelectionReplace = async (newQuestion: Question) => {
-        if (!currentQuestion) return;
-        if (confirm(`Replace current question with selected question (UUID: ${newQuestion.uuid.substring(0, 8)}...)?`)) {
-            // Update frequencies: decrement old, increment new
-            if (window.electronAPI) {
-                try {
-                    // Decrement frequency of the replaced question
-                    await window.electronAPI.questions.decrementFrequency(
-                        currentQuestion.uuid,
-                        currentQuestion.examSource as any
-                    );
-                    // Increment frequency of the newly selected question
-                    await window.electronAPI.questions.incrementFrequency(
-                        newQuestion.uuid,
-                        newQuestion.examSource as any
-                    );
-                } catch (e) {
-                    console.error('Failed to update frequencies:', e);
+    /**
+     * Clone a question to IPQ table with adapted division and bidirectional linking.
+     * Used when selecting a question with wrong division for a locked section.
+     */
+    const cloneWithDivisionAdaptation = async (
+        originalQuestion: Question,
+        targetDivision: 1 | 2
+    ): Promise<Question | null> => {
+        if (!window.electronAPI) return null;
+
+        try {
+            // Generate new UUID
+            const newUuid = crypto.randomUUID();
+
+            // Determine original and target division for answer conversion
+            const originalDivision = getDivisionForQuestion(originalQuestion);
+
+            // Prepare adapted answer based on division change
+            let adaptedAnswer = originalQuestion.answer;
+            let adaptedOptionA = originalQuestion.option_a;
+            let adaptedOptionB = originalQuestion.option_b;
+            let adaptedOptionC = originalQuestion.option_c;
+            let adaptedOptionD = originalQuestion.option_d;
+
+            if (originalDivision === 1 && targetDivision === 2) {
+                // Converting MCQ (Div 1) to Numerical (Div 2)
+                // Extract the value from the correct option
+                const currentAnswer = (originalQuestion.answer || '').toUpperCase().trim();
+                if (['A', 'B', 'C', 'D'].includes(currentAnswer)) {
+                    switch (currentAnswer) {
+                        case 'A': adaptedAnswer = originalQuestion.option_a || ''; break;
+                        case 'B': adaptedAnswer = originalQuestion.option_b || ''; break;
+                        case 'C': adaptedAnswer = originalQuestion.option_c || ''; break;
+                        case 'D': adaptedAnswer = originalQuestion.option_d || ''; break;
+                    }
+                    // Clean the answer - remove $ and , if numeric
+                    adaptedAnswer = adaptedAnswer.replace(/[\$,\s]/g, '');
                 }
+                // Clear all options for Div 2 (numerical doesn't need MCQ options)
+                adaptedOptionA = null;
+                adaptedOptionB = null;
+                adaptedOptionC = null;
+                adaptedOptionD = null;
+            } else if (originalDivision === 2 && targetDivision === 1) {
+                // Converting Numerical (Div 2) to MCQ (Div 1)
+                // Put the numerical answer in option A and set answer to A
+                adaptedOptionA = originalQuestion.answer || '';
+                adaptedOptionB = '';
+                adaptedOptionC = '';
+                adaptedOptionD = '';
+                adaptedAnswer = 'A';
             }
-            onReplaceQuestion(currentQuestion.uuid, newQuestion);
-            setIsChapterSelectionOpen(false);
+
+            // Create cloned question with adapted division and answer
+            const clonedQuestion: Question = {
+                ...originalQuestion,
+                uuid: newUuid,
+                answer: adaptedAnswer,
+                option_a: adaptedOptionA,
+                option_b: adaptedOptionB,
+                option_c: adaptedOptionC,
+                option_d: adaptedOptionD,
+                division_override: targetDivision,
+                links: JSON.stringify([originalQuestion.uuid]),
+                type: 'IPQ',
+                examSource: 'IPQ' as any,
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                frequency: 0,
+                verification_level_1: 'pending'
+            };
+
+            // Determine parent exam from original
+            const parentExam = (originalQuestion as any).examSource || 'JEE';
+
+            // 1. Create question in ipq_questions
+            const success = await window.electronAPI.ipq.createQuestion(
+                clonedQuestion,
+                parentExam
+            );
+            if (!success) {
+                addNotification('error', 'Failed to create adapted IPQ question.');
+                return null;
+            }
+
+            // 2. Clone solution to ipq_solution
+            try {
+                const originalSolution = await window.electronAPI.questions.getSolution(
+                    originalQuestion.uuid,
+                    parentExam
+                );
+                if (originalSolution) {
+                    await window.electronAPI.ipq.saveSolution(
+                        newUuid,
+                        originalSolution.solution_text || '',
+                        originalSolution.solution_image_url || ''
+                    );
+                }
+            } catch (e) {
+                console.warn('Could not clone solution:', e);
+            }
+
+            // 3. Update original question with backward link
+            try {
+                const originalLinks = originalQuestion.links
+                    ? JSON.parse(originalQuestion.links)
+                    : [];
+                if (!originalLinks.includes(newUuid)) {
+                    originalLinks.push(newUuid);
+                    await window.electronAPI.questions.updateQuestion(
+                        originalQuestion.uuid,
+                        { links: JSON.stringify(originalLinks) },
+                        parentExam
+                    );
+                }
+            } catch (e) {
+                console.warn('Could not update original question links:', e);
+            }
+
+            addNotification('success', `Created adapted IPQ (Div ${targetDivision}) for this section.`);
+            return clonedQuestion;
+
+        } catch (error) {
+            console.error('Division-adaptive clone failed:', error);
+            addNotification('error', 'An error occurred while adapting the question.');
+            return null;
         }
+    };
+
+    const handleChapterSelectionReplace = async (newQuestion: Question) => {
+        if (!currentQuestion || !currentItem) return;
+
+        // Get current section info to check for division lock
+        const currentSection = sections[currentItem.sectionIndex];
+        const sectionDivType = (currentSection as any)?.betaConstraint?.type;
+        const requiredDivision: 1 | 2 | null = sectionDivType === 'Div 1' ? 1
+            : sectionDivType === 'Div 2' ? 2 : null;
+
+        // Determine selected question's division
+        const questionDivision = getDivisionForQuestion(newQuestion);
+
+        // Check for division mismatch - need to clone and adapt
+        let finalQuestion = newQuestion;
+        if (requiredDivision && questionDivision !== requiredDivision) {
+            const confirmClone = confirm(
+                `The selected question is Div ${questionDivision}, but this section requires Div ${requiredDivision}.\n\n` +
+                `An adapted copy will be created as an IPQ with the correct division.\n\n` +
+                `Proceed?`
+            );
+            if (!confirmClone) return;
+
+            const adaptedQuestion = await cloneWithDivisionAdaptation(newQuestion, requiredDivision);
+            if (!adaptedQuestion) return; // Error handled in helper
+            finalQuestion = adaptedQuestion;
+        } else {
+            // Normal flow - just confirm replacement
+            if (!confirm(`Replace current question with selected question (UUID: ${newQuestion.uuid.substring(0, 8)}...)?`)) {
+                return;
+            }
+        }
+
+        // Update frequencies: decrement old, increment new
+        if (window.electronAPI) {
+            try {
+                // Decrement frequency of the replaced question
+                await window.electronAPI.questions.decrementFrequency(
+                    currentQuestion.uuid,
+                    currentQuestion.examSource as any
+                );
+                // Increment frequency of the newly selected question
+                await window.electronAPI.questions.incrementFrequency(
+                    finalQuestion.uuid,
+                    finalQuestion.examSource as any
+                );
+            } catch (e) {
+                console.error('Failed to update frequencies:', e);
+            }
+        }
+        onReplaceQuestion(currentQuestion.uuid, finalQuestion);
+        setIsChapterSelectionOpen(false);
     };
 
     const getLinkedUuids = (q: Question | undefined): string[] => {
@@ -694,6 +933,61 @@ const TestReview: React.FC<TestReviewProps> = ({
                         handleEditOriginal(linkedQuestion);
                     }}
                 />
+            )}
+
+            {/* Division Warning Modal */}
+            {isDivisionWarningOpen && divisionWarningData && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="w-full max-w-md bg-white dark:bg-[#1e1e2d] rounded-2xl shadow-2xl border border-gray-200 dark:border-[#2d2d3b] flex flex-col overflow-hidden transform scale-100 animate-in zoom-in-95 duration-200">
+                        <header className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-[#2d2d3b] bg-amber-50 dark:bg-amber-900/20">
+                            <div className="flex items-center gap-2">
+                                <span className="material-symbols-outlined text-amber-600 dark:text-amber-400">warning</span>
+                                <h3 className="text-lg font-bold text-amber-800 dark:text-amber-200">Division Mismatch</h3>
+                            </div>
+                            <button onClick={handleDivisionWarningCancel} className="p-1 rounded-full hover:bg-amber-100 dark:hover:bg-amber-900/30">
+                                <span className="material-symbols-outlined text-amber-600 dark:text-amber-400">close</span>
+                            </button>
+                        </header>
+                        <div className="p-6 space-y-4">
+                            <p className="text-text-main dark:text-gray-200">
+                                Changing the division of this question will remove it from the <strong>{divisionWarningData.sectionName}</strong> section because this section only accepts <strong>Div {sections.find(s => s.name === divisionWarningData.sectionName)?.betaConstraint?.type === 'Div 2' ? '2' : '1'}</strong> questions.
+                            </p>
+                            <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-[#252535] rounded-lg border border-gray-200 dark:border-[#2d2d3b]">
+                                <div>
+                                    <p className="text-xs text-text-secondary mb-1">Question ID</p>
+                                    <code className="text-sm font-mono text-text-main dark:text-gray-200">{divisionWarningData.questionUuid.substring(0, 16)}...</code>
+                                </div>
+                                <button
+                                    onClick={() => copyUuidToClipboard(divisionWarningData.questionUuid)}
+                                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-primary hover:bg-primary/10 transition-colors"
+                                    title="Copy full UUID"
+                                >
+                                    <span className="material-symbols-outlined text-sm">content_copy</span>
+                                    Copy
+                                </button>
+                            </div>
+                            <div className="flex items-center gap-2 text-sm text-text-secondary">
+                                <span className="material-symbols-outlined text-base">swap_horiz</span>
+                                Division changed: Div {divisionWarningData.oldDivision} → Div {divisionWarningData.newDivision}
+                            </div>
+                        </div>
+                        <footer className="flex justify-end gap-3 p-4 bg-gray-50 dark:bg-[#252535] border-t border-gray-200 dark:border-[#2d2d3b]">
+                            <button
+                                onClick={handleDivisionWarningCancel}
+                                className="px-4 py-2 rounded-lg font-medium text-text-secondary hover:bg-gray-200 dark:hover:bg-white/5 transition-all"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleDivisionWarningProceed}
+                                className="px-6 py-2 rounded-lg bg-amber-600 text-white font-bold hover:bg-amber-700 shadow-lg shadow-amber-600/20 transition-all flex items-center gap-2"
+                            >
+                                <span className="material-symbols-outlined text-sm">delete</span>
+                                Remove from Section
+                            </button>
+                        </footer>
+                    </div>
+                </div>
             )}
 
             {/* Switch Question Modal */}
