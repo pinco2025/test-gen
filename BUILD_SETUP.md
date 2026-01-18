@@ -66,6 +66,9 @@ This file contains configuration for GitHub and Supabase integrations.
 }
 ```
 
+> [!IMPORTANT]
+> **GitHub Backup Configuration**: The backup system is configured separately in `electron/githubBackupService.ts` (lines 5-10). You must update the `BACKUP_CONFIG` constant with your backup repository details before building. The backup system reuses the GitHub token from the `config.json` above.
+
 **To get GitHub Personal Access Token:**
 - Go to GitHub → Settings → Developer settings → Personal access tokens → Tokens (classic)
 - Generate new token with `repo` scope
@@ -75,6 +78,39 @@ This file contains configuration for GitHub and Supabase integrations.
 - Go to your [Supabase project dashboard](https://app.supabase.com/)
 - Navigate to Settings → API
 - Copy the Project URL and anon/public key
+
+### 3. GitHub Backup Repository (`electron/githubBackupService.ts`)
+
+This configures automatic backup of in-progress tests to a separate GitHub repository.
+
+**Steps to configure:**
+
+1. Open `electron/githubBackupService.ts`
+2. Update lines 5-10 with your backup repository details:
+
+```typescript
+const BACKUP_CONFIG = {
+  owner: 'YOUR_GITHUB_USERNAME',  // Your GitHub username
+  repo: 'YOUR_BACKUP_REPO',       // Backup repository name (e.g., 'test-backups')
+  branch: 'main',
+  backupPath: 'test-backups/'
+};
+```
+
+3. Create the backup repository on GitHub (can be private)
+4. The system will use the GitHub token from `config.json`
+
+**Example:**
+```typescript
+const BACKUP_CONFIG = {
+  owner: 'harshitsayal',
+  repo: 'test-gen-backups',
+  branch: 'main',
+  backupPath: 'test-backups/'
+};
+```
+
+See [BACKUP_SETUP.md](file:///c:/Users/Harshit%20Sayal/Desktop/BDP/prepAIred/Tests/Test-Gen/BACKUP_SETUP.md) for detailed backup configuration instructions.
 
 ## Building the Application
 
@@ -109,6 +145,7 @@ npm run pack
 The build process automatically includes:
 - ✅ `oauth-credentials.json` - OAuth credentials for Google Drive
 - ✅ `config.json` - GitHub and Supabase configuration
+- ✅ `githubBackupService.ts` - Compiled into the electron bundle automatically
 - ✅ All application code and dependencies
 - ✅ SQLite database schema
 
@@ -154,7 +191,10 @@ Before distributing the app to other machines:
 - [ ] Created `oauth-credentials.json` with valid Google OAuth credentials
 - [ ] Created `config.json` with GitHub and Supabase configuration
 - [ ] Replaced placeholder values in `config.json` with real credentials
+- [ ] **Configured backup repository in `electron/githubBackupService.ts`**
+- [ ] **Created the backup repository on GitHub**
 - [ ] Tested the app locally to ensure credentials work
+- [ ] **Tested backup functionality by closing the app**
 - [ ] Built the app using `npm run build` or `npm run dist`
 - [ ] Verified the built app contains the config files
 - [ ] Tested the built app on the same machine

@@ -7,6 +7,7 @@ import { dbService, ExamType } from './database';
 import { projectService } from './projectService';
 import { oauthService } from './oauthService';
 import { githubService } from './githubService';
+import { githubBackupService } from './githubBackupService';
 import { supabaseService } from './supabaseService';
 import { Question, QuestionFilter, Test, ProjectState, ProjectInfo, AppConfig } from '../src/types';
 import fs from 'fs';
@@ -84,7 +85,23 @@ ipcMain.handle('window:maximize', () => {
   }
 });
 
-ipcMain.handle('window:close', () => {
+ipcMain.handle('window:close', async (_, projectsData?: Record<string, any>) => {
+  // Backup projects before closing if data is provided
+  if (projectsData && Object.keys(projectsData).length > 0) {
+    try {
+      console.log('[App] Backing up projects before close...');
+      const result = await githubBackupService.backupAllProjects(projectsData);
+      if (result.success) {
+        console.log(`[App] ✓ Successfully backed up ${result.backedUpCount} project(s)`);
+      } else {
+        console.warn(`[App] ⚠ Backup completed with errors: ${result.errors.join(', ')}`);
+      }
+    } catch (error) {
+      console.error('[App] Error during backup:', error);
+      // Don't block app close even if backup fails
+    }
+  }
+
   mainWindow?.close();
 });
 
@@ -1065,3 +1082,18 @@ ipcMain.handle('autoSelect:run', async (_, sections: Array<{
     return { success: false, error: error.message };
   }
 });
+
+// ============ GitHub Backup IPC Handlers ============
+
+ipcMain.handle('backup:isConfigured', () => {
+  return githubBackupService.isConfigured();
+});
+
+ipcMain.handle('backup:backupAll', async (_, projectsData: Record<string, any>) => {
+  return await githubBackupService.backupAllProjects(projectsData);
+});
+
+ipcMain.handle('backup:backupProject', async (_, projectId: string, projectState: any) => {
+  return await githubBackupService.backupProject(projectId, projectState);
+});
+

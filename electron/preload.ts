@@ -138,7 +138,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   window: {
     minimize: () => ipcRenderer.invoke('window:minimize'),
     maximize: () => ipcRenderer.invoke('window:maximize'),
-    close: () => ipcRenderer.invoke('window:close')
+    close: (projectsData?: Record<string, any>) => ipcRenderer.invoke('window:close', projectsData)
+  },
+
+  // Backup operations
+  backup: {
+    isConfigured: () => ipcRenderer.invoke('backup:isConfigured'),
+    backupAll: (projectsData: Record<string, any>) => ipcRenderer.invoke('backup:backupAll', projectsData),
+    backupProject: (projectId: string, projectState: any) => ipcRenderer.invoke('backup:backupProject', projectId, projectState)
   },
 
   // Preset operations (for auto-selection)

@@ -148,7 +148,19 @@ declare global {
       window: {
         minimize: () => Promise<void>;
         maximize: () => Promise<void>;
-        close: () => Promise<void>;
+        close: (projectsData?: Record<string, any>) => Promise<void>;
+      };
+      backup: {
+        isConfigured: () => Promise<boolean>;
+        backupAll: (projectsData: Record<string, any>) => Promise<{
+          success: boolean;
+          backedUpCount: number;
+          errors: string[];
+        }>;
+        backupProject: (projectId: string, projectState: any) => Promise<{
+          success: boolean;
+          error?: string;
+        }>;
       };
       presets: {
         list: () => Promise<Array<{ id: string; name: string; description: string }>>;

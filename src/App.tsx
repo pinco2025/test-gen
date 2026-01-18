@@ -1958,6 +1958,7 @@ function App() {
             onNewProject={createNewProject}
             onDashboard={goToDashboard}
             showWindowControls={true}
+            projectsData={projectsData}
           />
         ) : (
           /* Floating Window Controls when tabs aren't visible */
@@ -1980,7 +1981,7 @@ function App() {
               <span className="material-symbols-outlined text-lg">crop_square</span>
             </button>
             <button
-              onClick={async () => window.electronAPI?.window.close()}
+              onClick={async () => window.electronAPI?.window.close(projectsData)}
               className="p-1.5 rounded hover:bg-red-500 hover:text-white text-gray-500 dark:text-gray-400 transition-colors"
               title="Close"
             >
