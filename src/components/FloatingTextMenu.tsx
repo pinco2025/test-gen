@@ -63,7 +63,7 @@ export const FloatingTextMenu: React.FC = () => {
         };
     }, []);
 
-    const triggerChange = (input: HTMLInputElement | HTMLTextAreaElement, newValue: string) => {
+    const triggerChange = (input: HTMLInputElement | HTMLTextAreaElement, newValue: string, cursorPosition?: number) => {
         const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
             window.HTMLInputElement.prototype,
             "value"
@@ -82,6 +82,15 @@ export const FloatingTextMenu: React.FC = () => {
         }
 
         input.dispatchEvent(new Event('input', { bubbles: true }));
+
+        // Restore cursor position after React re-render
+        if (cursorPosition !== undefined) {
+            setTimeout(() => {
+                input.selectionStart = cursorPosition;
+                input.selectionEnd = cursorPosition;
+                input.focus();
+            }, 0);
+        }
     };
 
     const wrapSelection = (prefix: string, suffix: string) => {
@@ -92,8 +101,10 @@ export const FloatingTextMenu: React.FC = () => {
         const selectedText = text.substring(start, end);
 
         const newText = text.substring(0, start) + prefix + selectedText + suffix + text.substring(end);
+        // Position cursor after the wrapped selection
+        const newCursorPos = start + prefix.length + selectedText.length + suffix.length;
 
-        triggerChange(targetInput, newText);
+        triggerChange(targetInput, newText, newCursorPos);
         setPosition(null);
     };
 
@@ -106,8 +117,10 @@ export const FloatingTextMenu: React.FC = () => {
 
         const fixedSelection = selectedText.replace(/\\\\/g, '\\');
         const newText = text.substring(0, start) + fixedSelection + text.substring(end);
+        // Position cursor after the fixed text
+        const newCursorPos = start + fixedSelection.length;
 
-        triggerChange(targetInput, newText);
+        triggerChange(targetInput, newText, newCursorPos);
         setPosition(null);
     };
 
@@ -122,8 +135,10 @@ export const FloatingTextMenu: React.FC = () => {
         const cleanedText = selectedText.replace(/\$/g, '');
         // Wrap in $...$
         const newText = text.substring(0, start) + '$' + cleanedText + '$' + text.substring(end);
+        // Position cursor after the wrapped text
+        const newCursorPos = start + 1 + cleanedText.length + 1;
 
-        triggerChange(targetInput, newText);
+        triggerChange(targetInput, newText, newCursorPos);
         setPosition(null);
     };
 
@@ -138,8 +153,10 @@ export const FloatingTextMenu: React.FC = () => {
         const cleanedText = selectedText.replace(/\*/g, '');
         // Wrap in $\textbf{...}$
         const newText = text.substring(0, start) + '$\\textbf{' + cleanedText + '}$' + text.substring(end);
+        // Position cursor after the wrapped text
+        const newCursorPos = start + '$\\textbf{'.length + cleanedText.length + '}$'.length;
 
-        triggerChange(targetInput, newText);
+        triggerChange(targetInput, newText, newCursorPos);
         setPosition(null);
     };
 
@@ -153,8 +170,10 @@ export const FloatingTextMenu: React.FC = () => {
         // Replace $$ with $
         const fixedText = selectedText.replace(/\$\$/g, '$');
         const newText = text.substring(0, start) + fixedText + text.substring(end);
+        // Position cursor after the fixed text
+        const newCursorPos = start + fixedText.length;
 
-        triggerChange(targetInput, newText);
+        triggerChange(targetInput, newText, newCursorPos);
         setPosition(null);
     };
 
@@ -173,8 +192,10 @@ export const FloatingTextMenu: React.FC = () => {
         }
 
         const newText = text.substring(0, start) + replacement + text.substring(end);
+        // Position cursor after the wrapped text
+        const newCursorPos = start + replacement.length;
 
-        triggerChange(targetInput, newText);
+        triggerChange(targetInput, newText, newCursorPos);
         setPosition(null);
     }
 
@@ -247,8 +268,10 @@ export const FloatingTextMenu: React.FC = () => {
 
                     const cleanedText = selectedText.replace(/\$/g, '');
                     const newText = text.substring(0, start) + cleanedText + text.substring(end);
+                    // Position cursor after the cleaned text
+                    const newCursorPos = start + cleanedText.length;
 
-                    triggerChange(targetInput, newText);
+                    triggerChange(targetInput, newText, newCursorPos);
                     setPosition(null);
                 }} title="Remove all $" colorClass="hover:bg-red-900/30 text-red-400">
                     <span className="material-symbols-outlined text-[16px]">backspace</span>
