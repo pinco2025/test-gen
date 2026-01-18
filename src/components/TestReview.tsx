@@ -180,11 +180,23 @@ const TestReview: React.FC<TestReviewProps> = ({
     // ARCHITECTURE: localVerificationOverrides for immediate UI, sections prop for persistence
     const allQuestions = useMemo(() => {
         const flat: Array<{ sq: SelectedQuestion; sectionIndex: number; absoluteIndex: number }> = [];
+        const seenUuids = new Set<string>();
+        const duplicates: string[] = [];
         let count = 0;
+
         sections.forEach((section, sIdx) => {
             const sortedQuestions = sortQuestionsForSection(section.selectedQuestions);
             sortedQuestions.forEach((sq) => {
+                // Check for duplicate UUIDs and skip them
+                if (seenUuids.has(sq.question.uuid)) {
+                    console.warn(`[TestReview] Duplicate question UUID detected and skipped: ${sq.question.uuid} (would be position ${count + 1})`);
+                    duplicates.push(sq.question.uuid.substring(0, 8));
+                    return; // Skip this duplicate
+                }
+                seenUuids.add(sq.question.uuid);
+
                 count++;
+
                 // Merge fresh data from DB with sections prop data
                 const freshData = freshQuestionsMap[sq.question.uuid];
 
@@ -201,8 +213,15 @@ const TestReview: React.FC<TestReviewProps> = ({
                 flat.push({ sq: { ...sq, question: questionWithSolution }, sectionIndex: sIdx, absoluteIndex: count });
             });
         });
+
+        // Notify user if duplicates were found
+        if (duplicates.length > 0) {
+            console.error(`[TestReview] Found ${duplicates.length} duplicate question(s). Only first occurrence kept.`);
+            addNotification('warning', `Removed ${duplicates.length} duplicate question(s) from test. UUIDs: ${duplicates.join(', ')}...`);
+        }
+
         return flat;
-    }, [sections, freshQuestionsMap, solutionsMap, localVerificationOverrides]);
+    }, [sections, freshQuestionsMap, solutionsMap, localVerificationOverrides, addNotification]);
 
     // Sync current index if out of bounds
     useEffect(() => {
@@ -691,11 +710,13 @@ const TestReview: React.FC<TestReviewProps> = ({
                                     <h4 className="text-xs font-semibold text-text-secondary mb-3 uppercase">{section.name}</h4>
                                     <div className="grid grid-cols-5 gap-2">
                                         {sectionQuestions.map((item) => {
-                                            const isActive = currentQuestionIndex === allQuestions.findIndex(q => q.sq.question.uuid === item.sq.question.uuid);
+                                            // Pre-calculate the question's index in allQuestions for efficiency
+                                            const questionIndex = allQuestions.findIndex(q => q.sq.question.uuid === item.sq.question.uuid);
+                                            const isActive = currentQuestionIndex === questionIndex;
                                             return (
                                                 <button
                                                     key={item.sq.question.uuid}
-                                                    onClick={() => handleJumpToQuestion(allQuestions.findIndex(q => q.sq.question.uuid === item.sq.question.uuid))}
+                                                    onClick={() => handleJumpToQuestion(questionIndex)}
                                                     className={`aspect-square rounded-md flex items-center justify-center text-xs font-bold transition-all ${getPaletteClass(item.sq.question, isActive)} `}
                                                 >
                                                     {item.absoluteIndex}

@@ -774,6 +774,9 @@ function App() {
         createdAt: now
       };
 
+      // GLOBAL DUPLICATE PREVENTION: Track UUIDs across sections
+      const globalUsedUuids = new Set<string>();
+
       // Build sections with selected questions populated
       const sections: SectionConfig[] = testDef.sections.map((sectionDef) => {
         const autoSelectResult = result.sections.find(
@@ -783,8 +786,17 @@ function App() {
         const selectedQuestions: SelectedQuestion[] = [];
         if (autoSelectResult) {
           autoSelectResult.selectedQuestionUuids.forEach((uuid) => {
+            // SKIP if UUID already used in another section
+            if (globalUsedUuids.has(uuid)) {
+              console.warn(`[AutoSelect] Skipping duplicate UUID ${uuid.substring(0, 8)}... in section ${sectionDef.name}`);
+              return;
+            }
+
             const question = selectedQuestionsByUuid.get(uuid);
             if (question) {
+              // Mark UUID as used globally
+              globalUsedUuids.add(uuid);
+
               // Determine division based on answer type (numeric = Div2, else Div1)
               const isNumeric = !isNaN(Number(question.answer)) || /^-?\d+(\.\d+)?$/.test(question.answer.trim());
               const division: 1 | 2 = sectionDef.type === 'Div 2' ? 2 : (isNumeric ? 2 : 1);
@@ -913,6 +925,9 @@ function App() {
     }
 
     // Update sections with selected questions
+    // GLOBAL DUPLICATE PREVENTION: Track UUIDs across sections
+    const globalUsedUuids = new Set<string>();
+
     const updatedSections = currentData.sections.map((section) => {
       const autoSelectResult = result.sections.find(
         s => s.sectionName === section.name && s.sectionType === (section.betaConstraint?.type || 'Div 1')
@@ -921,8 +936,17 @@ function App() {
       const selectedQuestions: SelectedQuestion[] = [];
       if (autoSelectResult) {
         autoSelectResult.selectedQuestionUuids.forEach((uuid) => {
+          // SKIP if UUID already used in another section
+          if (globalUsedUuids.has(uuid)) {
+            console.warn(`[AutoSelect] Skipping duplicate UUID ${uuid.substring(0, 8)}... in section ${section.name}`);
+            return;
+          }
+
           const question = selectedQuestionsByUuid.get(uuid);
           if (question) {
+            // Mark UUID as used globally
+            globalUsedUuids.add(uuid);
+
             const isNumeric = !isNaN(Number(question.answer)) || /^-?\d+(\.\d+)?$/.test(question.answer.trim());
             const division: 1 | 2 = section.betaConstraint?.type === 'Div 2' ? 2 : (isNumeric ? 2 : 1);
 
@@ -1677,6 +1701,16 @@ function App() {
             if (currentSection.betaConstraint?.type === "Div 2") lockedDivision = 2;
           }
 
+          // GLOBAL DUPLICATE PREVENTION: Calculate UUIDs from all OTHER sections
+          const existingGlobalUuids = new Set<string>();
+          sections.forEach((section, idx) => {
+            if (idx !== currentSectionIndex) {
+              section.selectedQuestions.forEach(sq => {
+                existingGlobalUuids.add(sq.question.uuid);
+              });
+            }
+          });
+
           return (
             <QuestionSelection
               key={`${currentProjectId}-${currentSectionIndex}-${activeChapterCode || ''}`}
@@ -1697,6 +1731,8 @@ function App() {
               limitCount={limitCount}
               lockedDivision={lockedDivision}
               onNextChapter={handleNextChapter}
+              // Global duplicate prevention
+              existingGlobalUuids={existingGlobalUuids}
             />
           );
 

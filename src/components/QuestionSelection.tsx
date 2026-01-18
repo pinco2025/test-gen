@@ -43,6 +43,9 @@ interface QuestionSelectionProps {
   // New props for "Switch Question" > "Select from Chapter" flow
   selectionMode?: 'default' | 'single-replace';
   onSelectReplacement?: (question: Question) => void;
+
+  // Global duplicate prevention: UUIDs from ALL other sections
+  existingGlobalUuids?: Set<string>;
 }
 
 interface ItemData {
@@ -131,7 +134,8 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
   lockedDivision,
   onNextChapter,
   selectionMode = 'default',
-  onSelectReplacement
+  onSelectReplacement,
+  existingGlobalUuids
 }) => {
   const [selectedQuestions, setSelectedQuestions] = useState<SelectedQuestion[]>(initialSelectedQuestions);
   const [zoomLevel, setZoomLevel] = useState(1);
@@ -420,6 +424,12 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
 
     const isSelected = selectedUuids.has(question.uuid);
 
+    // GLOBAL DUPLICATE CHECK: Prevent selecting a question that's already in another section
+    if (!isSelected && existingGlobalUuids?.has(question.uuid)) {
+      addNotification('error', `This question is already selected in another section of the test!`);
+      return;
+    }
+
     // Check Full Test Constraint
     if (!isSelected && limitCount !== undefined && lockedChapterCode) {
       // Count currently selected for this chapter
@@ -499,7 +509,7 @@ export const QuestionSelection: React.FC<QuestionSelectionProps> = ({
       ));
       addNotification('error', 'Error updating question frequency');
     }
-  }, [selectedUuids, summary, chapters, limitCount, lockedChapterCode, lockedDivision, selectedQuestions, selectionMode, onSelectReplacement, examType, addNotification]);
+  }, [selectedUuids, summary, chapters, limitCount, lockedChapterCode, lockedDivision, selectedQuestions, selectionMode, onSelectReplacement, examType, addNotification, existingGlobalUuids]);
 
   const isSelectionValid = useMemo(() => {
     // Full Test Validation

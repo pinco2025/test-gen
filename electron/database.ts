@@ -1821,11 +1821,11 @@ solution_text = excluded.solution_text,
         ): { uuid: string; class: number | null } | null => {
           if (sectionSelectedUuids.length >= sectionMax) return null;
 
-          // Build exclude clause
-          const excludeClause = sectionSelectedUuids.length > 0
-            ? `AND uuid NOT IN (${sectionSelectedUuids.map(() => '?').join(',')})`
+          // GLOBAL DUPLICATE PREVENTION: Build exclude clause using ALL selected UUIDs across ALL sections
+          const excludeClause = allSelectedUuids.length > 0
+            ? `AND uuid NOT IN (${allSelectedUuids.map(() => '?').join(',')})`
             : '';
-          const excludeParams = sectionSelectedUuids.length > 0 ? [...sectionSelectedUuids] : [];
+          const excludeParams = allSelectedUuids.length > 0 ? [...allSelectedUuids] : [];
 
           const classClause = classFilter ?? '';
           const query = `SELECT uuid, class FROM ${table} WHERE tag_2 = ? ${divisionFilter} ${classClause} ${excludeClause} ${orderBy} LIMIT 1`;
@@ -1843,6 +1843,7 @@ solution_text = excluded.solution_text,
         // Track a selected question
         const trackSelection = (r: { uuid: string; class: number | null }, table: string, chapterCode: string) => {
           sectionSelectedUuids.push(r.uuid);
+          allSelectedUuids.push(r.uuid); // GLOBAL DUPLICATE PREVENTION: Track globally across all sections
 
           // Track which table it came from
           if (table.startsWith('jee')) byTable.jee++;
